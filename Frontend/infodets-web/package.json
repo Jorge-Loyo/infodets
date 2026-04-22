@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aws-amplify/ui-react": "^6.15.3",
     "@mantine/charts": "^9.1.0",
     "@mantine/core": "^9.1.0",
     "@mantine/hooks": "^9.1.0",

@@ -1,10 +1,13 @@
-import { Container, Title, Text } from '@mantine/core'
+'use client'
+
+import { useEffect } from 'react'
+import { signInWithRedirect } from 'aws-amplify/auth'
+import { PageLoader } from '@/components/layout/PageLoader'
 
 export default function LoginPage() {
-  return (
-    <Container size="xs" py="xl">
-      <Title order={2} mb="xs">INFODETS</Title>
-      <Text c="dimmed">Módulo de autenticación — Fase 2</Text>
-    </Container>
-  )
+  useEffect(() => {
+    signInWithRedirect()
+  }, [])
+
+  return <PageLoader />
 }
