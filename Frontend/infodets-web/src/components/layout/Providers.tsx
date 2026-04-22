@@ -1,5 +1,6 @@
 'use client'
 
+import '@/lib/amplifyConfig'
 import { MantineProvider, createTheme } from '@mantine/core'
 import { Notifications } from '@mantine/notifications'
 import { QueryClientProvider } from '@tanstack/react-query'
