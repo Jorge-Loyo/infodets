@@ -1,0 +1,82 @@
+DOCUMENTO MAESTRO DE DESARROLLO Y PLANIFICACIÓN CLOUD: INFODETS
+Este documento centraliza toda la información técnica, arquitectónica y operativa del Sistema de Gestión de Conocimiento Dinámico (Infodets). Está diseñado para guiar el desarrollo de software, estructurar el código y planificar el despliegue y consumo exacto en el ecosistema de Amazon Web Services (AWS).
+
+--------------------------------------------------------------------------------
+1. Visión General del Proyecto
+Infodets es una plataforma omnicanal (Web App, Mobile App y Chatbot) impulsada por Inteligencia Artificial y bases de datos vectoriales (RAG)
+. Su propósito es responder consultas ciudadanas basándose estrictamente en documentación oficial del sector público, garantizando la Soberanía de Datos mediante una infraestructura controlada y un motor de Mejora Continua que detecta vacíos de información
+.
+
+--------------------------------------------------------------------------------
+2. Arquitectura de Software y Stack Tecnológico
+El desarrollo debe seguir un modelo estrictamente modular, uniendo el front-end con el orquestador y el back-end
+.
+Front-End: Next.js (React), HTML, CSS, JavaScript
+. Diseño visual impulsado por Mantine UI para asegurar una estética limpia, profesional e institucional
+.
+Gestor de Estados/Peticiones: TanStack Query (React Query), funcionando como puente para mapear las respuestas sin recargar la página, brindando fluidez
+.
+Back-End Core: FastAPI (Python), encargado de la lógica y la conexión entre la IA y las bases de datos
+.
+Orquestador de Flujos: n8n (desplegado mediante Docker), encargado de manejar los flujos de decisión complejos y la ingesta de documentos de forma visual
+.
+Base de Datos Relacional: PostgreSQL para historial, configuraciones y datos de usuarios
+.
+Base de Datos Vectorial (RAG): Pinecone o Qdrant para las búsquedas semánticas ultrarápidas sobre los documentos fragmentados
+.
+Motor de Inteligencia Artificial: Gemini 1.5 Flash, para el razonamiento de lenguaje natural, consumido exclusivamente mediante Amazon Bedrock
+.
+
+--------------------------------------------------------------------------------
+3. Estructura de Directorios (Planificación Front-End)
+Para mantener escalabilidad y simetría con el Back-End (FastAPI), el proyecto estructurará el Front-End en Next.js bajo la siguiente jerarquía
+:
+/src: Directorio raíz del código fuente.
+/components: Elementos visuales reutilizables (Botones, modales, tablas creadas con Mantine UI).
+/hooks: Lógica de conexión con FastAPI (ej. useAuth, useData) y manejo de formularios.
+/services: Archivos que realizan las llamadas directas (Data Fetching) a las rutas ("Routes") de FastAPI
+.
+/types: Interfaces en TypeScript/JS que espejan exactamente los DTOs (Data Transfer Objects) definidos en Python, asegurando consistencia de datos entre Back y Front
+.
+/app (o /pages): Vistas principales del sitio (ej. Panel Administrativo, Interfaz del Chat).
+
+--------------------------------------------------------------------------------
+4. Requerimientos Funcionales a Programar (Checklist)
+El desarrollo debe cumplir con cuatro áreas clave para que la propuesta sea aprobada
+:
+[RF1] Ingesta y Procesamiento: Programar en n8n nodos de HTTP Request o scraping web para conectarse a sitios oficiales (ej. CABA) y leer PDFs
+. Esto incluye un Portal de Carga para usuarios calificados.
+[RF2] Interfaz de Consulta: El chat debe entender "Lenguaje Natural" (búsqueda semántica sin palabras clave). La respuesta renderizada debe incluir obligatoriamente el enlace cliqueable de validación legal para el administrativo
+.
+[RF3] Gestión de Usuarios: Crear un Historial de Consultas en un panel lateral (Sidebar). El acceso (Login) debe estar protegido con roles de seguridad
+.
+[RF4] Administración y Feedback: Al final de cada respuesta del bot, renderizar un Botón de Reporte de Error/Encuesta. Se debe desarrollar un Panel de Control (Dashboard) para que los administradores visualicen los "hot topics" o preguntas frecuentes sin respuesta documentada
+.
+
+--------------------------------------------------------------------------------
+5. Flujos Lógicos que la IA debe Orquestar
+El código del backend y n8n debe programar las siguientes reglas de decisión (Umbral de confianza dictado por Gemini 1.5 Flash):
+Camino Feliz: Consulta -> RAG (BD Vectorial) -> Encuentra Documento (>70% confianza) -> Devuelve respuesta humana + Enlace Legal -> Reinicia el bucle
+.
+Fallback (Prioridades 1 y 2): Si falla el RAG, busca en URLs prioritarias o Internet. Debe devolver obligatoriamente una Respuesta Cautelosa: "He encontrado esta información en fuentes externas (no oficiales aún)"
+.
+Loop de Retroalimentación (Prioridad 3): Si hay vacío total de información, el sistema emite un ticket silencioso al administrador informando sobre la métrica (ej. "5 consultas sin documentación sobre el Tema X")
+.
+Gobernanza (Pipeline Semiautomático): Cuando se sube un nuevo documento, n8n limpia y fragmenta los vectores invisiblemente, pero frena la inyección a Pinecone/Qdrant hasta que un administrador presione "Confirmar" en una notificación. Tras esto, la IA lo asimila en menos de 60 segundos
+.
+
+--------------------------------------------------------------------------------
+6. Planificación de Infraestructura y Consumo en AWS
+El MVP y la operación de Infodets están planificados para vivir al 100% dentro del ecosistema de Amazon Web Services, abandonando proveedores básicos de VPS para asegurar rendimiento empresarial
+. El desarrollo debe prever el consumo y configuración de los siguientes servicios:
+AWS EC2 (Compute): Funcionará como el alojamiento central. Aquí se desplegarán el Front-End (Next.js), el Back-End (FastAPI) y los contenedores Docker que corren el orquestador n8n (self-hosted versión Community, costo de licencia $0)
+.
+AWS Cognito (Seguridad): Gestionará la Autenticación Multifactor (MFA) y el Control de Acceso Basado en Roles (RBAC), cubriendo las exigencias del RF3
+.
+AWS RDS Postgres (Base de Datos): Reemplaza la gestión manual. Almacenará los datos estructurados, los perfiles de los usuarios y todo el "registro histórico" de las conversaciones del bucle
+.
+Amazon Bedrock (Motor de Inteligencia): En lugar de consumir la API externa de Google, el sistema consumirá el modelo Gemini 1.5 Flash a través de Amazon Bedrock. Esto garantiza residencia de datos y centraliza la facturación por tokens en AWS
+.
+AWS Elastic: Se integrará como herramienta de búsqueda y almacenamiento avanzado de datos, trabajando en paralelo con Pinecone/Qdrant para búsquedas complejas y análisis de logs
+.
+(Nota estratégica para despliegue: Como el ecosistema migró a servicios gestionados de AWS, se debe utilizar el AWS Pricing Calculator para cotizar los costos exactos por hora de computación y tokens transaccionados antes de encender las instancias de producción).
