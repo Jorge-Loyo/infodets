@@ -22,6 +22,7 @@ export function useAuth() {
             {
               id: attrs.sub ?? '',
               nombre: attrs.name ?? attrs.email,
+              apellido: '',
               email: attrs.email,
               rol: (attrs['custom:rol'] as 'admin' | 'operador') ?? 'operador',
             },
