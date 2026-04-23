@@ -141,17 +141,17 @@ Botón de feedback al final de cada respuesta
 
 | Campo | Valor |
 |---|---|
-| IP pública | `18.234.47.55` |
+| IP pública | `32.192.124.14` (Elastic IP — fija permanente) |
 | IP privada | `172.31.40.141` |
 | Sistema operativo | Ubuntu 24.04 LTS |
 | Región | `us-east-1` |
 | Key PEM | Solicitar al líder del proyecto |
-| Conexión SSH | `ssh -i "keyinfodets.pem" ubuntu@18.234.47.55` |
+| Conexión SSH | `ssh -i "keyinfodets.pem" ubuntu@32.192.124.14` |
 
 **Servicios corriendo en EC2:**
-- n8n → `http://18.234.47.55:5678`
-- FastAPI → `http://18.234.47.55:8000` (pendiente de desplegar)
-- Next.js → `http://18.234.47.55:3000` (pendiente de desplegar)
+- n8n → `http://32.192.124.14:5678`
+- FastAPI → `http://32.192.124.14:8000` (pendiente de desplegar)
+- Next.js → `http://32.192.124.14:3000` (pendiente de desplegar)
 
 ---
 
