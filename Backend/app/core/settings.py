@@ -6,12 +6,25 @@ class Settings(BaseSettings):
     cognito_user_pool_id: str
     cognito_client_id: str
     cognito_client_secret: str
-    frontend_url: str
     cognito_domain: str
+    frontend_url: str
     cloudfront_url: str
     redirect_uri: str
     app_env: str = "development"
     secret_key: str
+
+    # Base de datos
+    db_host: str = ""
+    db_port: int = 5432
+    db_name: str = "infodets"
+    db_user: str = ""
+    db_password: str = ""
+    database_url: str = ""
+
+    # n8n
+    n8n_url: str = ""
+    n8n_user: str = ""
+    n8n_password: str = ""
 
     @property
     def cognito_authority(self) -> str:
