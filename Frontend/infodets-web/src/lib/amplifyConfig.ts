@@ -7,7 +7,7 @@ Amplify.configure({
       userPoolClientId: process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID!,
       loginWith: {
         oauth: {
-          domain: 'us-east-1rcegupga4.auth.us-east-1.amazoncognito.com',
+          domain: 'us-east-1uouyto6ce.auth.us-east-1.amazoncognito.com',
           scopes: ['phone', 'openid', 'email'],
           redirectSignIn: [process.env.NEXT_PUBLIC_REDIRECT_SIGN_IN!],
           redirectSignOut: [process.env.NEXT_PUBLIC_REDIRECT_SIGN_OUT!],
