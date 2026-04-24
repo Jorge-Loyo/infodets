@@ -4,9 +4,9 @@
 
 ---
 
-> **Versión:** 1.4
-> **Estado:** Activo — Sprint 0 en progreso (89% completado)
-> **Última actualización:** Contratos de API definidos — Schema-First con Pydantic + TypeScript
+> **Versión:** 1.5
+> **Estado:** Sprint 0 CERRADO ✅ — 100% completado
+> **Última actualización:** Estructura de tablas definida — modelos SQLAlchemy creados
 > **Basado en:** Propuesta técnica, documento maestro de arquitectura y documento técnico de Front-End
 
 ---
@@ -87,7 +87,7 @@ Botón de feedback al final de cada respuesta
 
 ## 4. ESTADO ACTUAL DEL PROYECTO
 
-### Sprint 0 — Progreso: 8/9 tareas completadas ✅
+### Sprint 0 — Progreso: 9/9 tareas completadas ✅ SPRINT CERRADO
 
 | Tarea | Estado |
 |---|---|
@@ -97,7 +97,7 @@ Botón de feedback al final de cada respuesta
 | Cognito — 2 App Clients configurados | ✅ Completo |
 | Crear base de datos RDS PostgreSQL | ✅ Completo |
 | Instalar n8n en Docker en EC2 | ✅ Completo |
-| Definir estructura de tablas | ⏳ Pendiente — requiere reunión del equipo |
+| Definir estructura de tablas | ✅ Modelo híbrido PostgreSQL + Pinecone/Qdrant |
 | Definir contratos de API | ✅ Schema-First con Pydantic + TypeScript |
 | Actualizar variables de entorno | ✅ Completo |
 
@@ -310,7 +310,7 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 
 ---
 
-### Sprint 0 🟡 89% — Semana 1-2 | Decisiones y entorno
+### Sprint 0 ✅ 100% — Semana 1-2 | CERRADO
 
 | Tarea | Estado | Responsable |
 |---|---|---|
@@ -320,7 +320,7 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 | Cognito — 2 App Clients configurados | ✅ | P2 |
 | Crear base de datos RDS PostgreSQL | ✅ | P2 |
 | Instalar n8n en Docker en EC2 | ✅ | P3 |
-| Definir estructura de tablas | ⏳ | P2 + P3 |
+| Definir estructura de tablas | ✅ Modelo híbrido PostgreSQL + Pinecone/Qdrant | P2 + P3 |
 | Definir contratos de API | ✅ Schema-First Pydantic + TypeScript | P1 + P2 |
 | Actualizar variables de entorno | ✅ | Todos |
 
@@ -425,7 +425,7 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 
 | Sprint | Tarea crítica |
 |---|---|
-| S0 | Definir contratos de API con P2 ⏳ |
+| S0 | Contratos de API definidos ✅ |
 | S1 | Login real con Cognito + rutas protegidas |
 | S2 | Formulario de carga conectado al Back-End real |
 | S3 | Chat con streaming SSE + renderizado de fuente |
@@ -464,7 +464,7 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 
 | Dependencia | Bloqueado | Requiere de | Sprint |
 |---|---|---|---|
-| Contratos de API definidos | P1 | P2 | S0 ⏳ |
+| Contratos de API definidos | P1 | P2 | ✅ Listo |
 | Cognito configurado en AWS | P1 | P2 | ✅ Listo |
 | Endpoint `/consultas` operativo | P1 | P2 + P3 | S3 |
 | Pipeline RAG funcionando | P2 | P3 | S2 |
@@ -592,73 +592,45 @@ async def chat_endpoint(request: ChatRequest):
 | RF2 cumplido | Fuentes oficiales al final del stream para validación legal |
 | Seguridad | API Key en variables de entorno Docker, tráfico TLS por defecto |
 
-### 11.3 Contratos de API — Schema-First con Pydantic
+### 11.4 Estructura de base de datos — Modelo híbrido
 
-> **Fecha:** Sprint 0 | **Decisión:** Enfoque Schema-First usando Pydantic en FastAPI + interfaces TypeScript espejo en Next.js
+> **Fecha:** Sprint 0 | **Decisión:** PostgreSQL (relacional) + Pinecone/Qdrant (vectorial)
 
-**Endpoints estratégicos definidos:**
+**Base de datos relacional (PostgreSQL RDS):**
 
-| Endpoint | Método | Propósito | RF |
-|---|---|---|---|
-| `/v1/chat/stream` | POST | Consulta con streaming SSE — respuesta chunk por chunk | RF2 |
-| `/v1/admin/ingesta` | POST | Carga de PDFs para indexación en RAG | RF1 |
-| `/v1/feedback/report` | POST | Reporte de error — activa motor de mejora continua | RF4 |
-| `/v1/admin/hot-topics` | GET | Temas más consultados sin documentación | RF4 |
-| `/v1/admin/dashboard` | GET | Estadísticas generales para administradores | RF4 |
+| Tabla | Campos clave | Propósito |
+|---|---|---|
+| `users` | id, cognito_id, email, role (admin/operator/viewer) | Gestión de usuarios RBAC sincronizada con Cognito |
+| `documents` | id, title, source_url, hierarchy, status, uploaded_by | Registro de documentación oficial con prioridad normativa |
+| `chat_history` | id, user_id, query, answer, confidence_score, is_fallback | Historial de consultas para hot topics y mejora continua |
+| `feedback_reports` | id, chat_id, is_correct, comment, status (open/resolved) | Motor de mejora continua — reportes de error |
 
-**Schemas Pydantic (Back-End):**
+**Base de datos vectorial (Pinecone/Qdrant):**
 
-```python
-# chat_schema.py
-class ChatRequest(BaseModel):
-    mensaje: str
-    usuario_id: str
-    institucion: Optional[str]
-    dependencia: Optional[str]
-
-class ChatChunkEvent(BaseModel):
-    tipo: str = "chunk"
-    texto: str
-
-class ChatFinalEvent(BaseModel):
-    tipo: str = "final"
-    consulta_id: str
-    fuentes: list[FuenteDocumento]
-    confianza: float
-    tipo_respuesta: str  # local | fallback | sin_respuesta
+```
+Vector Object
+  id            String — ID único del chunk
+  vector        Float[] — embedding generado por el modelo
+  metadata:
+    text        String — contenido textual para Gemini
+    document_id UUID — FK a tabla documents de PostgreSQL
+    source_url  String — URL oficial para citar la fuente
+    page_number Integer — referencia dentro del documento
 ```
 
-**Interfaces TypeScript (Front-End) — espejo exacto:**
-
-```typescript
-// consulta.types.ts
-export interface ChatRequest {
-  mensaje: string
-  usuario_id: string
-  institucion?: string
-  dependencia?: string
-}
-
-export interface ChatFinalEvent {
-  tipo: 'final'
-  consulta_id: string
-  fuentes: FuenteDocumento[]
-  confianza: number
-  tipo_respuesta: 'local' | 'fallback' | 'sin_respuesta'
-}
-```
-
-**Rutas versionadas bajo `/v1/`** para permitir actualizaciones futuras sin romper la interfaz.
-
-**Documentación automática** disponible en `http://localhost:8000/docs` (Swagger/OpenAPI generado por FastAPI).
+**Justificación:**
+- Consistencia legal: cada respuesta de Gemini vinculada a un registro oficial en `documents`
+- Hot Topics: consultas SQL sobre `chat_history` donde `confidence_score` sea bajo
+- Escalabilidad: de 10 a 10.000 documentos sin cambiar el esquema
+- Migraciones: Alembic para versionado del esquema PostgreSQL
 
 ---
 
-
+## 12. RESUMEN EJECUTIVO
 
 | Sprint | Semanas | Hito principal | Estado |
 |---|---|---|---|
-| S0 | 1-2 | Entorno AWS funcionando, equipo alineado | 🟡 89% |
+| S0 | 1-2 | Entorno AWS funcionando, equipo alineado | ✅ 100% |
 | S1 | 3-4 | Login real con Cognito de punta a punta | ⏳ |
 | S2 | 5-6 | Ingesta de documentos y búsqueda RAG básica | ⏳ |
 | S3 | 7-8 | Chat con IA real (Gemini + fallback + tickets) | ⏳ |
@@ -670,4 +642,4 @@ export interface ChatFinalEvent {
 ---
 
 *INFODETS — Sistema de Gestión de Conocimiento Dinámico*
-*Plan de Desarrollo v1.3 — Equipo de 3 programadores*
+*Plan de Desarrollo v1.5 — Equipo de 3 programadores*
