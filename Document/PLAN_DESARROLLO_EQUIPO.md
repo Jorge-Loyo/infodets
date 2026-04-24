@@ -1,14 +1,12 @@
 # PLAN DE DESARROLLO — INFODETS
-
 ## Sistema de Gestión de Conocimiento Dinámico
-
 ### Plan para equipo de 3 programadores
 
 ---
 
 > **Versión:** 1.3
 > **Estado:** Activo — Sprint 0 en progreso (78% completado)
-> **Última actualización:** Definición técnica oficial del mecanismo de streaming (SSE + Gemini)
+> **Última actualización:** Definición técnica oficial del mecanismo de streaming (SSE + Gemini API directa)
 > **Basado en:** Propuesta técnica, documento maestro de arquitectura y documento técnico de Front-End
 
 ---
@@ -25,6 +23,8 @@
 8. [Detalle de tareas por programador](#8-detalle-de-tareas-por-programador)
 9. [Dependencias entre equipos](#9-dependencias-entre-equipos)
 10. [Convenciones de trabajo en equipo](#10-convenciones-de-trabajo-en-equipo)
+11. [Decisiones de arquitectura](#11-decisiones-de-arquitectura)
+12. [Resumen ejecutivo](#12-resumen-ejecutivo)
 
 ---
 
@@ -33,7 +33,6 @@
 INFODETS es una plataforma omnicanal (Web App, Mobile y Chatbot) impulsada por IA y bases de datos vectoriales (RAG). Responde consultas ciudadanas basándose en documentación oficial del sector público, garantizando soberanía de datos y mejora continua.
 
 **Flujo principal del sistema:**
-
 ```
 Usuario hace consulta en lenguaje natural
         ↓
@@ -56,11 +55,11 @@ Botón de feedback al final de cada respuesta
 
 ## 2. ASIGNACIÓN DE ROLES POR PROGRAMADOR
 
-| Programador | Rol               | Área principal                               |
-| ----------- | ----------------- | -------------------------------------------- |
-| **P1**      | Full-Stack Lead   | Front-End Next.js + integración con Back-End |
-| **P2**      | Back-End Engineer | FastAPI + AWS + Base de datos                |
-| **P3**      | IA & Orquestación | n8n + RAG + Gemini + Pipeline de ingesta     |
+| Programador | Rol | Área principal |
+|---|---|---|
+| **P1** | Full-Stack Lead | Front-End Next.js + integración con Back-End |
+| **P2** | Back-End Engineer | FastAPI + AWS + Base de datos |
+| **P3** | IA & Orquestación | n8n + RAG + Gemini + Pipeline de ingesta |
 
 > Esta asignación no es rígida. En sprints donde un área tenga menos carga, el programador apoya al siguiente.
 
@@ -68,41 +67,41 @@ Botón de feedback al final de cada respuesta
 
 ## 3. STACK TECNOLÓGICO COMPLETO
 
-| Capa                     | Tecnología                                | Responsable |
-| ------------------------ | ----------------------------------------- | ----------- |
-| Front-End                | Next.js 14 + React + TypeScript           | P1          |
-| UI Components            | Mantine UI + Framer Motion + Tabler Icons | P1          |
-| Estado                   | TanStack Query + Zustand                  | P1          |
-| Autenticación            | AWS Cognito + Amplify                     | P1 + P2     |
-| Back-End                 | FastAPI (Python)                          | P2          |
-| Base de datos relacional | AWS RDS PostgreSQL 17                     | P2          |
-| Base de datos vectorial  | Pinecone o Qdrant                         | P2 + P3     |
-| Orquestador de flujos    | n8n (Docker self-hosted)                  | P3          |
-| Motor de IA              | Gemini 1.5 Flash — API directa de Google (`google-generativeai`) | P3          |
-| Búsqueda web fallback    | Tavily / Google Search API                | P3          |
-| Infraestructura          | AWS EC2 + Docker                          | P2          |
-| CI/CD                    | GitHub Actions                            | P1 + P2     |
+| Capa | Tecnología | Responsable |
+|---|---|---|
+| Front-End | Next.js 14 + React + TypeScript | P1 |
+| UI Components | Mantine UI + Framer Motion + Tabler Icons | P1 |
+| Estado | TanStack Query + Zustand | P1 |
+| Autenticación | AWS Cognito + Amplify | P1 + P2 |
+| Back-End | FastAPI (Python) | P2 |
+| Base de datos relacional | AWS RDS PostgreSQL 17 | P2 |
+| Base de datos vectorial | Pinecone o Qdrant | P2 + P3 |
+| Orquestador de flujos | n8n (Docker self-hosted) | P3 |
+| Motor de IA | Gemini 1.5 Flash — API directa de Google (`google-generativeai`) | P3 |
+| Streaming | SSE via `StreamingResponse` FastAPI + `generate_content(stream=True)` | P2 + P3 |
+| Búsqueda web fallback | Tavily / Google Search API | P3 |
+| Infraestructura | AWS EC2 + Docker | P2 |
+| CI/CD | GitHub Actions | P1 + P2 |
 
 ---
 
 ## 4. ESTADO ACTUAL DEL PROYECTO
 
-### Sprint 0 — Progreso: 6/9 tareas completadas ✅
+### Sprint 0 — Progreso: 7/9 tareas completadas ✅
 
-| Tarea                                     | Estado                                      |
-| ----------------------------------------- | ------------------------------------------- | -------------- |
-| Clonar repo y levantar Docker local       | ✅ Completo                                 |
-| Confirmar mecanismo de streaming del chat | ⏳ Pendiente — requiere decisión del equipo | Amazon Bedrock |
-| Crear instancia EC2 en AWS                | ✅ Completo                                 |
-| Cognito — 2 App Clients configurados      | ✅ Completo                                 |
-| Crear base de datos RDS PostgreSQL        | ✅ Completo                                 |
-| Instalar n8n en Docker en EC2             | ✅ Completo                                 |
-| Definir estructura de tablas              | ⏳ Pendiente — requiere reunión del equipo  |
-| Definir contratos de API                  | ⏳ Pendiente — requiere reunión del equipo  |
-| Actualizar variables de entorno           | ✅ Completo                                 |
+| Tarea | Estado |
+|---|---|
+| Clonar repo y levantar Docker local | ✅ Completo |
+| Confirmar mecanismo de streaming del chat | ✅ SSE + StreamingResponse + Gemini stream=True |
+| Crear instancia EC2 en AWS | ✅ Completo |
+| Cognito — 2 App Clients configurados | ✅ Completo |
+| Crear base de datos RDS PostgreSQL | ✅ Completo |
+| Instalar n8n en Docker en EC2 | ✅ Completo |
+| Definir estructura de tablas | ⏳ Pendiente — requiere reunión del equipo |
+| Definir contratos de API | ⏳ Pendiente — requiere reunión del equipo |
+| Actualizar variables de entorno | ✅ Completo |
 
 ### Front-End ✅ (estructura completa)
-
 - Proyecto Next.js 14 inicializado con TypeScript estricto
 - Todas las dependencias instaladas (Mantine, Framer Motion, TanStack Query, Zustand, Amplify)
 - Layout principal: Header, Footer, Sidebar animado
@@ -114,27 +113,24 @@ Botón de feedback al final de cada respuesta
 - Docker configurado (Dockerfile + docker-compose)
 
 ### Back-End ✅ (estructura base)
-
 - FastAPI inicializado con estructura modular
 - Rutas de autenticación Cognito: /login, /callback, /logout, /me
 - Middleware de validación JWT
 - Schemas Pydantic base
+- `google-generativeai` agregado a requirements.txt
 - Entorno virtual configurado con todas las dependencias
 
 ### Infraestructura AWS ✅ (Sprint 0)
-
-- EC2 Ubuntu 24.04 corriendo con Docker
+- EC2 Ubuntu 24.04 corriendo con Docker — IP fija `32.192.124.14`
 - RDS PostgreSQL 17 operativa y conectada
-- n8n corriendo en Docker
-- Cognito con 2 App Clients configurados
+- n8n corriendo en Docker en `http://32.192.124.14:5678`
+- Cognito con 2 App Clients configurados (nuevo User Pool)
 
 ### Pendiente de desarrollo:
-
-- Lógica funcional del chat con IA (Google Gemini API)
+- Lógica funcional del chat con IA (Google Gemini API + streaming)
 - Modelos SQLAlchemy + migraciones Alembic
 - Pipeline RAG con base vectorial
 - Orquestación con n8n
-- Integración con API de Google Gemini (`google-generativeai`)
 - Conexión Front-End ↔ Back-End real (reemplazar mocks)
 
 ---
@@ -146,17 +142,16 @@ Botón de feedback al final de cada respuesta
 
 ### EC2 — Servidor principal
 
-| Campo             | Valor                                           |
-| ----------------- | ----------------------------------------------- |
-| IP pública        | `32.192.124.14` (Elastic IP — fija permanente)  |
-| IP privada        | `172.31.40.141`                                 |
-| Sistema operativo | Ubuntu 24.04 LTS                                |
-| Región            | `us-east-1`                                     |
-| Key PEM           | Solicitar al líder del proyecto                 |
-| Conexión SSH      | `ssh -i "keyinfodets.pem" ubuntu@32.192.124.14` |
+| Campo | Valor |
+|---|---|
+| IP pública | `32.192.124.14` (Elastic IP — fija permanente) |
+| IP privada | `172.31.40.141` |
+| Sistema operativo | Ubuntu 24.04 LTS |
+| Región | `us-east-1` |
+| Key PEM | Solicitar al líder del proyecto |
+| Conexión SSH | `ssh -i "keyinfodets.pem" ubuntu@32.192.124.14` |
 
 **Servicios corriendo en EC2:**
-
 - n8n → `http://32.192.124.14:5678`
 - FastAPI → `http://32.192.124.14:8000` (pendiente de desplegar)
 - Next.js → `http://32.192.124.14:3000` (pendiente de desplegar)
@@ -165,43 +160,45 @@ Botón de feedback al final de cada respuesta
 
 ### RDS PostgreSQL — Base de datos
 
-| Campo         | Valor                                                  |
-| ------------- | ------------------------------------------------------ |
-| Host          | `infodets-db.cjgfkaqwabgp.us-east-1.rds.amazonaws.com` |
-| Puerto        | `5432`                                                 |
-| Base de datos | `infodets`                                             |
-| Usuario       | `infodets_admin`                                       |
-| Contraseña    | Solicitar al líder del proyecto                        |
-| Versión       | PostgreSQL 17.6                                        |
-| Instancia     | `db.t4g.micro`                                         |
-| SSL           | Requerido (`sslmode=verify-full`)                      |
+| Campo | Valor |
+|---|---|
+| Host | `infodets-db.cjgfkaqwabgp.us-east-1.rds.amazonaws.com` |
+| Puerto | `5432` |
+| Base de datos | `infodets` |
+| Usuario | `infodets_admin` |
+| Contraseña | Solicitar al líder del proyecto |
+| Versión | PostgreSQL 17.6 |
+| Instancia | `db.t4g.micro` |
+| SSL | Requerido (`sslmode=verify-full`) |
 
 **Conexión de prueba desde EC2:**
-
 ```bash
 export RDSHOST="infodets-db.cjgfkaqwabgp.us-east-1.rds.amazonaws.com"
 psql "host=$RDSHOST port=5432 dbname=infodets user=infodets_admin sslmode=verify-full sslrootcert=./global-bundle.pem"
 ```
 
 **DATABASE_URL para FastAPI:**
-
 ```
 postgresql://infodets_admin:<password>@infodets-db.cjgfkaqwabgp.us-east-1.rds.amazonaws.com:5432/infodets
+```
+
+**Túnel SSH para conectarse desde VS Code:**
+```bash
+ssh -i "keyinfodets.pem" -L 5432:infodets-db.cjgfkaqwabgp.us-east-1.rds.amazonaws.com:5432 ubuntu@32.192.124.14 -N
 ```
 
 ---
 
 ### n8n — Orquestador de flujos
 
-| Campo            | Valor                           |
-| ---------------- | ------------------------------- |
-| URL              | `http://18.234.47.55:5678`      |
-| Usuario          | `admin`                         |
-| Contraseña       | Solicitar al líder del proyecto |
-| Ubicación en EC2 | `/home/ubuntu/n8n/`             |
+| Campo | Valor |
+|---|---|
+| URL | `http://32.192.124.14:5678` |
+| Usuario | `admin` |
+| Contraseña | Solicitar al líder del proyecto |
+| Ubicación en EC2 | `/home/ubuntu/n8n/` |
 
 **Comandos de gestión en EC2:**
-
 ```bash
 cd ~/n8n
 docker-compose up -d      # Levantar
@@ -213,34 +210,30 @@ docker logs n8n_n8n_1     # Ver logs
 
 ### Cognito — Autenticación
 
-| Campo        | Valor                                                 |
-| ------------ | ----------------------------------------------------- |
-| Región       | `us-east-1`                                           |
-| User Pool ID | `us-east-1_rCegUPGa4`                                 |
-| Dominio      | `us-east-1rcegupga4.auth.us-east-1.amazoncognito.com` |
+| Campo | Valor |
+|---|---|
+| Región | `us-east-1` |
+| User Pool ID | `us-east-1_uOuYTO6Ce` |
+| Dominio | `us-east-1uouyto6ce.auth.us-east-1.amazoncognito.com` |
 
 **App Clients:**
 
-| Cliente                | Client ID                    | Secret        | Uso                 |
-| ---------------------- | ---------------------------- | ------------- | ------------------- |
-| `Infodets-Web-Cognito` | `1lde8p7lvavoohe9pessltmk54` | ✅ Tiene      | Back-End (FastAPI)  |
-| `Infodets-Frontend`    | `14h2o36jmfeq7bsmb8udsvl49q` | ❌ Sin secret | Front-End (Amplify) |
+| Cliente | Client ID | Secret | Uso |
+|---|---|---|---|
+| `Infodets-Web-Cognito` | `40g4ffmsvf8mmk77kc37abucvd` | ✅ Tiene | Back-End (FastAPI) |
+| `Interfaz de usuario de Infodets` | `6sr8e9s203gb8reco11d9gsal1` | ❌ Sin secret | Front-End (Amplify) |
 
 ---
 
 ## 6. GUÍA DE INICIO PARA NUEVOS INTEGRANTES
 
-Pasos para que un nuevo programador tenga el entorno funcionando en su máquina:
-
 ### Prerequisitos
-
 - Git instalado
 - Node.js 20+ instalado
 - Python 3.13 instalado
 - Docker Desktop instalado y corriendo
 
 ### Paso 1 — Clonar el repositorio
-
 ```bash
 git clone https://github.com/Jorge-Loyo/infodets.git
 cd infodets
@@ -248,47 +241,54 @@ git checkout Frontend
 ```
 
 ### Paso 2 — Configurar el Front-End
-
 ```bash
 cd Frontend/infodets-web
 npm install
 ```
 
 Crear el archivo `.env.local` con estos valores:
-
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000/v1
-NEXT_PUBLIC_COGNITO_USER_POOL_ID=us-east-1_rCegUPGa4
-NEXT_PUBLIC_COGNITO_CLIENT_ID=14h2o36jmfeq7bsmb8udsvl49q
+NEXT_PUBLIC_COGNITO_USER_POOL_ID=us-east-1_uOuYTO6Ce
+NEXT_PUBLIC_COGNITO_CLIENT_ID=6sr8e9s203gb8reco11d9gsal1
 NEXT_PUBLIC_COGNITO_REGION=us-east-1
 NEXT_PUBLIC_REDIRECT_SIGN_IN=http://localhost:3000/consulta
 NEXT_PUBLIC_REDIRECT_SIGN_OUT=http://localhost:3000/login
 ```
 
-### Paso 3 — Configurar el Back-End
+Correr el Front-End:
+```bash
+npm run dev
+```
 
+### Paso 3 — Configurar el Back-End
 ```bash
 cd Backend
 py -m venv venv
-venv\Scripts\activate        # Windows
-source venv/bin/activate     # Mac/Linux
+source venv/Scripts/activate      # Windows Git Bash
+# source venv/bin/activate         # Mac / Linux
 pip install -r requirements.txt
 ```
 
-Crear el archivo `.env` — solicitar el archivo completo al líder del proyecto ya que contiene credenciales sensibles.
+Solicitar el archivo `.env` al líder del proyecto y copiarlo en `Backend/.env`.
 
-### Paso 4 — Levantar con Docker (opción recomendada)
-
+Correr el Back-End:
 ```bash
-cd C:/git/infodets
+uvicorn main:app --reload
+```
+
+### Paso 4 — Opción Docker (más simple)
+```bash
+cd /c/git/infodets
 docker-compose -f docker-compose.dev.yml up --build
 ```
 
 ### Paso 5 — Verificar
-
-- Front-End: `http://localhost:3000`
-- Back-End API: `http://localhost:8000`
-- Docs API: `http://localhost:8000/docs`
+| Servicio | URL |
+|---|---|
+| Front-End | http://localhost:3000 |
+| Back-End API | http://localhost:8000 |
+| Docs API | http://localhost:8000/docs |
 
 ---
 
@@ -299,19 +299,19 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 
 ---
 
-### SPRINT 0 ✅ 78% — Semana 1-2 | Decisiones y entorno
+### SPRINT 0 🟡 78% — Semana 1-2 | Decisiones y entorno
 
-| Tarea                                     | Estado | Responsable |
-| ----------------------------------------- | ------ | ----------- |
-| Clonar repo y levantar Docker local       | ✅     | Todos       |
-| Confirmar mecanismo de streaming del chat | ✅ SSE con StreamingResponse + Gemini stream=True | P1 + P2     |
-| Crear instancia EC2 en AWS                | ✅     | P2          |
-| Cognito — 2 App Clients configurados      | ✅     | P2          |
-| Crear base de datos RDS PostgreSQL        | ✅     | P2          |
-| Instalar n8n en Docker en EC2             | ✅     | P3          |
-| Definir estructura de tablas              | ⏳     | P2 + P3     |
-| Definir contratos de API                  | ⏳     | P1 + P2     |
-| Actualizar variables de entorno           | ✅     | Todos       |
+| Tarea | Estado | Responsable |
+|---|---|---|
+| Clonar repo y levantar Docker local | ✅ | Todos |
+| Confirmar mecanismo de streaming del chat | ✅ SSE + Gemini stream=True | P1 + P2 |
+| Crear instancia EC2 en AWS | ✅ | P2 |
+| Cognito — 2 App Clients configurados | ✅ | P2 |
+| Crear base de datos RDS PostgreSQL | ✅ | P2 |
+| Instalar n8n en Docker en EC2 | ✅ | P3 |
+| Definir estructura de tablas | ⏳ | P2 + P3 |
+| Definir contratos de API | ⏳ | P1 + P2 |
+| Actualizar variables de entorno | ✅ | Todos |
 
 **Entregable:** Entorno completo funcionando en EC2. Todos pueden hacer `docker-compose up` y ver el sistema.
 
@@ -319,16 +319,16 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 
 ### SPRINT 1 — Semana 3-4 | Base de datos y autenticación real
 
-| Tarea                                                               | Responsable |
-| ------------------------------------------------------------------- | ----------- |
-| Crear modelos SQLAlchemy (Usuario, Consulta, Feedback, Documento)   | P2          |
-| Configurar Alembic para migraciones                                 | P2          |
-| Implementar endpoints CRUD de usuarios en FastAPI                   | P2          |
-| Conectar login del Front-End con Cognito real                       | P1          |
-| Implementar middleware de rutas protegidas en Next.js               | P1          |
-| Probar flujo completo: login → token → request autenticado → logout | P1 + P2     |
-| Crear primer workflow en n8n (trigger de prueba)                    | P3          |
-| Investigar e integrar Pinecone o Qdrant                             | P3          |
+| Tarea | Responsable |
+|---|---|
+| Crear modelos SQLAlchemy (Usuario, Consulta, Feedback, Documento) | P2 |
+| Configurar Alembic para migraciones | P2 |
+| Implementar endpoints CRUD de usuarios en FastAPI | P2 |
+| Conectar login del Front-End con Cognito real | P1 |
+| Implementar middleware de rutas protegidas en Next.js | P1 |
+| Probar flujo completo: login → token → request autenticado → logout | P1 + P2 |
+| Crear primer workflow en n8n (trigger de prueba) | P3 |
+| Investigar e integrar Pinecone o Qdrant | P3 |
 
 **Entregable:** Usuario puede loguearse con Cognito real y acceder a rutas protegidas.
 
@@ -336,15 +336,15 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 
 ### SPRINT 2 — Semana 5-6 | Pipeline RAG e ingesta de documentos
 
-| Tarea                                                                      | Responsable |
-| -------------------------------------------------------------------------- | ----------- |
-| Implementar endpoint de carga de documentos en FastAPI                     | P2          |
-| Conectar formulario de carga del Front-End con el endpoint real            | P1          |
-| Crear workflow n8n de ingesta: recibe PDF → limpia → fragmenta → vectoriza | P3          |
-| Integrar Pinecone/Qdrant para almacenar vectores                           | P3          |
-| Implementar búsqueda semántica básica (RAG)                                | P3          |
-| Crear endpoint FastAPI `/consultas` que recibe pregunta y llama al RAG     | P2 + P3     |
-| Guardar historial de consultas en RDS                                      | P2          |
+| Tarea | Responsable |
+|---|---|
+| Implementar endpoint de carga de documentos en FastAPI | P2 |
+| Conectar formulario de carga del Front-End con el endpoint real | P1 |
+| Crear workflow n8n de ingesta: recibe PDF → limpia → fragmenta → vectoriza | P3 |
+| Integrar Pinecone/Qdrant para almacenar vectores | P3 |
+| Implementar búsqueda semántica básica (RAG) | P3 |
+| Crear endpoint FastAPI `/consultas` que recibe pregunta y llama al RAG | P2 + P3 |
+| Guardar historial de consultas en RDS | P2 |
 
 **Entregable:** Se puede subir un PDF y hacerle una pregunta que el sistema responde con el contenido del documento.
 
@@ -352,12 +352,10 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 
 ### SPRINT 3 — Semana 7-8 | Motor de IA y flujos de decisión
 
-> ⚠️ **Cambio de arquitectura:** Se reemplaza Amazon Bedrock por la **API directa de Google Gemini**.
-> El modelo sigue siendo Gemini 1.5 Flash. El streaming se implementa con `generate_content(stream=True)` + `StreamingResponse` de FastAPI.
-> La facturación de IA pasa a Google Cloud (separada de AWS). El resto de la infraestructura AWS se mantiene igual.
+> ⚠️ Se usa **API directa de Google Gemini** (no Amazon Bedrock). Ver sección 11 para detalles técnicos.
 
 | Tarea | Responsable |
-| -------------------------------------------------------------------------- | ----------- |
+|---|---|
 | Obtener API Key de Google Gemini (Google AI Studio) | P3 |
 | Instalar `google-generativeai` en el Back-End | P3 |
 | Implementar servicio de IA con `generate_content(stream=True)` | P3 |
@@ -366,7 +364,7 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 | Integrar búsqueda web (Tavily) como fallback | P3 |
 | Implementar respuesta cautelosa cuando la fuente es externa | P3 |
 | Implementar ticket silencioso al admin cuando hay vacío de información | P3 |
-| Actualizar nodo de n8n de Bedrock a HTTP Request hacia API de Gemini | P3 |
+| Actualizar nodo de n8n a HTTP Request hacia API de Gemini | P3 |
 | Conectar el chat del Front-End con el endpoint real (SSE) | P1 |
 | Renderizar respuesta con enlace cliqueable al documento fuente | P1 |
 | Implementar streaming de respuesta en el chat | P1 + P2 |
@@ -377,16 +375,16 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 
 ### SPRINT 4 — Semana 9-10 | Feedback, dashboard y administración
 
-| Tarea                                                                     | Responsable |
-| ------------------------------------------------------------------------- | ----------- |
-| Implementar endpoint de feedback en FastAPI                               | P2          |
-| Conectar botón de feedback del Front-End con el endpoint real             | P1          |
-| Implementar endpoints del dashboard (hot topics, consultas por día)       | P2          |
-| Conectar gráficos del dashboard con datos reales de RDS                   | P1          |
-| Implementar CRUD real de usuarios desde el panel admin                    | P1 + P2     |
-| Implementar CRUD real de documentos desde el panel admin                  | P1 + P2     |
-| Implementar control de acceso por rol (admin vs operador) en el Front-End | P1          |
-| Workflow n8n de notificación al admin (WhatsApp o email)                  | P3          |
+| Tarea | Responsable |
+|---|---|
+| Implementar endpoint de feedback en FastAPI | P2 |
+| Conectar botón de feedback del Front-End con el endpoint real | P1 |
+| Implementar endpoints del dashboard (hot topics, consultas por día) | P2 |
+| Conectar gráficos del dashboard con datos reales de RDS | P1 |
+| Implementar CRUD real de usuarios desde el panel admin | P1 + P2 |
+| Implementar CRUD real de documentos desde el panel admin | P1 + P2 |
+| Implementar control de acceso por rol (admin vs operador) en el Front-End | P1 |
+| Workflow n8n de notificación al admin (WhatsApp o email) | P3 |
 
 **Entregable:** Dashboard con datos reales. Admins pueden gestionar usuarios y documentos. Feedback operativo.
 
@@ -394,17 +392,17 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 
 ### SPRINT 5 — Semana 11-12 | Pulido, pruebas y despliegue
 
-| Tarea                                                              | Responsable |
-| ------------------------------------------------------------------ | ----------- |
-| Pruebas de integración Front-End ↔ Back-End                        | P1 + P2     |
-| Pruebas del pipeline RAG con documentos reales                     | P3          |
-| Optimización de rendimiento (caché TanStack Query, índices en RDS) | P1 + P2     |
-| Configurar GitHub Actions para CI/CD automático a EC2              | P2          |
-| Configurar CloudFront para el Front-End                            | P2          |
-| Configurar dominio y certificado SSL                               | P2          |
-| Revisión de seguridad (variables de entorno, permisos IAM)         | P2          |
-| Documentar endpoints en Swagger (FastAPI lo genera automático)     | P2          |
-| Pruebas de usuario final con flujo completo                        | Todos       |
+| Tarea | Responsable |
+|---|---|
+| Pruebas de integración Front-End ↔ Back-End | P1 + P2 |
+| Pruebas del pipeline RAG con documentos reales | P3 |
+| Optimización de rendimiento (caché TanStack Query, índices en RDS) | P1 + P2 |
+| Configurar GitHub Actions para CI/CD automático a EC2 | P2 |
+| Configurar CloudFront para el Front-End | P2 |
+| Configurar dominio y certificado SSL | P2 |
+| Revisión de seguridad (variables de entorno, permisos IAM) | P2 |
+| Documentar endpoints en Swagger (FastAPI lo genera automático) | P2 |
+| Pruebas de usuario final con flujo completo | Todos |
 
 **Entregable:** Sistema en producción en AWS. URL pública funcionando.
 
@@ -414,75 +412,54 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 
 ### P1 — Front-End Lead
 
-**Responsabilidades permanentes:**
-
-- Mantener y evolucionar todas las páginas del Front-End
-- Conectar cada página con los endpoints reales del Back-End (reemplazar mocks)
-- Garantizar que TypeScript compile sin errores en cada PR
-- Mantener la consistencia visual con Mantine UI
-
-| Sprint | Tarea crítica                                  |
-| ------ | ---------------------------------------------- |
-| S0     | Definir contratos de API con P2 ⏳             |
-| S1     | Login real con Cognito + rutas protegidas      |
-| S2     | Formulario de carga conectado al Back-End real |
-| S3     | Chat con streaming SSE + renderizado de fuente |
-| S4     | Dashboard con gráficos reales + CRUD admin     |
-| S5     | Pruebas de integración + optimización          |
+| Sprint | Tarea crítica |
+|---|---|
+| S0 | Definir contratos de API con P2 ⏳ |
+| S1 | Login real con Cognito + rutas protegidas |
+| S2 | Formulario de carga conectado al Back-End real |
+| S3 | Chat con streaming SSE + renderizado de fuente |
+| S4 | Dashboard con gráficos reales + CRUD admin |
+| S5 | Pruebas de integración + optimización |
 
 ---
 
 ### P2 — Back-End Engineer
 
-**Responsabilidades permanentes:**
-
-- Mantener y evolucionar la API FastAPI
-- Gestionar la base de datos RDS PostgreSQL
-- Administrar la infraestructura AWS
-- Garantizar la seguridad de los endpoints
-
-| Sprint | Tarea crítica                                |
-| ------ | -------------------------------------------- |
-| S0     | EC2 + RDS + Cognito ✅                       |
-| S1     | Modelos de base de datos + CRUD usuarios     |
-| S2     | Endpoint de carga de documentos              |
-| S3     | Endpoint `/consultas` conectado al RAG de P3 |
-| S4     | Endpoints de feedback y dashboard            |
-| S5     | CI/CD + CloudFront + SSL + producción        |
+| Sprint | Tarea crítica |
+|---|---|
+| S0 | EC2 + RDS + Cognito ✅ |
+| S1 | Modelos de base de datos + CRUD usuarios |
+| S2 | Endpoint de carga de documentos |
+| S3 | Endpoint `/consultas` conectado al RAG de P3 |
+| S4 | Endpoints de feedback y dashboard |
+| S5 | CI/CD + CloudFront + SSL + producción |
 
 ---
 
 ### P3 — IA & Orquestación
 
-**Responsabilidades permanentes:**
-
-- Mantener y evolucionar los workflows de n8n
-- Gestionar la base de datos vectorial
-- Mantener la calidad de las respuestas de la IA
-- Monitorear el pipeline de ingesta
-
-| Sprint | Tarea crítica                                       |
-| ------ | --------------------------------------------------- |
-| S0     | n8n instalado en EC2 ✅                             |
-| S1     | Pinecone/Qdrant configurado e integrado             |
-| S2     | Pipeline completo de ingesta: PDF → vectores        |
-| S3     | API Key Gemini + streaming con google-generativeai  |
-| S4     | Notificaciones al admin + tickets de vacío          |
-| S5     | Pruebas del pipeline con documentos reales          |
+| Sprint | Tarea crítica |
+|---|---|
+| S0 | n8n instalado en EC2 ✅ |
+| S1 | Pinecone/Qdrant configurado e integrado |
+| S2 | Pipeline completo de ingesta: PDF → vectores |
+| S3 | API Key Gemini + streaming con google-generativeai |
+| S4 | Notificaciones al admin + tickets de vacío |
+| S5 | Pruebas del pipeline con documentos reales |
 
 ---
 
 ## 9. DEPENDENCIAS ENTRE EQUIPOS
 
-| Dependencia                     | Bloqueado | Requiere de        | Sprint   |
-| ------------------------------- | --------- | ------------------ | -------- |
-| Contratos de API definidos      | P1        | P2                 | S0 ⏳    |
-| Cognito configurado en AWS      | P1        | P2                 | ✅ Listo |
-| Endpoint `/consultas` operativo | P1        | P2 + P3            | S3       |
-| Pipeline RAG funcionando        | P2        | P3                 | S2       |
-| API Key Gemini obtenida         | P3        | Gestión del equipo | S3       |
-| Endpoint de feedback            | P1        | P2                 | S4       |
-| Endpoints del dashboard         | P1        | P2                 | S4       |
+| Dependencia | Bloqueado | Requiere de | Sprint |
+|---|---|---|---|
+| Contratos de API definidos | P1 | P2 | S0 ⏳ |
+| Cognito configurado en AWS | P1 | P2 | ✅ Listo |
+| Endpoint `/consultas` operativo | P1 | P2 + P3 | S3 |
+| Pipeline RAG funcionando | P2 | P3 | S2 |
+| API Key Gemini obtenida | P3 | Gestión del equipo | S3 |
+| Endpoint de feedback | P1 | P2 | S4 |
+| Endpoints del dashboard | P1 | P2 | S4 |
 
 **Regla:** Si una dependencia se retrasa, el programador bloqueado trabaja con datos mock y avanza en otras tareas. No se detiene el sprint.
 
@@ -491,16 +468,17 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 ## 10. CONVENCIONES DE TRABAJO EN EQUIPO
 
 ### Ramas Git
-
 ```
-main          → Producción. Solo recibe merges desde Frontend o Backend.
-Frontend      → Rama principal de desarrollo Front-End (P1)
-feature/xxx   → Ramas de funcionalidades específicas
+main          → Producción. Solo recibe merges.
+Frontend      → Desarrollo Front-End (P1)
+Backend       → Desarrollo Back-End (P2)
+Configuracion → Configuración e infraestructura
+Data          → Datos y modelos IA (P3)
+feature/xxx   → Funcionalidades específicas
 fix/xxx       → Correcciones de bugs
 ```
 
 ### Commits (Conventional Commits)
-
 ```
 feat: nueva funcionalidad
 fix: corrección de bug
@@ -510,44 +488,33 @@ refactor: refactorización sin cambio de funcionalidad
 ```
 
 ### Pull Requests
-
 - Todo PR debe ser revisado por al menos 1 compañero antes de mergear
 - El PR debe incluir descripción de qué hace y cómo probarlo
 - No se mergea código que no compile
 
 ### Reuniones sugeridas
-
 - Lunes: Planning del sprint (30 min)
 - Miércoles: Sync rápido de bloqueos (15 min)
 - Viernes: Demo de lo construido en la semana (30 min)
 
 ---
 
-## DECISIÓN DE ARQUITECTURA — MOTOR DE IA
+## 11. DECISIONES DE ARQUITECTURA
 
-> **Fecha:** Sprint 0
-> **Decisión:** Migrar de Amazon Bedrock a la API directa de Google Gemini
+### 11.1 Motor de IA — API directa de Google Gemini
 
-### Justificación
+> **Fecha:** Sprint 0 | **Decisión:** Migrar de Amazon Bedrock a la API directa de Google Gemini
 
 | Aspecto | Detalle |
 |---|---|
-| Viabilidad técnica | `google-generativeai` soporta `stream=True` nativo |
-| Streaming | `StreamingResponse` de FastAPI + `generate_content(stream=True)` |
 | Modelo | Gemini 1.5 Flash — mismo modelo, diferente proveedor |
+| Librería | `google-generativeai` (SDK oficial de Google) |
 | Infraestructura AWS | Se mantiene intacta (EC2, RDS, Cognito, n8n) |
 | n8n | Cambiar nodo Bedrock por HTTP Request a API de Google |
 | Costos | Factura separada Google Cloud — precios más competitivos |
 | Capa gratuita | Google AI Studio ofrece capa gratuita para desarrollo |
-
-### Impacto en los RF
-
-| RF | Impacto |
-|---|---|
-| RF2 — Consulta | Ninguno — Gemini recibe el contexto RAG igual |
-| RF4 — Mejora continua | Ninguno — depende del Back-End y n8n, no del proveedor |
-
-### Librería a instalar en el Back-End
+| RF2 | Ningún impacto — Gemini recibe el contexto RAG igual |
+| RF4 | Ningún impacto — depende del Back-End y n8n |
 
 ```bash
 pip install google-generativeai
@@ -555,13 +522,11 @@ pip install google-generativeai
 
 ---
 
-## DECISIÓN DE ARQUITECTURA — MECANISMO DE STREAMING
+### 11.2 Mecanismo de Streaming — SSE con StreamingResponse
 
-> **Fecha:** Sprint 0
-> **Decisión:** SSE (Server-Sent Events) con `StreamingResponse` de FastAPI + `generate_content(stream=True)` de Gemini
+> **Fecha:** Sprint 0 | **Decisión:** SSE via `StreamingResponse` de FastAPI + `generate_content(stream=True)` de Gemini
 
-### Arquitectura del flujo de streaming
-
+**Flujo:**
 ```
 Usuario escribe consulta
         ↓
@@ -575,13 +540,12 @@ Gemini envía chunks de texto
         ↓
 FastAPI reenvía cada chunk via StreamingResponse (text/event-stream)
         ↓
-Front-End acumula chunks y actualiza el estado del chat en tiempo real
+Front-End acumula chunks y actualiza el chat en tiempo real
         ↓
-Al finalizar el stream → se envía el enlace al documento fuente (RF2)
+Al finalizar → se envía el enlace al documento fuente (RF2)
 ```
 
-### Implementación Back-End (FastAPI)
-
+**Implementación Back-End:**
 ```python
 import google.generativeai as genai
 from fastapi.responses import StreamingResponse
@@ -596,52 +560,43 @@ async def stream_gemini_answer(user_prompt: str, context: str):
 
 @app.post("/v1/chat/stream")
 async def chat_endpoint(request: ChatRequest):
-    context = vector_db.query(request.message)   # RAG
+    context = vector_db.query(request.message)
     return StreamingResponse(
         stream_gemini_answer(request.message, context),
         media_type="text/event-stream"
     )
 ```
 
-### Implementación Front-End (Next.js)
+**Implementación Front-End:**
+- Estado React para acumular chunks en tiempo real
+- Componente `ScrollArea` de Mantine con scroll automático
+- Enlace al documento fuente se renderiza al finalizar el stream
 
-- Estado React para acumular los chunks en tiempo real
-- Componente `ScrollArea` de Mantine que baja automáticamente
-- El enlace al documento fuente se renderiza al finalizar el stream
-
-### Ventajas para INFODETS
+**Ventajas:**
 
 | Ventaja | Detalle |
 |---|---|
-| Baja latencia | El usuario ve actividad a los 500ms en lugar de esperar 5-10 segundos |
+| Baja latencia | Usuario ve actividad a los 500ms en lugar de 5-10 segundos |
 | Eficiencia | Gemini 1.5 Flash mantiene costo por token bajo |
-| RF2 cumplido | Fuentes oficiales se envían al final del stream para validación legal |
-| Seguridad | API Key gestionada por variables de entorno en Docker, tráfico cifrado TLS por defecto |
-
-### Consideración de seguridad
-
-La API Key de Google se gestiona exclusivamente a través de variables de entorno en los contenedores Docker (`GEMINI_API_KEY`). El tráfico entre FastAPI y la API de Google está cifrado por TLS por defecto al usar el SDK oficial.
-
-### Librería a instalar en el Back-End
-
-```bash
-pip install google-generativeai
-```
+| RF2 cumplido | Fuentes oficiales al final del stream para validación legal |
+| Seguridad | API Key en variables de entorno Docker, tráfico TLS por defecto |
 
 ---
 
+## 12. RESUMEN EJECUTIVO
 
+| Sprint | Semanas | Hito principal | Estado |
+|---|---|---|---|
+| S0 | 1-2 | Entorno AWS funcionando, equipo alineado | 🟡 78% |
+| S1 | 3-4 | Login real con Cognito de punta a punta | ⏳ |
+| S2 | 5-6 | Ingesta de documentos y búsqueda RAG básica | ⏳ |
+| S3 | 7-8 | Chat con IA real (Gemini + fallback + tickets) | ⏳ |
+| S4 | 9-10 | Dashboard real + feedback + administración | ⏳ |
+| S5 | 11-12 | Producción en AWS con CI/CD | ⏳ |
 
-| Sprint | Semanas | Hito principal                                 | Estado |
-| ------ | ------- | ---------------------------------------------- | ------ |
-| S0     | 1-2     | Entorno AWS funcionando, equipo alineado       | 🟡 78% |
-| S1     | 3-4     | Login real con Cognito de punta a punta        | ⏳     |
-| S2     | 5-6     | Ingesta de documentos y búsqueda RAG básica    | ⏳     |
-| S3     | 7-8     | Chat con IA real (Gemini + fallback + tickets) | ⏳     |
-| S4     | 9-10    | Dashboard real + feedback + administración     | ⏳     |
-| S5     | 11-12   | Producción en AWS con CI/CD                    | ⏳     |
+**En 12 semanas el sistema está en producción y operativo.**
 
 ---
 
-_INFODETS — Sistema de Gestión de Conocimiento Dinámico_
-_Plan de Desarrollo v1.2 — Equipo de 3 programadores_
+*INFODETS — Sistema de Gestión de Conocimiento Dinámico*
+*Plan de Desarrollo v1.3 — Equipo de 3 programadores*
