@@ -4,9 +4,9 @@
 
 ---
 
-> **Versión:** 1.3
-> **Estado:** Activo — Sprint 0 en progreso (78% completado)
-> **Última actualización:** Definición técnica oficial del mecanismo de streaming (SSE + Gemini API directa)
+> **Versión:** 1.4
+> **Estado:** Activo — Sprint 0 en progreso (89% completado)
+> **Última actualización:** Contratos de API definidos — Schema-First con Pydantic + TypeScript
 > **Basado en:** Propuesta técnica, documento maestro de arquitectura y documento técnico de Front-End
 
 ---
@@ -87,7 +87,7 @@ Botón de feedback al final de cada respuesta
 
 ## 4. ESTADO ACTUAL DEL PROYECTO
 
-### Sprint 0 — Progreso: 7/9 tareas completadas ✅
+### Sprint 0 — Progreso: 8/9 tareas completadas ✅
 
 | Tarea | Estado |
 |---|---|
@@ -98,7 +98,7 @@ Botón de feedback al final de cada respuesta
 | Crear base de datos RDS PostgreSQL | ✅ Completo |
 | Instalar n8n en Docker en EC2 | ✅ Completo |
 | Definir estructura de tablas | ⏳ Pendiente — requiere reunión del equipo |
-| Definir contratos de API | ⏳ Pendiente — requiere reunión del equipo |
+| Definir contratos de API | ✅ Schema-First con Pydantic + TypeScript |
 | Actualizar variables de entorno | ✅ Completo |
 
 ### Front-End ✅ (estructura completa)
@@ -119,6 +119,17 @@ Botón de feedback al final de cada respuesta
 - Schemas Pydantic base
 - `google-generativeai` agregado a requirements.txt
 - Entorno virtual configurado con todas las dependencias
+- **Contratos de API definidos (Schema-First):**
+  - `chat_schema.py` → ChatRequest, ChatChunkEvent, ChatFinalEvent, ChatErrorEvent
+  - `ingesta_schema.py` → IngestaRequest, IngestaResponse, DocumentoListItem
+  - `feedback_schema.py` → FeedbackRequest, FeedbackResponse
+  - `dashboard_schema.py` → DashboardStats, HotTopic
+- **Endpoints estructurados:**
+  - `POST /v1/chat/stream` — streaming SSE con Gemini
+  - `POST /v1/admin/ingesta` — carga de documentos
+  - `POST /v1/feedback/report` — reporte de feedback
+  - `GET /v1/admin/hot-topics` — estadísticas para dashboard
+  - `GET /v1/admin/dashboard` — stats generales
 
 ### Infraestructura AWS ✅ (Sprint 0)
 - EC2 Ubuntu 24.04 corriendo con Docker — IP fija `32.192.124.14`
@@ -299,7 +310,7 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 
 ---
 
-### SPRINT 0 🟡 78% — Semana 1-2 | Decisiones y entorno
+### Sprint 0 🟡 89% — Semana 1-2 | Decisiones y entorno
 
 | Tarea | Estado | Responsable |
 |---|---|---|
@@ -310,7 +321,7 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 | Crear base de datos RDS PostgreSQL | ✅ | P2 |
 | Instalar n8n en Docker en EC2 | ✅ | P3 |
 | Definir estructura de tablas | ⏳ | P2 + P3 |
-| Definir contratos de API | ⏳ | P1 + P2 |
+| Definir contratos de API | ✅ Schema-First Pydantic + TypeScript | P1 + P2 |
 | Actualizar variables de entorno | ✅ | Todos |
 
 **Entregable:** Entorno completo funcionando en EC2. Todos pueden hacer `docker-compose up` y ver el sistema.
@@ -581,13 +592,73 @@ async def chat_endpoint(request: ChatRequest):
 | RF2 cumplido | Fuentes oficiales al final del stream para validación legal |
 | Seguridad | API Key en variables de entorno Docker, tráfico TLS por defecto |
 
+### 11.3 Contratos de API — Schema-First con Pydantic
+
+> **Fecha:** Sprint 0 | **Decisión:** Enfoque Schema-First usando Pydantic en FastAPI + interfaces TypeScript espejo en Next.js
+
+**Endpoints estratégicos definidos:**
+
+| Endpoint | Método | Propósito | RF |
+|---|---|---|---|
+| `/v1/chat/stream` | POST | Consulta con streaming SSE — respuesta chunk por chunk | RF2 |
+| `/v1/admin/ingesta` | POST | Carga de PDFs para indexación en RAG | RF1 |
+| `/v1/feedback/report` | POST | Reporte de error — activa motor de mejora continua | RF4 |
+| `/v1/admin/hot-topics` | GET | Temas más consultados sin documentación | RF4 |
+| `/v1/admin/dashboard` | GET | Estadísticas generales para administradores | RF4 |
+
+**Schemas Pydantic (Back-End):**
+
+```python
+# chat_schema.py
+class ChatRequest(BaseModel):
+    mensaje: str
+    usuario_id: str
+    institucion: Optional[str]
+    dependencia: Optional[str]
+
+class ChatChunkEvent(BaseModel):
+    tipo: str = "chunk"
+    texto: str
+
+class ChatFinalEvent(BaseModel):
+    tipo: str = "final"
+    consulta_id: str
+    fuentes: list[FuenteDocumento]
+    confianza: float
+    tipo_respuesta: str  # local | fallback | sin_respuesta
+```
+
+**Interfaces TypeScript (Front-End) — espejo exacto:**
+
+```typescript
+// consulta.types.ts
+export interface ChatRequest {
+  mensaje: string
+  usuario_id: string
+  institucion?: string
+  dependencia?: string
+}
+
+export interface ChatFinalEvent {
+  tipo: 'final'
+  consulta_id: string
+  fuentes: FuenteDocumento[]
+  confianza: number
+  tipo_respuesta: 'local' | 'fallback' | 'sin_respuesta'
+}
+```
+
+**Rutas versionadas bajo `/v1/`** para permitir actualizaciones futuras sin romper la interfaz.
+
+**Documentación automática** disponible en `http://localhost:8000/docs` (Swagger/OpenAPI generado por FastAPI).
+
 ---
 
-## 12. RESUMEN EJECUTIVO
+
 
 | Sprint | Semanas | Hito principal | Estado |
 |---|---|---|---|
-| S0 | 1-2 | Entorno AWS funcionando, equipo alineado | 🟡 78% |
+| S0 | 1-2 | Entorno AWS funcionando, equipo alineado | 🟡 89% |
 | S1 | 3-4 | Login real con Cognito de punta a punta | ⏳ |
 | S2 | 5-6 | Ingesta de documentos y búsqueda RAG básica | ⏳ |
 | S3 | 7-8 | Chat con IA real (Gemini + fallback + tickets) | ⏳ |
