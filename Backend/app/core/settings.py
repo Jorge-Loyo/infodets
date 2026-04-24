@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     app_env: str = "development"
     secret_key: str
 
+    # Google Gemini
+    gemini_api_key: str = ""
+
     # Base de datos
     db_host: str = ""
     db_port: int = 5432
