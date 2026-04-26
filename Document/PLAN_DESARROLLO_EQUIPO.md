@@ -4,9 +4,9 @@
 
 ---
 
-> **Versión:** 1.1
-> **Estado:** Activo — Sprint 0 en progreso (67% completado)
-> **Última actualización:** Sprint 0 — Infraestructura AWS levantada
+> **Versión:** 1.7
+> **Estado:** Sprint 1 en progreso (P3 completo)
+> **Última actualización:** Qdrant operativo + CI/CD GitHub Actions + FastAPI como servicio systemd
 > **Basado en:** Propuesta técnica, documento maestro de arquitectura y documento técnico de Front-End
 
 ---
@@ -23,6 +23,8 @@
 8. [Detalle de tareas por programador](#8-detalle-de-tareas-por-programador)
 9. [Dependencias entre equipos](#9-dependencias-entre-equipos)
 10. [Convenciones de trabajo en equipo](#10-convenciones-de-trabajo-en-equipo)
+11. [Decisiones de arquitectura](#11-decisiones-de-arquitectura)
+12. [Resumen ejecutivo](#12-resumen-ejecutivo)
 
 ---
 
@@ -73,9 +75,10 @@ Botón de feedback al final de cada respuesta
 | Autenticación | AWS Cognito + Amplify | P1 + P2 |
 | Back-End | FastAPI (Python) | P2 |
 | Base de datos relacional | AWS RDS PostgreSQL 17 | P2 |
-| Base de datos vectorial | Pinecone o Qdrant | P2 + P3 |
+| Base de datos vectorial | **Qdrant** (self-hosted en EC2 via Docker) | P2 + P3 |
 | Orquestador de flujos | n8n (Docker self-hosted) | P3 |
-| Motor de IA | Gemini 1.5 Flash via Amazon Bedrock | P3 |
+| Motor de IA | Gemini 1.5 Flash — API directa de Google (`google-generativeai`) | P3 |
+| Streaming | SSE via `StreamingResponse` FastAPI + `generate_content(stream=True)` | P2 + P3 |
 | Búsqueda web fallback | Tavily / Google Search API | P3 |
 | Infraestructura | AWS EC2 + Docker | P2 |
 | CI/CD | GitHub Actions | P1 + P2 |
@@ -84,18 +87,18 @@ Botón de feedback al final de cada respuesta
 
 ## 4. ESTADO ACTUAL DEL PROYECTO
 
-### Sprint 0 — Progreso: 6/9 tareas completadas ✅
+### Sprint 0 — Progreso: 9/9 tareas completadas ✅ SPRINT CERRADO
 
 | Tarea | Estado |
 |---|---|
 | Clonar repo y levantar Docker local | ✅ Completo |
-| Confirmar mecanismo de streaming del chat | ⏳ Pendiente — requiere decisión del equipo |
+| Confirmar mecanismo de streaming del chat | ✅ SSE + StreamingResponse + Gemini stream=True |
 | Crear instancia EC2 en AWS | ✅ Completo |
 | Cognito — 2 App Clients configurados | ✅ Completo |
 | Crear base de datos RDS PostgreSQL | ✅ Completo |
 | Instalar n8n en Docker en EC2 | ✅ Completo |
-| Definir estructura de tablas | ⏳ Pendiente — requiere reunión del equipo |
-| Definir contratos de API | ⏳ Pendiente — requiere reunión del equipo |
+| Definir estructura de tablas | ✅ Modelo híbrido PostgreSQL + Pinecone/Qdrant |
+| Definir contratos de API | ✅ Schema-First con Pydantic + TypeScript |
 | Actualizar variables de entorno | ✅ Completo |
 
 ### Front-End ✅ (estructura completa)
@@ -114,20 +117,37 @@ Botón de feedback al final de cada respuesta
 - Rutas de autenticación Cognito: /login, /callback, /logout, /me
 - Middleware de validación JWT
 - Schemas Pydantic base
+- `google-generativeai` agregado a requirements.txt
 - Entorno virtual configurado con todas las dependencias
+- **Contratos de API definidos (Schema-First):**
+  - `chat_schema.py` → ChatRequest, ChatChunkEvent, ChatFinalEvent, ChatErrorEvent
+  - `ingesta_schema.py` → IngestaRequest, IngestaResponse, DocumentoListItem
+  - `feedback_schema.py` → FeedbackRequest, FeedbackResponse
+  - `dashboard_schema.py` → DashboardStats, HotTopic
+- **Endpoints estructurados:**
+  - `POST /v1/chat/stream` — streaming SSE con Gemini
+  - `POST /v1/admin/ingesta` — carga de documentos
+  - `POST /v1/feedback/report` — reporte de feedback
+  - `GET /v1/admin/hot-topics` — estadísticas para dashboard
+  - `GET /v1/admin/dashboard` — stats generales
 
-### Infraestructura AWS ✅ (Sprint 0)
-- EC2 Ubuntu 24.04 corriendo con Docker
+### Infraestructura AWS ✅ (Sprint 0 + Sprint 1)
+- EC2 Ubuntu 24.04 corriendo con Docker — IP fija `32.192.124.14`
 - RDS PostgreSQL 17 operativa y conectada
-- n8n corriendo en Docker
-- Cognito con 2 App Clients configurados
+- n8n corriendo en Docker en `http://32.192.124.14:5678`
+- Cognito con 2 App Clients configurados (nuevo User Pool)
+- **FastAPI corriendo como servicio systemd** — se reinicia automáticamente
+- **Qdrant corriendo en Docker** en `http://32.192.124.14:6333`
+- **CI/CD GitHub Actions** — deploy automático a EC2 en cada push a main
 
-### Pendiente de desarrollo:
-- Lógica funcional del chat con IA
-- Modelos SQLAlchemy + migraciones Alembic
-- Pipeline RAG con base vectorial
+- FastAPI corriendo como servicio systemd en EC2 — `http://32.192.124.14:8000` ✅
+- Qdrant corriendo en Docker en EC2 — `http://32.192.124.14:6333` ✅
+- CI/CD GitHub Actions operativo — deploy automático en push a main ✅
+- Modelos SQLAlchemy creados (User, Document, ChatHistory, FeedbackReport) ✅
+- Lógica funcional del chat con IA (Google Gemini API + streaming)
+- Migraciones Alembic
+- Pipeline RAG con Qdrant
 - Orquestación con n8n
-- Conexión con Amazon Bedrock (Gemini)
 - Conexión Front-End ↔ Back-End real (reemplazar mocks)
 
 ---
@@ -149,8 +169,9 @@ Botón de feedback al final de cada respuesta
 | Conexión SSH | `ssh -i "keyinfodets.pem" ubuntu@32.192.124.14` |
 
 **Servicios corriendo en EC2:**
-- n8n → `http://32.192.124.14:5678`
-- FastAPI → `http://32.192.124.14:8000` (pendiente de desplegar)
+- FastAPI → `http://32.192.124.14:8000` ✅ corriendo
+- Qdrant → `http://32.192.124.14:6333` ✅ corriendo
+- n8n → `http://32.192.124.14:5678` ✅ corriendo
 - Next.js → `http://32.192.124.14:3000` (pendiente de desplegar)
 
 ---
@@ -179,13 +200,18 @@ psql "host=$RDSHOST port=5432 dbname=infodets user=infodets_admin sslmode=verify
 postgresql://infodets_admin:<password>@infodets-db.cjgfkaqwabgp.us-east-1.rds.amazonaws.com:5432/infodets
 ```
 
+**Túnel SSH para conectarse desde VS Code:**
+```bash
+ssh -i "keyinfodets.pem" -L 5432:infodets-db.cjgfkaqwabgp.us-east-1.rds.amazonaws.com:5432 ubuntu@32.192.124.14 -N
+```
+
 ---
 
 ### n8n — Orquestador de flujos
 
 | Campo | Valor |
 |---|---|
-| URL | `http://18.234.47.55:5678` |
+| URL | `http://32.192.124.14:5678` |
 | Usuario | `admin` |
 | Contraseña | Solicitar al líder del proyecto |
 | Ubicación en EC2 | `/home/ubuntu/n8n/` |
@@ -205,21 +231,61 @@ docker logs n8n_n8n_1     # Ver logs
 | Campo | Valor |
 |---|---|
 | Región | `us-east-1` |
-| User Pool ID | `us-east-1_rCegUPGa4` |
-| Dominio | `us-east-1rcegupga4.auth.us-east-1.amazoncognito.com` |
+| User Pool ID | `us-east-1_uOuYTO6Ce` |
+| Dominio | `us-east-1uouyto6ce.auth.us-east-1.amazoncognito.com` |
 
 **App Clients:**
 
 | Cliente | Client ID | Secret | Uso |
 |---|---|---|---|
-| `Infodets-Web-Cognito` | `1lde8p7lvavoohe9pessltmk54` | ✅ Tiene | Back-End (FastAPI) |
-| `Infodets-Frontend` | `14h2o36jmfeq7bsmb8udsvl49q` | ❌ Sin secret | Front-End (Amplify) |
+| `Infodets-Web-Cognito` | `40g4ffmsvf8mmk77kc37abucvd` | ✅ Tiene | Back-End (FastAPI) |
+| `Interfaz de usuario de Infodets` | `6sr8e9s203gb8reco11d9gsal1` | ❌ Sin secret | Front-End (Amplify) |
+
+### Qdrant — Base de datos vectorial
+
+| Campo | Valor |
+|---|---|
+| URL interna | `http://172.31.40.141:6333` |
+| Dashboard | `http://32.192.124.14:6333/dashboard` |
+| Colección | `infodets_docs` |
+| Ubicación en EC2 | `/home/ubuntu/qdrant/` |
+| Versión | v1.17.1 |
+
+**Comandos de gestión en EC2:**
+```bash
+docker start qdrant    # Levantar
+docker stop qdrant     # Detener
+docker logs qdrant     # Ver logs
+```
 
 ---
 
-## 6. GUÍA DE INICIO PARA NUEVOS INTEGRANTES
+### CI/CD — GitHub Actions
 
-Pasos para que un nuevo programador tenga el entorno funcionando en su máquina:
+| Campo | Valor |
+|---|---|
+| Workflow | `.github/workflows/deploy.yml` |
+| Trigger | Push a rama `main` |
+| Acción | `git pull` + `pip install` + `systemctl restart fastapi` |
+| Secret EC2_HOST | `32.192.124.14` |
+| Secret EC2_USER | `ubuntu` |
+| Secret EC2_SSH_KEY | Clave PEM (solicitar al líder) |
+
+---
+
+### FastAPI — Servicio systemd
+
+```bash
+sudo systemctl start fastapi    # Iniciar
+sudo systemctl stop fastapi     # Detener
+sudo systemctl restart fastapi  # Reiniciar
+sudo systemctl status fastapi   # Ver estado
+tail -f ~/uvicorn.log           # Ver logs
+```
+
+---
+
+ PARA NUEVOS INTEGRANTES
 
 ### Prerequisitos
 - Git instalado
@@ -243,34 +309,46 @@ npm install
 Crear el archivo `.env.local` con estos valores:
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000/v1
-NEXT_PUBLIC_COGNITO_USER_POOL_ID=us-east-1_rCegUPGa4
-NEXT_PUBLIC_COGNITO_CLIENT_ID=14h2o36jmfeq7bsmb8udsvl49q
+NEXT_PUBLIC_COGNITO_USER_POOL_ID=us-east-1_uOuYTO6Ce
+NEXT_PUBLIC_COGNITO_CLIENT_ID=6sr8e9s203gb8reco11d9gsal1
 NEXT_PUBLIC_COGNITO_REGION=us-east-1
 NEXT_PUBLIC_REDIRECT_SIGN_IN=http://localhost:3000/consulta
 NEXT_PUBLIC_REDIRECT_SIGN_OUT=http://localhost:3000/login
+```
+
+Correr el Front-End:
+```bash
+npm run dev
 ```
 
 ### Paso 3 — Configurar el Back-End
 ```bash
 cd Backend
 py -m venv venv
-venv\Scripts\activate        # Windows
-source venv/bin/activate     # Mac/Linux
+source venv/Scripts/activate      # Windows Git Bash
+# source venv/bin/activate         # Mac / Linux
 pip install -r requirements.txt
 ```
 
-Crear el archivo `.env` — solicitar el archivo completo al líder del proyecto ya que contiene credenciales sensibles.
+Solicitar el archivo `.env` al líder del proyecto y copiarlo en `Backend/.env`.
 
-### Paso 4 — Levantar con Docker (opción recomendada)
+Correr el Back-End:
 ```bash
-cd C:/git/infodets
+uvicorn main:app --reload
+```
+
+### Paso 4 — Opción Docker (más simple)
+```bash
+cd /c/git/infodets
 docker-compose -f docker-compose.dev.yml up --build
 ```
 
 ### Paso 5 — Verificar
-- Front-End: `http://localhost:3000`
-- Back-End API: `http://localhost:8000`
-- Docs API: `http://localhost:8000/docs`
+| Servicio | URL |
+|---|---|
+| Front-End | http://localhost:3000 |
+| Back-End API | http://localhost:8000 |
+| Docs API | http://localhost:8000/docs |
 
 ---
 
@@ -281,36 +359,36 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 
 ---
 
-### SPRINT 0 ✅ 67% — Semana 1-2 | Decisiones y entorno
+### Sprint 0 ✅ 100% — Semana 1-2 | CERRADO
 
 | Tarea | Estado | Responsable |
 |---|---|---|
 | Clonar repo y levantar Docker local | ✅ | Todos |
-| Confirmar mecanismo de streaming del chat | ⏳ | P1 + P2 |
+| Confirmar mecanismo de streaming del chat | ✅ SSE + Gemini stream=True | P1 + P2 |
 | Crear instancia EC2 en AWS | ✅ | P2 |
 | Cognito — 2 App Clients configurados | ✅ | P2 |
 | Crear base de datos RDS PostgreSQL | ✅ | P2 |
 | Instalar n8n en Docker en EC2 | ✅ | P3 |
-| Definir estructura de tablas | ⏳ | P2 + P3 |
-| Definir contratos de API | ⏳ | P1 + P2 |
+| Definir estructura de tablas | ✅ Modelo híbrido PostgreSQL + Pinecone/Qdrant | P2 + P3 |
+| Definir contratos de API | ✅ Schema-First Pydantic + TypeScript | P1 + P2 |
 | Actualizar variables de entorno | ✅ | Todos |
 
 **Entregable:** Entorno completo funcionando en EC2. Todos pueden hacer `docker-compose up` y ver el sistema.
 
 ---
 
-### SPRINT 1 — Semana 3-4 | Base de datos y autenticación real
+### Sprint 1 🟡 En progreso | Semana 3-4 | Base de datos y autenticación real
 
-| Tarea | Responsable |
-|---|---|
-| Crear modelos SQLAlchemy (Usuario, Consulta, Feedback, Documento) | P2 |
-| Configurar Alembic para migraciones | P2 |
-| Implementar endpoints CRUD de usuarios en FastAPI | P2 |
-| Conectar login del Front-End con Cognito real | P1 |
-| Implementar middleware de rutas protegidas en Next.js | P1 |
-| Probar flujo completo: login → token → request autenticado → logout | P1 + P2 |
-| Crear primer workflow en n8n (trigger de prueba) | P3 |
-| Investigar e integrar Pinecone o Qdrant | P3 |
+| Tarea | Estado | Responsable |
+|---|---|---|
+| Crear modelos SQLAlchemy (User, Document, ChatHistory, FeedbackReport) | ✅ Completo | P2 |
+| Configurar Alembic para migraciones | ⏳ Pendiente | P2 |
+| Implementar endpoints CRUD de usuarios en FastAPI | ⏳ Pendiente | P2 |
+| Conectar login del Front-End con Cognito real | ⏳ Pendiente | P1 |
+| Implementar middleware de rutas protegidas en Next.js | ⏳ Pendiente | P1 |
+| Probar flujo completo: login → token → request autenticado → logout | ⏳ Pendiente | P1 + P2 |
+| Crear primer workflow en n8n (trigger de prueba) | ✅ Completo | P3 |
+| Instalar e integrar Qdrant | ✅ Completo | P3 |
 
 **Entregable:** Usuario puede loguearse con Cognito real y acceder a rutas protegidas.
 
@@ -334,16 +412,22 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 
 ### SPRINT 3 — Semana 7-8 | Motor de IA y flujos de decisión
 
+> ⚠️ Se usa **API directa de Google Gemini** (no Amazon Bedrock). Ver sección 11 para detalles técnicos.
+
 | Tarea | Responsable |
 |---|---|
-| Configurar Amazon Bedrock con modelo Gemini 1.5 Flash | P3 |
+| Obtener API Key de Google Gemini (Google AI Studio) | P3 |
+| Instalar `google-generativeai` en el Back-End | P3 |
+| Implementar servicio de IA con `generate_content(stream=True)` | P3 |
+| Integrar `StreamingResponse` de FastAPI para streaming al Front-End | P2 + P3 |
 | Implementar lógica de umbral de confianza (>70% local, <70% fallback) | P3 |
 | Integrar búsqueda web (Tavily) como fallback | P3 |
 | Implementar respuesta cautelosa cuando la fuente es externa | P3 |
 | Implementar ticket silencioso al admin cuando hay vacío de información | P3 |
-| Conectar el chat del Front-End con el endpoint real (SSE o TanStack Query) | P1 |
+| Actualizar nodo de n8n a HTTP Request hacia API de Gemini | P3 |
+| Conectar el chat del Front-End con el endpoint real (SSE) | P1 |
 | Renderizar respuesta con enlace cliqueable al documento fuente | P1 |
-| Implementar streaming de respuesta en el chat (si se usa SSE) | P1 + P2 |
+| Implementar streaming de respuesta en el chat | P1 + P2 |
 
 **Entregable:** Chat funcional con IA real. Responde con fuente oficial, hace fallback a internet y notifica al admin cuando no sabe.
 
@@ -388,15 +472,9 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 
 ### P1 — Front-End Lead
 
-**Responsabilidades permanentes:**
-- Mantener y evolucionar todas las páginas del Front-End
-- Conectar cada página con los endpoints reales del Back-End (reemplazar mocks)
-- Garantizar que TypeScript compile sin errores en cada PR
-- Mantener la consistencia visual con Mantine UI
-
 | Sprint | Tarea crítica |
 |---|---|
-| S0 | Definir contratos de API con P2 ⏳ |
+| S0 | Contratos de API definidos ✅ |
 | S1 | Login real con Cognito + rutas protegidas |
 | S2 | Formulario de carga conectado al Back-End real |
 | S3 | Chat con streaming SSE + renderizado de fuente |
@@ -406,12 +484,6 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 ---
 
 ### P2 — Back-End Engineer
-
-**Responsabilidades permanentes:**
-- Mantener y evolucionar la API FastAPI
-- Gestionar la base de datos RDS PostgreSQL
-- Administrar la infraestructura AWS
-- Garantizar la seguridad de los endpoints
 
 | Sprint | Tarea crítica |
 |---|---|
@@ -426,18 +498,12 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 
 ### P3 — IA & Orquestación
 
-**Responsabilidades permanentes:**
-- Mantener y evolucionar los workflows de n8n
-- Gestionar la base de datos vectorial
-- Mantener la calidad de las respuestas de la IA
-- Monitorear el pipeline de ingesta
-
 | Sprint | Tarea crítica |
 |---|---|
 | S0 | n8n instalado en EC2 ✅ |
-| S1 | Pinecone/Qdrant configurado e integrado |
+| S1 | Qdrant instalado en EC2 + primer workflow n8n ✅ |
 | S2 | Pipeline completo de ingesta: PDF → vectores |
-| S3 | Gemini via Bedrock + lógica de confianza + fallback |
+| S3 | API Key Gemini + streaming con google-generativeai |
 | S4 | Notificaciones al admin + tickets de vacío |
 | S5 | Pruebas del pipeline con documentos reales |
 
@@ -447,11 +513,11 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 
 | Dependencia | Bloqueado | Requiere de | Sprint |
 |---|---|---|---|
-| Contratos de API definidos | P1 | P2 | S0 ⏳ |
+| Contratos de API definidos | P1 | P2 | ✅ Listo |
 | Cognito configurado en AWS | P1 | P2 | ✅ Listo |
 | Endpoint `/consultas` operativo | P1 | P2 + P3 | S3 |
 | Pipeline RAG funcionando | P2 | P3 | S2 |
-| Bedrock configurado | P3 | P2 (permisos IAM) | S3 |
+| API Key Gemini obtenida | P3 | Gestión del equipo | S3 |
 | Endpoint de feedback | P1 | P2 | S4 |
 | Endpoints del dashboard | P1 | P2 | S4 |
 
@@ -463,9 +529,12 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 
 ### Ramas Git
 ```
-main          → Producción. Solo recibe merges desde Frontend o Backend.
-Frontend      → Rama principal de desarrollo Front-End (P1)
-feature/xxx   → Ramas de funcionalidades específicas
+main          → Producción. Solo recibe merges.
+Frontend      → Desarrollo Front-End (P1)
+Backend       → Desarrollo Back-End (P2)
+Configuracion → Configuración e infraestructura
+Data          → Datos y modelos IA (P3)
+feature/xxx   → Funcionalidades específicas
 fix/xxx       → Correcciones de bugs
 ```
 
@@ -490,18 +559,164 @@ refactor: refactorización sin cambio de funcionalidad
 
 ---
 
-## RESUMEN EJECUTIVO
+## 11. DECISIONES DE ARQUITECTURA
+
+### 11.1 Motor de IA — API directa de Google Gemini
+
+> **Fecha:** Sprint 0 | **Decisión:** Migrar de Amazon Bedrock a la API directa de Google Gemini
+
+| Aspecto | Detalle |
+|---|---|
+| Modelo | Gemini 1.5 Flash — mismo modelo, diferente proveedor |
+| Librería | `google-generativeai` (SDK oficial de Google) |
+| Infraestructura AWS | Se mantiene intacta (EC2, RDS, Cognito, n8n) |
+| n8n | Cambiar nodo Bedrock por HTTP Request a API de Google |
+| Costos | Factura separada Google Cloud — precios más competitivos |
+| Capa gratuita | Google AI Studio ofrece capa gratuita para desarrollo |
+| RF2 | Ningún impacto — Gemini recibe el contexto RAG igual |
+| RF4 | Ningún impacto — depende del Back-End y n8n |
+
+```bash
+pip install google-generativeai
+```
+
+---
+
+### 11.2 Mecanismo de Streaming — SSE con StreamingResponse
+
+> **Fecha:** Sprint 0 | **Decisión:** SSE via `StreamingResponse` de FastAPI + `generate_content(stream=True)` de Gemini
+
+**Flujo:**
+```
+Usuario escribe consulta
+        ↓
+Front-End (Next.js) → POST /v1/chat/stream
+        ↓
+FastAPI recupera contexto de Pinecone/Qdrant (RAG)
+        ↓
+FastAPI llama a Gemini API con stream=True
+        ↓
+Gemini envía chunks de texto
+        ↓
+FastAPI reenvía cada chunk via StreamingResponse (text/event-stream)
+        ↓
+Front-End acumula chunks y actualiza el chat en tiempo real
+        ↓
+Al finalizar → se envía el enlace al documento fuente (RF2)
+```
+
+**Implementación Back-End:**
+```python
+import google.generativeai as genai
+from fastapi.responses import StreamingResponse
+
+model = genai.GenerativeModel('gemini-1.5-flash')
+
+async def stream_gemini_answer(user_prompt: str, context: str):
+    full_prompt = f"Contexto: {context}\n\nPregunta: {user_prompt}"
+    response = model.generate_content(full_prompt, stream=True)
+    for chunk in response:
+        yield f"data: {chunk.text}\n\n"
+
+@app.post("/v1/chat/stream")
+async def chat_endpoint(request: ChatRequest):
+    context = vector_db.query(request.message)
+    return StreamingResponse(
+        stream_gemini_answer(request.message, context),
+        media_type="text/event-stream"
+    )
+```
+
+**Implementación Front-End:**
+- Estado React para acumular chunks en tiempo real
+- Componente `ScrollArea` de Mantine con scroll automático
+- Enlace al documento fuente se renderiza al finalizar el stream
+
+**Ventajas:**
+
+| Ventaja | Detalle |
+|---|---|
+| Baja latencia | Usuario ve actividad a los 500ms en lugar de 5-10 segundos |
+| Eficiencia | Gemini 1.5 Flash mantiene costo por token bajo |
+| RF2 cumplido | Fuentes oficiales al final del stream para validación legal |
+| Seguridad | API Key en variables de entorno Docker, tráfico TLS por defecto |
+
+### 11.3 Base de datos vectorial — Qdrant self-hosted
+
+> **Fecha:** Sprint 1 | **Decisión:** Qdrant self-hosted en EC2 (descartado Pinecone)
+
+| Criterio | Qdrant | Pinecone |
+|---|---|---|
+| Soberanía de datos | ✅ Total — datos en EC2 | ❌ Datos en servidores EE.UU. |
+| Costo | ✅ $0 | ⚠️ Gratis con límites, luego ~$70/mes |
+| Escalabilidad | ⚠️ Requiere más RAM en EC2 | ✅ Automática |
+| Entidad pública | ✅ Recomendado | ⚠️ Riesgo legal |
+
+> ⚠️ **Escalabilidad:** Cuando el volumen supere los 10.000 chunks vectoriales, escalar el EC2 en AWS Console: detener instancia → cambiar tipo `t4g.micro` → `t4g.medium` (4GB) o `t4g.large` (8GB) → reiniciar. Qdrant retoma automáticamente con los datos persistidos en el volumen.
+
+**Instalación en EC2:**
+```bash
+mkdir ~/qdrant && cd ~/qdrant
+docker run -d --name qdrant \
+  -p 6333:6333 \
+  -v ~/qdrant/storage:/qdrant/storage \
+  qdrant/qdrant
+```
+
+**URL interna:** `http://172.31.40.141:6333`
+**Dashboard:** `http://32.192.124.14:6333/dashboard`
+
+---
+
+### 11.4 Estructura de base de datos — Modelo híbrido
+
+> **Fecha:** Sprint 0 | **Decisión:** PostgreSQL (relacional) + Pinecone/Qdrant (vectorial)
+
+**Base de datos relacional (PostgreSQL RDS):**
+
+| Tabla | Campos clave | Propósito |
+|---|---|---|
+| `users` | id, cognito_id, email, role (admin/operator/viewer) | Gestión de usuarios RBAC sincronizada con Cognito |
+| `documents` | id, title, source_url, hierarchy, status, uploaded_by | Registro de documentación oficial con prioridad normativa |
+| `chat_history` | id, user_id, query, answer, confidence_score, is_fallback | Historial de consultas para hot topics y mejora continua |
+| `feedback_reports` | id, chat_id, is_correct, comment, status (open/resolved) | Motor de mejora continua — reportes de error |
+
+**Base de datos vectorial (Qdrant self-hosted en EC2):**
+
+```
+Vector Object
+  id            String — ID único del chunk
+  vector        Float[] — embedding generado por el modelo
+  metadata:
+    text        String — contenido textual para Gemini
+    document_id UUID — FK a tabla documents de PostgreSQL
+    source_url  String — URL oficial para citar la fuente
+    page_number Integer — referencia dentro del documento
+```
+
+**Justificación:**
+- Consistencia legal: cada respuesta de Gemini vinculada a un registro oficial en `documents`
+- Hot Topics: consultas SQL sobre `chat_history` donde `confidence_score` sea bajo
+- Escalabilidad: de 10 a 10.000 documentos sin cambiar el esquema
+- **Nota de escalabilidad:** Cuando el volumen supere los 10.000 chunks, escalar el EC2: `t4g.micro` (1GB) → `t4g.medium` (4GB) → `t4g.large` (8GB). Qdrant retoma automáticamente con los datos persistidos.
+- Migraciones: Alembic para versionado del esquema PostgreSQL
+
+---
+
+## 12. RESUMEN EJECUTIVO
 
 | Sprint | Semanas | Hito principal | Estado |
 |---|---|---|---|
-| S0 | 1-2 | Entorno AWS funcionando, equipo alineado | 🟡 67% |
-| S1 | 3-4 | Login real con Cognito de punta a punta | ⏳ |
+| S0 | 1-2 | Entorno AWS funcionando, equipo alineado | ✅ 100% |
+| S1 | 3-4 | Login real con Cognito de punta a punta | 🟡 En progreso |
 | S2 | 5-6 | Ingesta de documentos y búsqueda RAG básica | ⏳ |
 | S3 | 7-8 | Chat con IA real (Gemini + fallback + tickets) | ⏳ |
 | S4 | 9-10 | Dashboard real + feedback + administración | ⏳ |
 | S5 | 11-12 | Producción en AWS con CI/CD | ⏳ |
 
+**En 12 semanas el sistema está en producción y operativo.**
+
 ---
 
 *INFODETS — Sistema de Gestión de Conocimiento Dinámico*
-*Plan de Desarrollo v1.1 — Equipo de 3 programadores*
+*Plan de Desarrollo v1.7 — Equipo de 3 programadores*
