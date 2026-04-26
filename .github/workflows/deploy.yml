@@ -16,20 +16,11 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          request_pty: true
           script: |
             cd ~/infodets
             git pull origin main
-
             cd ~/infodets/Backend
             source venv/bin/activate
             pip install -r requirements.txt -q
-
-            pkill -f "uvicorn main:app" || true
-            sleep 2
-
-            nohup uvicorn main:app --host 0.0.0.0 --port 8000 > ~/uvicorn.log 2>&1 </dev/null &
-            disown
-
-            sleep 3
+            sudo systemctl restart fastapi
             echo "Deploy completado ✅"
