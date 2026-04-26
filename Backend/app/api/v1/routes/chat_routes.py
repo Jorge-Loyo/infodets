@@ -1,25 +1,78 @@
-from fastapi import APIRouter, Depends
+import json
+import uuid
+from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from app.schemas.chat_schema import ChatRequest
-from app.middleware.auth_middleware import get_current_user
+from app.services.rag_service import (
+    buscar_contexto,
+    construir_contexto,
+    generar_respuesta_stream,
+    CONFIDENCE_THRESHOLD,
+)
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
 
 @router.post("/stream")
-async def chat_stream(
-    request: ChatRequest,
-    current_user: dict = Depends(get_current_user)
-):
+async def chat_stream(request: ChatRequest):
     """
-    RF2 — Interfaz de consulta con streaming SSE.
-    Recibe la pregunta del usuario, consulta el RAG y devuelve
-    la respuesta de Gemini en tiempo real chunk por chunk.
-    Al finalizar envía las fuentes oficiales para validación legal.
+    RF2 — Chat con IA usando RAG + Gemini streaming.
+    Flujo:
+    1. Genera embedding de la pregunta
+    2. Busca chunks relevantes en Qdrant
+    3. Si confianza > 70% → responde con documentación oficial
+    4. Si confianza < 70% → respuesta cautelosa con advertencia
+    5. Envía chunks de texto via SSE al Front-End
+    6. Al finalizar envía las fuentes oficiales
     """
-    async def generate():
-        # TODO Sprint 3: implementar RAG + Gemini stream
-        yield "data: {\"tipo\": \"chunk\", \"texto\": \"Endpoint listo para implementación\"}\n\n"
-        yield "data: {\"tipo\": \"final\", \"consulta_id\": \"\", \"fuentes\": [], \"confianza\": 0.0, \"tipo_respuesta\": \"local\"}\n\n"
+    consulta_id = str(uuid.uuid4())
+
+    def generate():
+        try:
+            # 1. Buscar contexto en Qdrant
+            resultados, max_score = buscar_contexto(request.mensaje)
+            is_fallback = max_score < CONFIDENCE_THRESHOLD
+            tipo_respuesta = "local" if not is_fallback else "fallback"
+
+            logger.info(f"[CHAT] consulta_id={consulta_id} | score={max_score:.3f} | tipo={tipo_respuesta}")
+
+            # 2. Si es fallback, avisar al Front-End
+            if is_fallback:
+                aviso = json.dumps({
+                    "tipo": "chunk",
+                    "texto": "⚠️ No encontré documentación oficial sobre este tema. La siguiente respuesta es de conocimiento general y no está verificada oficialmente.\n\n"
+                })
+                yield f"data: {aviso}\n\n"
+
+            # 3. Construir contexto y streamear respuesta
+            contexto = construir_contexto(resultados)
+            for texto in generar_respuesta_stream(request.mensaje, contexto, is_fallback):
+                chunk = json.dumps({"tipo": "chunk", "texto": texto})
+                yield f"data: {chunk}\n\n"
+
+            # 4. Enviar evento final con fuentes
+            fuentes = [
+                {
+                    "nombre": r.get("titulo", "Documento oficial"),
+                    "url": r.get("source_url", ""),
+                    "pagina": r.get("page_number", 0),
+                }
+                for r in resultados
+            ]
+            final = json.dumps({
+                "tipo": "final",
+                "consulta_id": consulta_id,
+                "fuentes": fuentes,
+                "confianza": round(max_score, 3),
+                "tipo_respuesta": tipo_respuesta,
+            })
+            yield f"data: {final}\n\n"
+
+        except Exception as e:
+            logger.error(f"[CHAT] Error: {e}")
+            error = json.dumps({"tipo": "error", "mensaje": str(e)})
+            yield f"data: {error}\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")
