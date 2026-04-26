@@ -4,9 +4,9 @@
 
 ---
 
-> **Versión:** 1.7
-> **Estado:** Sprint 1 en progreso (P3 completo)
-> **Última actualización:** Qdrant operativo + CI/CD GitHub Actions + FastAPI como servicio systemd
+> **Versión:** 1.8
+> **Estado:** Sprint 2 en progreso (P3 completo al 100%)
+> **Última actualización:** Pipeline RAG operativo + Chat streaming + Groq fallback + Workflow n8n ingesta
 > **Basado en:** Propuesta técnica, documento maestro de arquitectura y documento técnico de Front-End
 
 ---
@@ -394,19 +394,19 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 
 ---
 
-### SPRINT 2 — Semana 5-6 | Pipeline RAG e ingesta de documentos
+### SPRINT 2 🟡 En progreso | Semana 5-6 | Pipeline RAG e ingesta de documentos
 
-| Tarea | Responsable |
-|---|---|
-| Implementar endpoint de carga de documentos en FastAPI | P2 |
-| Conectar formulario de carga del Front-End con el endpoint real | P1 |
-| Crear workflow n8n de ingesta: recibe PDF → limpia → fragmenta → vectoriza | P3 |
-| Integrar Pinecone/Qdrant para almacenar vectores | P3 |
-| Implementar búsqueda semántica básica (RAG) | P3 |
-| Crear endpoint FastAPI `/consultas` que recibe pregunta y llama al RAG | P2 + P3 |
-| Guardar historial de consultas en RDS | P2 |
+| Tarea | Estado | Responsable |
+|---|---|---|
+| Implementar endpoint de carga de documentos en FastAPI | ✅ Completo | P2 |
+| Conectar formulario de carga del Front-End con el endpoint real | ⏳ Pendiente | P1 |
+| Workflow n8n ingesta: FastAPI procesa PDF → notifica a n8n con resultado | ✅ Completo | P3 |
+| Integrar Qdrant para almacenar vectores (gemini-embedding-001, 3072 dims) | ✅ Completo | P3 |
+| Implementar búsqueda semántica RAG (umbral confianza 0.7) | ✅ Completo | P3 |
+| Endpoint `POST /v1/chat/stream` con RAG + Gemini + fallback Groq | ✅ Completo | P2 + P3 |
+| Guardar historial en RDS — servicio listo, activa con `alembic upgrade head` | ⏳ Pendiente P2 | P2 + P3 |
 
-**Entregable:** Se puede subir un PDF y hacerle una pregunta que el sistema responde con el contenido del documento.
+**Entregable:** Se puede subir un PDF y hacerle una pregunta que el sistema responde con el contenido del documento. ✅ CUMPLIDO
 
 ---
 
@@ -414,22 +414,20 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 
 > ⚠️ Se usa **API directa de Google Gemini** (no Amazon Bedrock). Ver sección 11 para detalles técnicos.
 
-| Tarea | Responsable |
-|---|---|
-| Obtener API Key de Google Gemini (Google AI Studio) | P3 |
-| Instalar `google-generativeai` en el Back-End | P3 |
-| Implementar servicio de IA con `generate_content(stream=True)` | P3 |
-| Integrar `StreamingResponse` de FastAPI para streaming al Front-End | P2 + P3 |
-| Implementar lógica de umbral de confianza (>70% local, <70% fallback) | P3 |
-| Integrar búsqueda web (Tavily) como fallback | P3 |
-| Implementar respuesta cautelosa cuando la fuente es externa | P3 |
-| Implementar ticket silencioso al admin cuando hay vacío de información | P3 |
-| Actualizar nodo de n8n a HTTP Request hacia API de Gemini | P3 |
-| Conectar el chat del Front-End con el endpoint real (SSE) | P1 |
-| Renderizar respuesta con enlace cliqueable al documento fuente | P1 |
-| Implementar streaming de respuesta en el chat | P1 + P2 |
+| Tarea | Estado | Responsable |
+|---|---|---|
+| Obtener API Key de Google Gemini (Google AI Studio) | ✅ Adelantado en S2 | P3 |
+| Instalar `google-generativeai` en el Back-End | ✅ Adelantado en S2 | P3 |
+| Implementar servicio de IA con streaming | ✅ Adelantado en S2 | P3 |
+| Integrar `StreamingResponse` de FastAPI para streaming al Front-End | ✅ Adelantado en S2 | P2 + P3 |
+| Implementar lógica de umbral de confianza (>70% local, <70% fallback) | ✅ Adelantado en S2 | P3 |
+| Groq como fallback automático cuando Gemini da 429 | ✅ Adelantado en S2 | P3 |
+| Reactivar autenticación Cognito JWT en endpoints de chat e ingesta | ⏳ Pendiente | P2 + P3 |
+| Implementar ticket silencioso al admin cuando score < 0.3 | ⏳ Pendiente | P3 |
+| Conectar el chat del Front-End con el endpoint real (SSE) | ⏳ Pendiente | P1 |
+| Renderizar respuesta con enlace cliqueable al documento fuente | ⏳ Pendiente | P1 |
 
-**Entregable:** Chat funcional con IA real. Responde con fuente oficial, hace fallback a internet y notifica al admin cuando no sabe.
+**Entregable:** Chat funcional con IA real. Responde con fuente oficial, hace fallback automático y notifica al admin cuando no sabe.
 
 ---
 
@@ -709,8 +707,8 @@ Vector Object
 |---|---|---|---|
 | S0 | 1-2 | Entorno AWS funcionando, equipo alineado | ✅ 100% |
 | S1 | 3-4 | Login real con Cognito de punta a punta | 🟡 En progreso |
-| S2 | 5-6 | Ingesta de documentos y búsqueda RAG básica | ⏳ |
-| S3 | 7-8 | Chat con IA real (Gemini + fallback + tickets) | ⏳ |
+| S2 | 5-6 | Ingesta de documentos y búsqueda RAG básica | 🟡 En progreso (P3 ✅) |
+| S3 | 7-8 | Chat con IA real (Gemini + fallback + tickets) | 🟡 Parcial (adelantado en S2) |
 | S4 | 9-10 | Dashboard real + feedback + administración | ⏳ |
 | S5 | 11-12 | Producción en AWS con CI/CD | ⏳ |
 
@@ -718,5 +716,50 @@ Vector Object
 
 ---
 
+---
+
+### 11.5 Workflow n8n de ingesta — Arquitectura ajustada
+
+> **Fecha:** Sprint 2 | **Decisión:** FastAPI procesa el PDF directamente, n8n recibe notificación con resultado
+
+**Problema encontrado:** n8n 2.17.5 tiene un bug con el tipo `n8n Binary File` en el nodo HTTP Request — no puede reenviar archivos binarios (PDFs) recibidos en un webhook hacia otro endpoint.
+
+**Solución adoptada:**
+```
+Antes (plan original):   curl → n8n webhook → n8n reenvía PDF → FastAPI
+Ahora (implementado):    curl → FastAPI directamente → FastAPI notifica a n8n
+```
+
+| Aspecto | Detalle |
+|---|---|
+| Webhook n8n | `POST /webhook/ingesta-completada` — recibe metadatos, no el PDF |
+| Payload | `{documento_id, titulo, categoria, dependencia, estado, chunks}` |
+| Ventaja | Más simple, sin dependencia de n8n para el procesamiento crítico |
+| Sprint 4 | n8n agregará notificación al admin (email/WhatsApp) cuando reciba el webhook |
+
+---
+
+### 11.6 Fallback de IA — Groq como respaldo de Gemini
+
+> **Fecha:** Sprint 2 | **Decisión:** Groq con llama-3.3-70b-versatile como fallback automático
+
+**Problema:** API Keys gratuitas de Gemini tienen límite de 15 RPM (requests por minuto).
+
+**Solución:**
+```
+Intenta Gemini gemini-2.0-flash-lite
+    ↓ Si HTTPStatusError 429
+Fallback automático a Groq llama-3.3-70b-versatile
+```
+
+| Aspecto | Gemini | Groq (fallback) |
+|---|---|---|
+| Modelo | gemini-2.0-flash-lite | llama-3.3-70b-versatile |
+| Límite gratuito | 15 RPM | 30 RPM |
+| Streaming | Simulado (respuesta completa) | Real (chunks) |
+| Activación | Principal | Automático en 429 |
+
+---
+
 *INFODETS — Sistema de Gestión de Conocimiento Dinámico*
-*Plan de Desarrollo v1.7 — Equipo de 3 programadores*
+*Plan de Desarrollo v1.8 — Equipo de 3 programadores*

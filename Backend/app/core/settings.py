@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""  # para embeddings
     gemini_generation_key: str = ""  # para generacion de texto
 
+    # Groq (fallback)
+    groq_api_key: str = ""
+
     # Base de datos
     db_host: str = ""
     db_port: int = 5432

@@ -1,5 +1,6 @@
 import httpx
 import logging
+from groq import Groq
 from app.core.settings import settings
 from app.services.embedding_service import generate_query_embedding
 from app.services.qdrant_service import search
@@ -7,6 +8,7 @@ from app.services.qdrant_service import search
 logger = logging.getLogger(__name__)
 
 GEMINI_MODEL = "gemini-2.0-flash-lite"
+GROQ_MODEL = "llama-3.3-70b-versatile"
 API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 CONFIDENCE_THRESHOLD = 0.7
 
@@ -79,11 +81,8 @@ Responde basándote únicamente en la documentación oficial proporcionada arrib
     return response.json()["candidates"][0]["content"]["parts"][0]["text"]
 
 
-def generar_respuesta_stream(pregunta: str, contexto: str, is_fallback: bool = False):
-    """
-    Genera respuesta en streaming usando Gemini SSE.
-    Yields chunks de texto a medida que llegan.
-    """
+def generar_respuesta_groq_stream(pregunta: str, contexto: str, is_fallback: bool = False):
+    """Genera respuesta en streaming usando Groq como fallback."""
     if is_fallback or not contexto:
         prompt = f"""{SYSTEM_PROMPT}
 
@@ -101,30 +100,78 @@ Pregunta del usuario: {pregunta}
 
 Responde basándote únicamente en la documentación oficial proporcionada arriba."""
 
-    url = f"{API_BASE}/models/{GEMINI_MODEL}:streamGenerateContent"
+    client = Groq(api_key=settings.groq_api_key)
+    stream = client.chat.completions.create(
+        model=GROQ_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        stream=True,
+        temperature=0.1,
+        max_tokens=1024,
+    )
+    for chunk in stream:
+        text = chunk.choices[0].delta.content
+        if text:
+            yield text
+
+
+def generar_respuesta_stream(pregunta: str, contexto: str, is_fallback: bool = False):
+    """
+    Genera respuesta en streaming.
+    Intenta Gemini primero, si falla por rate limit usa Groq como fallback.
+    """
+    try:
+        logger.info("[RAG] Intentando con Gemini...")
+        yield from _generar_gemini_stream(pregunta, contexto, is_fallback)
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 429:
+            logger.warning("[RAG] Gemini en rate limit — usando Groq como fallback")
+            yield from generar_respuesta_groq_stream(pregunta, contexto, is_fallback)
+        else:
+            raise
+    except Exception as e:
+        if "429" in str(e):
+            logger.warning("[RAG] Gemini en rate limit (exc) — usando Groq como fallback")
+            yield from generar_respuesta_groq_stream(pregunta, contexto, is_fallback)
+        else:
+            raise
+
+
+def _generar_gemini_stream(pregunta: str, contexto: str, is_fallback: bool = False):
+    """
+    Genera respuesta usando Gemini (no-streaming) y yields el texto completo.
+    Lanza httpx.HTTPStatusError con status 429 si hay rate limit.
+    """
+    import json
+
+    if is_fallback or not contexto:
+        prompt = f"""{SYSTEM_PROMPT}
+
+ADVERTENCIA: No se encontró documentación oficial sobre este tema.
+La siguiente respuesta proviene de conocimiento general y NO es una fuente oficial verificada.
+
+Pregunta: {pregunta}"""
+    else:
+        prompt = f"""{SYSTEM_PROMPT}
+
+DOCUMENTACIÓN OFICIAL DISPONIBLE:
+{contexto}
+
+Pregunta del usuario: {pregunta}
+
+Responde basándote únicamente en la documentación oficial proporcionada arriba."""
+
+    url = f"{API_BASE}/models/{GEMINI_MODEL}:generateContent"
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {"temperature": 0.1, "maxOutputTokens": 1024},
     }
-
-    with httpx.stream(
-        "POST",
+    response = httpx.post(
         url,
         json=payload,
-        params={"key": settings.gemini_generation_key or settings.gemini_api_key, "alt": "sse"},
+        params={"key": settings.gemini_generation_key or settings.gemini_api_key},
         timeout=60,
-    ) as response:
-        response.raise_for_status()
-        for line in response.iter_lines():
-            if line.startswith("data: "):
-                data = line[6:]
-                if data == "[DONE]":
-                    break
-                try:
-                    import json
-                    chunk = json.loads(data)
-                    text = chunk["candidates"][0]["content"]["parts"][0]["text"]
-                    if text:
-                        yield text
-                except Exception:
-                    continue
+    )
+    response.raise_for_status()  # lanza HTTPStatusError con .response.status_code accesible
+    text = response.json()["candidates"][0]["content"]["parts"][0]["text"]
+    if text:
+        yield text
