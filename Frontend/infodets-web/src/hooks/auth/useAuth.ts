@@ -1,14 +1,12 @@
 'use client'
 
 import { useSessionStore } from '@/store/sessionStore'
-import { useRouter } from 'next/navigation'
 import { ROUTES } from '@/lib/constants'
-import { signOut, fetchUserAttributes, fetchAuthSession } from 'aws-amplify/auth'
+import { fetchUserAttributes, fetchAuthSession, signOut } from 'aws-amplify/auth'
 import { useEffect } from 'react'
 
 export function useAuth() {
   const { usuario, token, setSession, clearSession, isAuthenticated, isAdmin } = useSessionStore()
-  const router = useRouter()
 
   useEffect(() => {
     const cargarSesion = async () => {
@@ -38,9 +36,15 @@ export function useAuth() {
   }, [])
 
   const logout = async () => {
-    await signOut()
     clearSession()
-    router.push(ROUTES.LOGIN)
+    await signOut()
+    const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID
+    const domain = (process.env.NEXT_PUBLIC_COGNITO_DOMAIN ?? '').replace(/\/$/, '')
+    const redirectUri = encodeURIComponent(process.env.NEXT_PUBLIC_REDIRECT_SIGN_OUT ?? 'http://localhost:3000')
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith('CognitoIdentityServiceProvider') || k.startsWith('amplify-'))
+      .forEach((k) => localStorage.removeItem(k))
+    window.location.href = `https://${domain}/logout?client_id=${clientId}&logout_uri=${redirectUri}`
   }
 
   return { usuario, token, setSession, logout, isAuthenticated, isAdmin }

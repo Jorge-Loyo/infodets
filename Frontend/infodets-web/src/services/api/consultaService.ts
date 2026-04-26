@@ -1,10 +1,16 @@
 import axiosInstance from '@/lib/axiosInstance'
-import type { ConsultaRequest, ConsultaResponse, HistorialItem } from '@/types/consulta.types'
+import type { ChatRequest, ChatStreamEvent, HistorialItem } from '@/types/consulta.types'
 
 export const consultaService = {
-  enviar: async (data: ConsultaRequest): Promise<ConsultaResponse> => {
-    const res = await axiosInstance.post<ConsultaResponse>('/consultas', data)
-    return res.data
+  stream: (data: ChatRequest, onChunk: (event: ChatStreamEvent) => void): EventSource => {
+    const url = `${process.env.NEXT_PUBLIC_API_URL}/chat/stream`
+    const source = new EventSource(url)
+    source.onmessage = (e) => {
+      const event: ChatStreamEvent = JSON.parse(e.data)
+      onChunk(event)
+      if (event.tipo === 'final' || event.tipo === 'error') source.close()
+    }
+    return source
   },
 
   getHistorial: async (usuarioId: string): Promise<HistorialItem[]> => {

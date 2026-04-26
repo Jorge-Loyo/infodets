@@ -10,6 +10,8 @@ import { usePathname, useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { Sidebar } from '@/components/layout/Sidebar'
+import { useRequireAuth } from '@/hooks/auth/useRequireAuth'
+import { PageLoader } from '@/components/layout/PageLoader'
 
 const ADMIN_MENU = [
   { label: 'Administrar usuarios', icon: IconUsers, href: '/dashboard/usuarios' },
@@ -23,6 +25,8 @@ const ADMIN_MENU = [
 ]
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { checking } = useRequireAuth({ adminOnly: true })
+  if (checking) return <PageLoader />
   const pathname = usePathname()
   const router = useRouter()
 
