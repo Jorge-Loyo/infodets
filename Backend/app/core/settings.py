@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     n8n_user: str = ""
     n8n_password: str = ""
 
+    # Qdrant
+    qdrant_url: str = "http://172.31.40.141:6333"
+    qdrant_collection: str = "infodets_docs"
+
     @property
     def cognito_authority(self) -> str:
         return f"https://cognito-idp.{self.cognito_region}.amazonaws.com/{self.cognito_user_pool_id}"
