@@ -1,6 +1,6 @@
 import json
 import uuid
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from app.schemas.chat_schema import ChatRequest
 from app.services.rag_service import (
@@ -10,6 +10,7 @@ from app.services.rag_service import (
     CONFIDENCE_THRESHOLD,
 )
 from app.services.chat_service import guardar_historial
+from app.middleware.auth_middleware import get_current_user
 import logging
 
 logger = logging.getLogger(__name__)
@@ -17,7 +18,7 @@ router = APIRouter(prefix="/chat", tags=["Chat"])
 
 
 @router.post("/stream")
-async def chat_stream(request: ChatRequest):
+async def chat_stream(request: ChatRequest, current_user: dict = Depends(get_current_user)):
     """
     RF2 — Chat con IA usando RAG + Gemini streaming.
     Flujo:

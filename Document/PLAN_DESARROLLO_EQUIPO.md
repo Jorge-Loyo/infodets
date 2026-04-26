@@ -453,7 +453,7 @@ docker-compose -f docker-compose.dev.yml up --build
 | Integrar Qdrant para almacenar vectores (gemini-embedding-001, 3072 dims)    | ✅ Completo     | P3          |
 | Implementar búsqueda semántica RAG (umbral confianza 0.7)                    | ✅ Completo     | P3          |
 | Endpoint `POST /v1/chat/stream` con RAG + Gemini + fallback Groq             | ✅ Completo     | P2 + P3     |
-| Guardar historial en RDS — servicio listo, activa con `alembic upgrade head` | ⏳ Pendiente P2 | P2 + P3     |
+| Guardar historial en RDS — servicio listo, activa con `alembic upgrade head` | ✅ Pendiente P2 | P2 + P3     |
 
 **Logros adicionales (adelantaron tareas del Sprint 3):**
 - ✅ Gemini API Key configurada + modelo `gemini-2.0-flash-lite` operativo
@@ -484,7 +484,7 @@ docker-compose -f docker-compose.dev.yml up --build
 | Integrar `StreamingResponse` de FastAPI para streaming al Front-End   | ✅ Adelantado en S2 | P2 + P3     |
 | Implementar lógica de umbral de confianza (>70% local, <70% fallback) | ✅ Adelantado en S2 | P3          |
 | Groq como fallback automático cuando Gemini da 429                    | ✅ Adelantado en S2 | P3          |
-| Reactivar autenticación Cognito JWT en endpoints de chat e ingesta    | ⏳ Pendiente        | P2 + P3     |
+| Reactivar autenticación Cognito JWT en endpoints de chat e ingesta    | ✅ Adelantado en S2 | P2 + P3     |
 | Implementar ticket silencioso al admin cuando score < 0.3             | ⏳ Pendiente        | P3          |
 | Conectar el chat del Front-End con el endpoint real (SSE)             | ⏳ Pendiente        | P1          |
 | Renderizar respuesta con enlace cliqueable al documento fuente        | ⏳ Pendiente        | P1          |
