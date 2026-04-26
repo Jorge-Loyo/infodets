@@ -4,9 +4,9 @@
 
 ---
 
-> **Versión:** 1.5
-> **Estado:** Sprint 0 CERRADO ✅ — 100% completado
-> **Última actualización:** Estructura de tablas definida — modelos SQLAlchemy creados
+> **Versión:** 1.6
+> **Estado:** Sprint 1 en progreso
+> **Última actualización:** Qdrant self-hosted elegido + CI/CD GitHub Actions operativo
 > **Basado en:** Propuesta técnica, documento maestro de arquitectura y documento técnico de Front-End
 
 ---
@@ -75,7 +75,7 @@ Botón de feedback al final de cada respuesta
 | Autenticación | AWS Cognito + Amplify | P1 + P2 |
 | Back-End | FastAPI (Python) | P2 |
 | Base de datos relacional | AWS RDS PostgreSQL 17 | P2 |
-| Base de datos vectorial | Pinecone o Qdrant | P2 + P3 |
+| Base de datos vectorial | **Qdrant** (self-hosted en EC2 via Docker) | P2 + P3 |
 | Orquestador de flujos | n8n (Docker self-hosted) | P3 |
 | Motor de IA | Gemini 1.5 Flash — API directa de Google (`google-generativeai`) | P3 |
 | Streaming | SSE via `StreamingResponse` FastAPI + `generate_content(stream=True)` | P2 + P3 |
@@ -452,7 +452,7 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 | Sprint | Tarea crítica |
 |---|---|
 | S0 | n8n instalado en EC2 ✅ |
-| S1 | Pinecone/Qdrant configurado e integrado |
+| S1 | Qdrant instalado en EC2 + primer workflow n8n ✅ |
 | S2 | Pipeline completo de ingesta: PDF → vectores |
 | S3 | API Key Gemini + streaming con google-generativeai |
 | S4 | Notificaciones al admin + tickets de vacío |
@@ -592,6 +592,33 @@ async def chat_endpoint(request: ChatRequest):
 | RF2 cumplido | Fuentes oficiales al final del stream para validación legal |
 | Seguridad | API Key en variables de entorno Docker, tráfico TLS por defecto |
 
+### 11.3 Base de datos vectorial — Qdrant self-hosted
+
+> **Fecha:** Sprint 1 | **Decisión:** Qdrant self-hosted en EC2 (descartado Pinecone)
+
+| Criterio | Qdrant | Pinecone |
+|---|---|---|
+| Soberanía de datos | ✅ Total — datos en EC2 | ❌ Datos en servidores EE.UU. |
+| Costo | ✅ $0 | ⚠️ Gratis con límites, luego ~$70/mes |
+| Escalabilidad | ⚠️ Requiere más RAM en EC2 | ✅ Automática |
+| Entidad pública | ✅ Recomendado | ⚠️ Riesgo legal |
+
+> ⚠️ **Escalabilidad:** Cuando el volumen supere los 10.000 chunks vectoriales, escalar el EC2 en AWS Console: detener instancia → cambiar tipo `t4g.micro` → `t4g.medium` (4GB) o `t4g.large` (8GB) → reiniciar. Qdrant retoma automáticamente con los datos persistidos en el volumen.
+
+**Instalación en EC2:**
+```bash
+mkdir ~/qdrant && cd ~/qdrant
+docker run -d --name qdrant \
+  -p 6333:6333 \
+  -v ~/qdrant/storage:/qdrant/storage \
+  qdrant/qdrant
+```
+
+**URL interna:** `http://172.31.40.141:6333`
+**Dashboard:** `http://32.192.124.14:6333/dashboard`
+
+---
+
 ### 11.4 Estructura de base de datos — Modelo híbrido
 
 > **Fecha:** Sprint 0 | **Decisión:** PostgreSQL (relacional) + Pinecone/Qdrant (vectorial)
@@ -605,7 +632,7 @@ async def chat_endpoint(request: ChatRequest):
 | `chat_history` | id, user_id, query, answer, confidence_score, is_fallback | Historial de consultas para hot topics y mejora continua |
 | `feedback_reports` | id, chat_id, is_correct, comment, status (open/resolved) | Motor de mejora continua — reportes de error |
 
-**Base de datos vectorial (Pinecone/Qdrant):**
+**Base de datos vectorial (Qdrant self-hosted en EC2):**
 
 ```
 Vector Object
@@ -622,6 +649,7 @@ Vector Object
 - Consistencia legal: cada respuesta de Gemini vinculada a un registro oficial en `documents`
 - Hot Topics: consultas SQL sobre `chat_history` donde `confidence_score` sea bajo
 - Escalabilidad: de 10 a 10.000 documentos sin cambiar el esquema
+- **Nota de escalabilidad:** Cuando el volumen supere los 10.000 chunks, escalar el EC2: `t4g.micro` (1GB) → `t4g.medium` (4GB) → `t4g.large` (8GB). Qdrant retoma automáticamente con los datos persistidos.
 - Migraciones: Alembic para versionado del esquema PostgreSQL
 
 ---
