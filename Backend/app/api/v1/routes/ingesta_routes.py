@@ -4,7 +4,6 @@ import tempfile
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
 from typing import Optional
 from app.schemas.ingesta_schema import IngestaResponse, DocumentoListItem, EstadoDocumento
-from app.middleware.auth_middleware import get_current_user
 from app.services.ingesta_service import procesar_documento
 
 router = APIRouter(prefix="/admin/ingesta", tags=["Ingesta"])
@@ -18,7 +17,6 @@ async def cargar_documento(
     descripcion: Optional[str] = Form(None),
     anio: Optional[int] = Form(None),
     archivo: UploadFile = File(...),
-    current_user: dict = Depends(get_current_user)
 ):
     """
     RF1 — Pipeline completo de ingesta:
@@ -61,9 +59,7 @@ async def cargar_documento(
 
 
 @router.get("", response_model=list[DocumentoListItem])
-async def listar_documentos(
-    current_user: dict = Depends(get_current_user)
-):
+async def listar_documentos():
     """Retorna el listado de documentos cargados al sistema."""
     # TODO Sprint 2: implementar consulta a RDS
     return []
