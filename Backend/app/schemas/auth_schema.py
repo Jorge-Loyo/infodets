@@ -8,6 +8,14 @@ class UsuarioSchema(BaseModel):
     nombre: Optional[str] = None
     rol: str = "operador"
 
+    class Config:
+        from_attributes = True
+
+
+class UsuarioActualizar(BaseModel):
+    nombre: Optional[str] = None
+    rol: Optional[str] = None
+
 
 class TokenSchema(BaseModel):
     access_token: str
