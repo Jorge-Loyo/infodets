@@ -14,7 +14,8 @@ class Settings(BaseSettings):
     secret_key: str
 
     # Google Gemini
-    gemini_api_key: str = ""
+    gemini_api_key: str = ""  # para embeddings
+    gemini_generation_key: str = ""  # para generacion de texto
 
     # Base de datos
     db_host: str = ""
