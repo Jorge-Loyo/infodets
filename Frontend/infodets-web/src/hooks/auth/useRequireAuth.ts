@@ -10,7 +10,7 @@ import { ROUTES } from '@/lib/constants'
 export function useRequireAuth({ adminOnly = false } = {}) {
   const router = useRouter()
   const { isAuthenticated, isAdmin } = useSessionStore()
-  const [checking, setChecking] = useState(!isAuthenticated())
+  const [checking, setChecking] = useState(true)
 
   useEffect(() => {
     // Si ya hay sesión en memoria, no llamar a Amplify

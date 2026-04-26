@@ -21,7 +21,7 @@ const theme = createTheme({
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <MantineProvider theme={theme}>
+      <MantineProvider theme={theme} forceColorScheme="light">
         <Notifications position="top-right" />
         {children}
       </MantineProvider>

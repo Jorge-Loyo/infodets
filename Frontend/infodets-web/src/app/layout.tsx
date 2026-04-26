@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { Plus_Jakarta_Sans } from 'next/font/google'
-import { ColorSchemeScript } from '@mantine/core'
 import { Providers } from '@/components/layout/Providers'
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary'
 import { APP_NAME, APP_DESCRIPTION } from '@/lib/constants'
@@ -22,9 +21,6 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <head>
-        <ColorSchemeScript />
-      </head>
       <body className={font.variable}>
         <Providers>
           <ErrorBoundary>
