@@ -4,9 +4,9 @@
 
 ---
 
-> **Versión:** 1.6
-> **Estado:** Sprint 1 en progreso
-> **Última actualización:** Qdrant self-hosted elegido + CI/CD GitHub Actions operativo
+> **Versión:** 1.7
+> **Estado:** Sprint 1 en progreso (P3 completo)
+> **Última actualización:** Qdrant operativo + CI/CD GitHub Actions + FastAPI como servicio systemd
 > **Basado en:** Propuesta técnica, documento maestro de arquitectura y documento técnico de Front-End
 
 ---
@@ -131,16 +131,22 @@ Botón de feedback al final de cada respuesta
   - `GET /v1/admin/hot-topics` — estadísticas para dashboard
   - `GET /v1/admin/dashboard` — stats generales
 
-### Infraestructura AWS ✅ (Sprint 0)
+### Infraestructura AWS ✅ (Sprint 0 + Sprint 1)
 - EC2 Ubuntu 24.04 corriendo con Docker — IP fija `32.192.124.14`
 - RDS PostgreSQL 17 operativa y conectada
 - n8n corriendo en Docker en `http://32.192.124.14:5678`
 - Cognito con 2 App Clients configurados (nuevo User Pool)
+- **FastAPI corriendo como servicio systemd** — se reinicia automáticamente
+- **Qdrant corriendo en Docker** en `http://32.192.124.14:6333`
+- **CI/CD GitHub Actions** — deploy automático a EC2 en cada push a main
 
-### Pendiente de desarrollo:
+- FastAPI corriendo como servicio systemd en EC2 — `http://32.192.124.14:8000` ✅
+- Qdrant corriendo en Docker en EC2 — `http://32.192.124.14:6333` ✅
+- CI/CD GitHub Actions operativo — deploy automático en push a main ✅
+- Modelos SQLAlchemy creados (User, Document, ChatHistory, FeedbackReport) ✅
 - Lógica funcional del chat con IA (Google Gemini API + streaming)
-- Modelos SQLAlchemy + migraciones Alembic
-- Pipeline RAG con base vectorial
+- Migraciones Alembic
+- Pipeline RAG con Qdrant
 - Orquestación con n8n
 - Conexión Front-End ↔ Back-End real (reemplazar mocks)
 
@@ -163,8 +169,9 @@ Botón de feedback al final de cada respuesta
 | Conexión SSH | `ssh -i "keyinfodets.pem" ubuntu@32.192.124.14` |
 
 **Servicios corriendo en EC2:**
-- n8n → `http://32.192.124.14:5678`
-- FastAPI → `http://32.192.124.14:8000` (pendiente de desplegar)
+- FastAPI → `http://32.192.124.14:8000` ✅ corriendo
+- Qdrant → `http://32.192.124.14:6333` ✅ corriendo
+- n8n → `http://32.192.124.14:5678` ✅ corriendo
 - Next.js → `http://32.192.124.14:3000` (pendiente de desplegar)
 
 ---
@@ -234,9 +241,51 @@ docker logs n8n_n8n_1     # Ver logs
 | `Infodets-Web-Cognito` | `40g4ffmsvf8mmk77kc37abucvd` | ✅ Tiene | Back-End (FastAPI) |
 | `Interfaz de usuario de Infodets` | `6sr8e9s203gb8reco11d9gsal1` | ❌ Sin secret | Front-End (Amplify) |
 
+### Qdrant — Base de datos vectorial
+
+| Campo | Valor |
+|---|---|
+| URL interna | `http://172.31.40.141:6333` |
+| Dashboard | `http://32.192.124.14:6333/dashboard` |
+| Colección | `infodets_docs` |
+| Ubicación en EC2 | `/home/ubuntu/qdrant/` |
+| Versión | v1.17.1 |
+
+**Comandos de gestión en EC2:**
+```bash
+docker start qdrant    # Levantar
+docker stop qdrant     # Detener
+docker logs qdrant     # Ver logs
+```
+
 ---
 
-## 6. GUÍA DE INICIO PARA NUEVOS INTEGRANTES
+### CI/CD — GitHub Actions
+
+| Campo | Valor |
+|---|---|
+| Workflow | `.github/workflows/deploy.yml` |
+| Trigger | Push a rama `main` |
+| Acción | `git pull` + `pip install` + `systemctl restart fastapi` |
+| Secret EC2_HOST | `32.192.124.14` |
+| Secret EC2_USER | `ubuntu` |
+| Secret EC2_SSH_KEY | Clave PEM (solicitar al líder) |
+
+---
+
+### FastAPI — Servicio systemd
+
+```bash
+sudo systemctl start fastapi    # Iniciar
+sudo systemctl stop fastapi     # Detener
+sudo systemctl restart fastapi  # Reiniciar
+sudo systemctl status fastapi   # Ver estado
+tail -f ~/uvicorn.log           # Ver logs
+```
+
+---
+
+ PARA NUEVOS INTEGRANTES
 
 ### Prerequisitos
 - Git instalado
@@ -328,18 +377,18 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 
 ---
 
-### SPRINT 1 — Semana 3-4 | Base de datos y autenticación real
+### Sprint 1 🟡 En progreso | Semana 3-4 | Base de datos y autenticación real
 
-| Tarea | Responsable |
-|---|---|
-| Crear modelos SQLAlchemy (Usuario, Consulta, Feedback, Documento) | P2 |
-| Configurar Alembic para migraciones | P2 |
-| Implementar endpoints CRUD de usuarios en FastAPI | P2 |
-| Conectar login del Front-End con Cognito real | P1 |
-| Implementar middleware de rutas protegidas en Next.js | P1 |
-| Probar flujo completo: login → token → request autenticado → logout | P1 + P2 |
-| Crear primer workflow en n8n (trigger de prueba) | P3 |
-| Investigar e integrar Pinecone o Qdrant | P3 |
+| Tarea | Estado | Responsable |
+|---|---|---|
+| Crear modelos SQLAlchemy (User, Document, ChatHistory, FeedbackReport) | ✅ Completo | P2 |
+| Configurar Alembic para migraciones | ⏳ Pendiente | P2 |
+| Implementar endpoints CRUD de usuarios en FastAPI | ⏳ Pendiente | P2 |
+| Conectar login del Front-End con Cognito real | ⏳ Pendiente | P1 |
+| Implementar middleware de rutas protegidas en Next.js | ⏳ Pendiente | P1 |
+| Probar flujo completo: login → token → request autenticado → logout | ⏳ Pendiente | P1 + P2 |
+| Crear primer workflow en n8n (trigger de prueba) | ✅ Completo | P3 |
+| Instalar e integrar Qdrant | ✅ Completo | P3 |
 
 **Entregable:** Usuario puede loguearse con Cognito real y acceder a rutas protegidas.
 
@@ -659,7 +708,7 @@ Vector Object
 | Sprint | Semanas | Hito principal | Estado |
 |---|---|---|---|
 | S0 | 1-2 | Entorno AWS funcionando, equipo alineado | ✅ 100% |
-| S1 | 3-4 | Login real con Cognito de punta a punta | ⏳ |
+| S1 | 3-4 | Login real con Cognito de punta a punta | 🟡 En progreso |
 | S2 | 5-6 | Ingesta de documentos y búsqueda RAG básica | ⏳ |
 | S3 | 7-8 | Chat con IA real (Gemini + fallback + tickets) | ⏳ |
 | S4 | 9-10 | Dashboard real + feedback + administración | ⏳ |
@@ -670,4 +719,4 @@ Vector Object
 ---
 
 *INFODETS — Sistema de Gestión de Conocimiento Dinámico*
-*Plan de Desarrollo v1.5 — Equipo de 3 programadores*
+*Plan de Desarrollo v1.7 — Equipo de 3 programadores*
