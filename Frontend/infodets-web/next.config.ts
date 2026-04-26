@@ -1,10 +1,10 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
-  allowedDevOrigins: ['192.168.0.67'],
+  allowedDevOrigins: ['*'],
   turbopack: {
-    root: __dirname,
+    root: path.resolve(__dirname),
   },
 };
 
