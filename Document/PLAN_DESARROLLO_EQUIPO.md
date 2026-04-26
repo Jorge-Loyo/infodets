@@ -332,9 +332,9 @@ Total estimado: **6 sprints (12 semanas / 3 meses)**
 
 | Tarea | Responsable |
 |---|---|
-| Crear modelos SQLAlchemy (Usuario, Consulta, Feedback, Documento) | P2 |
-| Configurar Alembic para migraciones | P2 |
-| Implementar endpoints CRUD de usuarios en FastAPI | P2 |
+| Crear modelos SQLAlchemy (Usuario, Consulta, Feedback, Documento) ✅ | P2 |
+| Configurar Alembic para migraciones ✅| P2 |
+| Implementar endpoints CRUD de usuarios en FastAPI ✅| P2 |
 | Conectar login del Front-End con Cognito real | P1 |
 | Implementar middleware de rutas protegidas en Next.js | P1 |
 | Probar flujo completo: login → token → request autenticado → logout | P1 + P2 |

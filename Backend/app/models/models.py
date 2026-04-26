@@ -7,73 +7,76 @@ from app.core.database import Base
 import enum
 
 
-class RoleEnum(str, enum.Enum):
+class RolEnum(str, enum.Enum):
     admin = "admin"
-    operator = "operator"
-    viewer = "viewer"
+    operador = "operador"
+    visor = "visor"
 
 
-class DocumentStatusEnum(str, enum.Enum):
-    pending_approval = "pending_approval"
-    indexed = "indexed"
-    archived = "archived"
+class EstadoDocumentoEnum(str, enum.Enum):
+    pendiente_aprobacion = "pendiente_aprobacion"
+    indexado = "indexado"
+    archivado = "archivado"
 
 
-class FeedbackStatusEnum(str, enum.Enum):
-    open = "open"
-    resolved = "resolved"
+class EstadoFeedbackEnum(str, enum.Enum):
+    abierto = "abierto"
+    resuelto = "resuelto"
 
 
-class User(Base):
-    __tablename__ = "users"
+class Usuario(Base):
+    __tablename__ = "usuarios"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    cognito_id: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    cognito_sub: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
-    role: Mapped[RoleEnum] = mapped_column(Enum(RoleEnum), default=RoleEnum.operator)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    nombre: Mapped[str | None] = mapped_column(String, nullable=True)
+    rol: Mapped[RolEnum] = mapped_column(Enum(RolEnum), default=RolEnum.operador)
+    creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    documents: Mapped[list["Document"]] = relationship(back_populates="uploader")
-    chat_history: Mapped[list["ChatHistory"]] = relationship(back_populates="user")
-
-
-class Document(Base):
-    __tablename__ = "documents"
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    title: Mapped[str] = mapped_column(String, nullable=False)
-    source_url: Mapped[str] = mapped_column(String, nullable=False)
-    hierarchy: Mapped[int] = mapped_column(Integer, default=1)
-    status: Mapped[DocumentStatusEnum] = mapped_column(Enum(DocumentStatusEnum), default=DocumentStatusEnum.pending_approval)
-    uploaded_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-
-    uploader: Mapped["User"] = relationship(back_populates="documents")
+    documentos: Mapped[list["Documento"]] = relationship(back_populates="subidor")
+    historial_chat: Mapped[list["HistorialChat"]] = relationship(back_populates="usuario")
 
 
-class ChatHistory(Base):
-    __tablename__ = "chat_history"
+class Documento(Base):
+    __tablename__ = "documentos"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
-    query: Mapped[str] = mapped_column(Text, nullable=False)
-    answer: Mapped[str] = mapped_column(Text, nullable=False)
-    confidence_score: Mapped[float] = mapped_column(Float, default=0.0)
-    is_fallback: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    titulo: Mapped[str] = mapped_column(String, nullable=False)
+    url_fuente: Mapped[str] = mapped_column(String, nullable=False)
+    jerarquia: Mapped[int] = mapped_column(Integer, default=1)
+    estado: Mapped[EstadoDocumentoEnum] = mapped_column(Enum(EstadoDocumentoEnum), default=EstadoDocumentoEnum.pendiente_aprobacion)
+    subido_por: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True)
+    creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    user: Mapped["User"] = relationship(back_populates="chat_history")
-    feedback: Mapped[list["FeedbackReport"]] = relationship(back_populates="chat")
+    subidor: Mapped["Usuario | None"] = relationship(back_populates="documentos")
 
 
-class FeedbackReport(Base):
-    __tablename__ = "feedback_reports"
+class HistorialChat(Base):
+    __tablename__ = "historial_chat"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    chat_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("chat_history.id"))
-    is_correct: Mapped[bool] = mapped_column(Boolean, nullable=False)
-    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
-    status: Mapped[FeedbackStatusEnum] = mapped_column(Enum(FeedbackStatusEnum), default=FeedbackStatusEnum.open)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    usuario_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("usuarios.id"))
+    documento_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("documentos.id"), nullable=True)
+    pregunta: Mapped[str] = mapped_column(Text, nullable=False)
+    respuesta: Mapped[str] = mapped_column(Text, nullable=False)
+    puntaje_confianza: Mapped[float] = mapped_column(Float, default=0.0)
+    es_fallback: Mapped[bool] = mapped_column(Boolean, default=False)
+    creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    chat: Mapped["ChatHistory"] = relationship(back_populates="feedback")
+    usuario: Mapped["Usuario"] = relationship(back_populates="historial_chat")
+    documento: Mapped["Documento | None"] = relationship()
+    feedback: Mapped[list["ReporteFeedback"]] = relationship(back_populates="historial")
+
+
+class ReporteFeedback(Base):
+    __tablename__ = "reportes_feedback"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    historial_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("historial_chat.id"))
+    es_correcto: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    comentario: Mapped[str | None] = mapped_column(Text, nullable=True)
+    estado: Mapped[EstadoFeedbackEnum] = mapped_column(Enum(EstadoFeedbackEnum), default=EstadoFeedbackEnum.abierto)
+    creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    historial: Mapped["HistorialChat"] = relationship(back_populates="feedback")
