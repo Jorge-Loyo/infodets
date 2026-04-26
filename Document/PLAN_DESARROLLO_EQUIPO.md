@@ -6,9 +6,9 @@
 
 ---
 
-> **Versión:** 1.9
-> **Estado:** Sprint 2 en progreso (P3 100% ✅ | P2 pendiente Alembic | P1 pendiente conexión Front-End)
-> **Última actualización:** Fechas MVP 24 mayo y entrega 28 junio incorporadas — sprints recalculados
+> **Versión:** 2.0
+> **Estado:** Sprint 2 en progreso (P3 100% ✅ | P1 servicios + hooks listos ✅ | P2 pendiente Alembic | ChatPanel sin conectar)
+> **Última actualización:** Avances P1 rama Frontend incorporados — login Cognito + servicios SSE + hooks TanStack Query
 > **MVP:** 24 de mayo de 2025
 > **Entrega final:** 28 de junio de 2025
 > **Basado en:** Propuesta técnica, documento maestro de arquitectura y documento técnico de Front-End
@@ -410,14 +410,14 @@ docker-compose -f docker-compose.dev.yml up --build
 
 ---
 
-### Sprint 1 🟡 37% completado | Semana 3-4 | Base de datos y autenticación real
+### Sprint 1 🟡 50% completado | Semana 3-4 | Base de datos y autenticación real
 
 | Tarea                                                                  | Estado       | Responsable |
 | ---------------------------------------------------------------------- | ------------ | ----------- |
 | Crear modelos SQLAlchemy (User, Document, ChatHistory, FeedbackReport) | ✅ Completo  | P2          |
 | Configurar Alembic para migraciones                                    | ⏳ Pendiente | P2          |
 | Implementar endpoints CRUD de usuarios en FastAPI                      | ⏳ Pendiente | P2          |
-| Conectar login del Front-End con Cognito real                          | ⏳ Pendiente | P1          |
+| Conectar login del Front-End con Cognito real                          | ✅ Completo  | P1          |
 | Implementar middleware de rutas protegidas en Next.js                  | ⏳ Pendiente | P1          |
 | Probar flujo completo: login → token → request autenticado → logout    | ⏳ Pendiente | P1 + P2     |
 | Crear primer workflow en n8n (trigger de prueba)                       | ✅ Completo  | P3          |
@@ -427,6 +427,12 @@ docker-compose -f docker-compose.dev.yml up --build
 - ✅ FastAPI corriendo como servicio systemd en EC2 (auto-reinicio)
 - ✅ CI/CD GitHub Actions operativo — deploy automático en push a main
 - ✅ `qdrant-client` integrado en el Back-End con `qdrant_service.py`
+- ✅ `amplifyConfig.ts` con `NEXT_PUBLIC_COGNITO_DOMAIN` (variable de entorno)
+- ✅ `useAuth.ts` con `fetchAuthSession` + `fetchUserAttributes` + `signOut`
+- ✅ `sessionStore.ts` Zustand con token, rol, `isAuthenticated`, `isAdmin`
+- ✅ `axiosInstance.ts` con interceptor JWT + redirect 401 a `/login`
+- ✅ Tipos espejo y servicios tipados: `consultaService`, `dashboardService`, `feedbackService`
+- ✅ Hooks TanStack Query: `useHistorial`, `useDashboard`
 
 **Entregable:** Usuario puede loguearse con Cognito real y acceder a rutas protegidas.
 
@@ -450,6 +456,10 @@ docker-compose -f docker-compose.dev.yml up --build
 - ✅ Lógica de umbral de confianza: >70% responde con docs oficiales, <70% avisa fallback
 - ✅ Groq (`llama-3.3-70b-versatile`) como fallback automático cuando Gemini da 429
 - ✅ Pipeline de ingesta probado con PDF real — "Beneficios Flux 2026" → 7 chunks en Qdrant
+- ✅ `consultaService.ts` con `EventSource` SSE listo para conectar al chat (P1)
+- ✅ `feedbackService.ts` y `dashboardService.ts` tipados (P1)
+- ✅ Hooks `useHistorial` y `useDashboard` con TanStack Query (P1)
+- ⏳ `ChatPanel.tsx` — UI lista pero botón enviar sin acción real (P1 pendiente)
 
 **Entregable:** Se puede subir un PDF y hacerle una pregunta que el sistema responde con el contenido del documento. ✅ CUMPLIDO
 
@@ -762,8 +772,8 @@ Vector Object
 | Sprint | Período | Hito principal | Estado | Fecha límite |
 | ------ | ------- | -------------- | ------ | ------------ |
 | S0 | Semanas 1-2 | Entorno AWS funcionando, equipo alineado | ✅ 100% | Cerrado |
-| S1 | Semanas 3-4 | Login real con Cognito de punta a punta | 🟡 37% | — |
-| S2 | Semanas 5-6 | Ingesta de documentos y búsqueda RAG básica | 🟡 71% (P3 ✅) | — |
+| S1 | Semanas 3-4 | Login real con Cognito de punta a punta | 🟡 50% | — |
+| S2 | Semanas 5-6 | Ingesta de documentos y búsqueda RAG básica | 🟡 71% (P3 ✅, P1 servicios ✅) | — |
 | S3 | Semanas 7-8 | Chat con IA real (Gemini + fallback + tickets) | 🟡 Parcial (adelantado en S2) | **24 mayo — MVP** |
 | S4 | Semanas 9-10 | Dashboard real + feedback + administración | ⏳ | ~14 junio |
 | S5 | Semanas 11-12 | Producción en AWS con CI/CD | ⏳ | **28 junio — Entrega final** |
@@ -821,5 +831,5 @@ Fallback automático a Groq llama-3.3-70b-versatile
 ---
 
 _INFODETS — Sistema de Gestión de Conocimiento Dinámico_
-_Plan de Desarrollo v1.9 — Equipo de 3 programadores_
+_Plan de Desarrollo v2.0 — Equipo de 3 programadores_
 _MVP: 24 de mayo de 2025 | Entrega final: 28 de junio de 2025_
