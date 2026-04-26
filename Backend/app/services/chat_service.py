@@ -1,7 +1,7 @@
 import uuid
 import logging
 from app.core.database import SessionLocal
-from app.models.models import ChatHistory
+from app.models.models import HistorialChat
 
 logger = logging.getLogger(__name__)
 
@@ -20,13 +20,13 @@ def guardar_historial(
     """
     db = SessionLocal()
     try:
-        registro = ChatHistory(
+        registro = HistorialChat(
             id=uuid.uuid4(),
-            user_id=uuid.UUID(usuario_id) if _es_uuid(usuario_id) else None,
-            query=query,
-            answer=answer,
-            confidence_score=confidence_score,
-            is_fallback=is_fallback,
+            usuario_id=uuid.UUID(usuario_id) if _es_uuid(usuario_id) else None,
+            pregunta=query,
+            respuesta=answer,
+            puntaje_confianza=confidence_score,
+            es_fallback=is_fallback,
         )
         db.add(registro)
         db.commit()

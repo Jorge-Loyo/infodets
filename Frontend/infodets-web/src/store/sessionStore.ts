@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import { ROLES } from '@/lib/constants'
 
 type Rol = (typeof ROLES)[keyof typeof ROLES]
@@ -26,7 +27,9 @@ interface SessionStore {
   isAdmin: () => boolean
 }
 
-export const useSessionStore = create<SessionStore>((set, get) => ({
+export const useSessionStore = create<SessionStore>()(
+  persist(
+    (set, get) => ({
   usuario: null,
   token: null,
   setSession: (usuario, token) => set({ usuario, token }),
@@ -35,5 +38,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   })),
   clearSession: () => set({ usuario: null, token: null }),
   isAuthenticated: () => !!get().token,
-  isAdmin: () => get().usuario?.rol === ROLES.ADMIN,
-}))
+    isAdmin: () => get().usuario?.rol === ROLES.ADMIN,
+  }),
+  { name: 'infodets-session' }
+  )
+)

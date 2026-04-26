@@ -1,8 +1,7 @@
 'use client'
 
 import { useSessionStore } from '@/store/sessionStore'
-import { ROUTES } from '@/lib/constants'
-import { fetchUserAttributes, fetchAuthSession, signOut } from 'aws-amplify/auth'
+import { fetchAuthSession, signOut } from 'aws-amplify/auth'
 import { useEffect } from 'react'
 
 export function useAuth() {
@@ -11,28 +10,33 @@ export function useAuth() {
   useEffect(() => {
     const cargarSesion = async () => {
       try {
-        const session = await fetchAuthSession()
-        const attrs = await fetchUserAttributes()
-        const accessToken = session.tokens?.accessToken?.toString()
-
-        if (accessToken && attrs.email) {
-          setSession(
-            {
-              id: attrs.sub ?? '',
-              nombre: attrs.name ?? attrs.email,
-              apellido: '',
-              email: attrs.email,
-              rol: (attrs['custom:rol'] as 'admin' | 'operador') ?? 'operador',
-            },
-            accessToken
-          )
+        const session = await fetchAuthSession({ forceRefresh: true })
+        const accessToken = session.tokens?.accessToken
+        const idToken = session.tokens?.idToken
+        if (!accessToken || !idToken) {
+          clearSession()
+          return
         }
-      } catch {
+        const payload = idToken.payload
+        const groups = (payload['cognito:groups'] as string[]) ?? []
+        const rol: 'admin' | 'operador' = groups.includes('admin') ? 'admin' : 'operador'
+        setSession(
+          {
+            id: (payload['sub'] as string) ?? '',
+            nombre: (payload['name'] as string) ?? (payload['email'] as string) ?? '',
+            apellido: '',
+            email: (payload['email'] as string) ?? '',
+            rol,
+          },
+          accessToken.toString()
+        )
+      } catch (e) {
+        console.error('[useAuth] ERROR:', e)
         clearSession()
       }
     }
 
-    if (!isAuthenticated()) cargarSesion()
+    cargarSesion()
   }, [])
 
   const logout = async () => {
@@ -40,7 +44,7 @@ export function useAuth() {
     await signOut()
     const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID
     const domain = (process.env.NEXT_PUBLIC_COGNITO_DOMAIN ?? '').replace(/\/$/, '')
-    const redirectUri = encodeURIComponent(process.env.NEXT_PUBLIC_REDIRECT_SIGN_OUT ?? 'http://localhost:3000')
+    const redirectUri = encodeURIComponent(process.env.NEXT_PUBLIC_REDIRECT_SIGN_OUT ?? 'http://localhost:3000/login')
     Object.keys(localStorage)
       .filter((k) => k.startsWith('CognitoIdentityServiceProvider') || k.startsWith('amplify-'))
       .forEach((k) => localStorage.removeItem(k))

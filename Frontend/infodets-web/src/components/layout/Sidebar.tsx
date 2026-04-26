@@ -5,18 +5,20 @@ import { IconHome, IconUser, IconFilePlus, IconShieldHalf, IconNews } from '@tab
 import { motion, AnimatePresence } from 'framer-motion'
 import { usePathname, useRouter } from 'next/navigation'
 import { useSidebar } from '@/hooks/ui/useSidebar'
+import { useSessionStore } from '@/store/sessionStore'
 import { ROUTES } from '@/lib/constants'
 
 const MENU_ITEMS = [
-  { label: 'Home', icon: IconHome, href: ROUTES.CONSULTA },
-  { label: 'Perfil', icon: IconUser, href: '/perfil' },
-  { label: 'Nueva documentación', icon: IconFilePlus, href: '/documentacion' },
-  { label: 'Administrador', icon: IconShieldHalf, href: ROUTES.DASHBOARD },
-  { label: 'Noticias generales', icon: IconNews, href: '/noticias' },
+  { label: 'Home', icon: IconHome, href: ROUTES.CONSULTA, adminOnly: false },
+  { label: 'Perfil', icon: IconUser, href: '/perfil', adminOnly: false },
+  { label: 'Nueva documentación', icon: IconFilePlus, href: '/documentacion', adminOnly: false },
+  { label: 'Administrador', icon: IconShieldHalf, href: ROUTES.DASHBOARD, adminOnly: true },
+  { label: 'Noticias generales', icon: IconNews, href: '/noticias', adminOnly: false },
 ]
 
 export function Sidebar() {
   const { sidebarAbierto } = useSidebar()
+  const { isAdmin } = useSessionStore()
   const pathname = usePathname()
   const router = useRouter()
 
@@ -42,7 +44,7 @@ export function Sidebar() {
               Menú
             </Text>
 
-            {MENU_ITEMS.map((item) => (
+            {MENU_ITEMS.filter(item => !item.adminOnly || isAdmin()).map((item) => (
               <NavLink
                 key={item.href}
                 label={item.label}
