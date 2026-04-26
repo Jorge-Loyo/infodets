@@ -13,6 +13,13 @@ class Settings(BaseSettings):
     app_env: str = "development"
     secret_key: str
 
+    # Google Gemini
+    gemini_api_key: str = ""  # para embeddings
+    gemini_generation_key: str = ""  # para generacion de texto
+
+    # Groq (fallback)
+    groq_api_key: str = ""
+
     # Base de datos
     db_host: str = ""
     db_port: int = 5432
@@ -25,6 +32,10 @@ class Settings(BaseSettings):
     n8n_url: str = ""
     n8n_user: str = ""
     n8n_password: str = ""
+
+    # Qdrant
+    qdrant_url: str = "http://172.31.40.141:6333"
+    qdrant_collection: str = "infodets_docs"
 
     @property
     def cognito_authority(self) -> str:
