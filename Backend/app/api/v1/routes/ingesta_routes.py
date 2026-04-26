@@ -1,12 +1,28 @@
 import os
 import uuid
 import tempfile
+import httpx
+import logging
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
 from typing import Optional
 from app.schemas.ingesta_schema import IngestaResponse, DocumentoListItem, EstadoDocumento
 from app.services.ingesta_service import procesar_documento
+from app.core.settings import settings
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin/ingesta", tags=["Ingesta"])
+
+
+def _notificar_n8n(payload: dict) -> None:
+    """Notifica a n8n que la ingesta completó. Falla silenciosamente."""
+    if not settings.n8n_url:
+        return
+    try:
+        url = f"{settings.n8n_url}/webhook/ingesta-completada"
+        httpx.post(url, json=payload, timeout=5)
+        logger.info(f"[INGESTA] n8n notificado — documento_id={payload.get('documento_id')}")
+    except Exception as e:
+        logger.warning(f"[INGESTA] No se pudo notificar a n8n: {e}")
 
 
 @router.post("", response_model=IngestaResponse)
@@ -25,6 +41,7 @@ async def cargar_documento(
     3. Fragmenta en chunks
     4. Genera embeddings con Google text-embedding-004
     5. Almacena vectores en Qdrant
+    6. Notifica a n8n con el resultado
     """
     if not archivo.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Solo se aceptan archivos PDF")
@@ -46,7 +63,7 @@ async def cargar_documento(
     finally:
         os.unlink(tmp_path)
 
-    return IngestaResponse(
+    respuesta = IngestaResponse(
         id=document_id,
         titulo=titulo,
         categoria=categoria,
@@ -56,6 +73,17 @@ async def cargar_documento(
         vector_id=f"qdrant:{chunks_procesados}_chunks",
         created_at="2026-01-01T00:00:00",
     )
+
+    _notificar_n8n({
+        "documento_id": document_id,
+        "titulo": titulo,
+        "categoria": categoria,
+        "dependencia": dependencia,
+        "estado": "procesado",
+        "chunks": chunks_procesados,
+    })
+
+    return respuesta
 
 
 @router.get("", response_model=list[DocumentoListItem])
