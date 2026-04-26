@@ -9,6 +9,7 @@ from app.services.rag_service import (
     generar_respuesta_stream,
     CONFIDENCE_THRESHOLD,
 )
+from app.services.chat_service import guardar_historial
 import logging
 
 logger = logging.getLogger(__name__)
@@ -25,7 +26,7 @@ async def chat_stream(request: ChatRequest):
     3. Si confianza > 70% → responde con documentación oficial
     4. Si confianza < 70% → respuesta cautelosa con advertencia
     5. Envía chunks de texto via SSE al Front-End
-    6. Al finalizar envía las fuentes oficiales
+    6. Al finalizar guarda historial en RDS y envía las fuentes
     """
     consulta_id = str(uuid.uuid4())
 
@@ -46,13 +47,24 @@ async def chat_stream(request: ChatRequest):
                 })
                 yield f"data: {aviso}\n\n"
 
-            # 3. Construir contexto y streamear respuesta
+            # 3. Construir contexto y streamear respuesta acumulando el texto completo
             contexto = construir_contexto(resultados)
+            respuesta_completa = []
             for texto in generar_respuesta_stream(request.mensaje, contexto, is_fallback):
+                respuesta_completa.append(texto)
                 chunk = json.dumps({"tipo": "chunk", "texto": texto})
                 yield f"data: {chunk}\n\n"
 
-            # 4. Enviar evento final con fuentes
+            # 4. Guardar historial en RDS (falla silenciosamente si tablas no existen aún)
+            guardar_historial(
+                usuario_id=request.usuario_id,
+                query=request.mensaje,
+                answer="".join(respuesta_completa),
+                confidence_score=max_score,
+                is_fallback=is_fallback,
+            )
+
+            # 5. Enviar evento final con fuentes
             fuentes = [
                 {
                     "nombre": r.get("titulo", "Documento oficial"),
