@@ -4,7 +4,7 @@ from app.core.settings import settings
 
 client = QdrantClient(url=settings.qdrant_url)
 COLLECTION = settings.qdrant_collection
-VECTOR_SIZE = 768  # dimensión estándar para embeddings
+VECTOR_SIZE = 3072  # gemini-embedding-001 genera vectores de 3072 dimensiones
 
 
 def init_collection():
@@ -38,4 +38,10 @@ def search(vector: list[float], limit: int = 5) -> list[dict]:
 
 def upsert(points: list[PointStruct]):
     """Inserta o actualiza vectores en la colección."""
-    client.upsert(collection_name=COLLECTION, points=points)
+    if not points:
+        return
+    # Procesar en lotes de 100 para evitar requests muy grandes
+    batch_size = 100
+    for i in range(0, len(points), batch_size):
+        batch = points[i:i + batch_size]
+        client.upsert(collection_name=COLLECTION, points=batch)

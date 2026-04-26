@@ -1,0 +1,167 @@
+{
+  "name": "INFODETS — Ingesta de Documentos",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ingesta-documento",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-ingesta",
+      "name": "Webhook Ingesta",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "infodets-ingesta-v1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.31.40.141:8000/v1/admin/ingesta",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "titulo",
+              "value": "={{ $json.body.titulo }}"
+            },
+            {
+              "name": "categoria",
+              "value": "={{ $json.body.categoria }}"
+            },
+            {
+              "name": "dependencia",
+              "value": "={{ $json.body.dependencia }}"
+            },
+            {
+              "name": "descripcion",
+              "value": "={{ $json.body.descripcion ?? '' }}"
+            },
+            {
+              "name": "archivo",
+              "value": "archivo",
+              "parameterType": "formBinaryData"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "http-fastapi-ingesta",
+      "name": "FastAPI — Procesar PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-estado",
+              "leftValue": "={{ $json.estado }}",
+              "rightValue": "procesado",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-success",
+      "name": "¿Procesado OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"ok\": true,\n  \"mensaje\": \"Documento procesado correctamente\",\n  \"documento_id\": \"{{ $('FastAPI — Procesar PDF').item.json.id }}\",\n  \"titulo\": \"{{ $('FastAPI — Procesar PDF').item.json.titulo }}\",\n  \"chunks\": \"{{ $('FastAPI — Procesar PDF').item.json.vector_id }}\"\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-ok",
+      "name": "Responder OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [960, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"ok\": false,\n  \"mensaje\": \"Error al procesar el documento\",\n  \"detalle\": \"{{ $json.message ?? 'Error desconocido' }}\"\n}",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "id": "respond-error",
+      "name": "Responder Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [960, 420]
+    }
+  ],
+  "connections": {
+    "Webhook Ingesta": {
+      "main": [
+        [
+          {
+            "node": "FastAPI — Procesar PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FastAPI — Procesar PDF": {
+      "main": [
+        [
+          {
+            "node": "¿Procesado OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Procesado OK?": {
+      "main": [
+        [
+          {
+            "node": "Responder OK",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["infodets", "ingesta", "sprint2"],
+  "triggerCount": 1,
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "versionId": "1"
+}
