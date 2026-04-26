@@ -44,6 +44,8 @@ class Documento(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     titulo: Mapped[str] = mapped_column(String, nullable=False)
     url_fuente: Mapped[str] = mapped_column(String, nullable=False)
+    categoria: Mapped[str | None] = mapped_column(String, nullable=True)
+    dependencia: Mapped[str | None] = mapped_column(String, nullable=True)
     jerarquia: Mapped[int] = mapped_column(Integer, default=1)
     estado: Mapped[EstadoDocumentoEnum] = mapped_column(Enum(EstadoDocumentoEnum), default=EstadoDocumentoEnum.pendiente_aprobacion)
     subido_por: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True)
