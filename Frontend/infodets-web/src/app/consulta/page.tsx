@@ -6,8 +6,12 @@ import { Footer } from '@/components/layout/Footer'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { ChatPanel } from '@/components/chat/ChatPanel'
 import { HistorialPanel } from '@/components/chat/HistorialPanel'
+import { useRequireAuth } from '@/hooks/auth/useRequireAuth'
+import { PageLoader } from '@/components/layout/PageLoader'
 
 export default function HomePage() {
+  const { checking } = useRequireAuth()
+  if (checking) return <PageLoader />
   return (
     <Box style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
 
