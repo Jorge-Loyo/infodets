@@ -6,9 +6,9 @@
 
 ---
 
-> **Versión:** 2.0
-> **Estado:** Sprint 2 en progreso (P3 100% ✅ | P1 servicios + hooks listos ✅ | P2 pendiente Alembic | ChatPanel sin conectar)
-> **Última actualización:** Avances P1 rama Frontend incorporados — login Cognito + servicios SSE + hooks TanStack Query
+> **Versión:** 2.1
+> **Estado:** Sprint 2 en progreso (P3 100% ✅ | P1 servicios + hooks listos ✅ | P2 Alembic + CRUD usuarios ✅ | ChatPanel sin conectar)
+> **Última actualización:** Avances P2 — Alembic configurado + modelos en español + CRUD usuarios completo
 > **MVP:** 24 de mayo de 2025
 > **Entrega final:** 28 de junio de 2025
 > **Basado en:** Propuesta técnica, documento maestro de arquitectura y documento técnico de Front-End
@@ -414,9 +414,9 @@ docker-compose -f docker-compose.dev.yml up --build
 
 | Tarea                                                                  | Estado       | Responsable |
 | ---------------------------------------------------------------------- | ------------ | ----------- |
-| Crear modelos SQLAlchemy (User, Document, ChatHistory, FeedbackReport) | ✅ Completo  | P2          |
-| Configurar Alembic para migraciones                                    | ⏳ Pendiente | P2          |
-| Implementar endpoints CRUD de usuarios en FastAPI                      | ⏳ Pendiente | P2          |
+| Crear modelos SQLAlchemy (Usuario, Documento, HistorialChat, ReporteFeedback) | ✅ Completo  | P2          |
+| Configurar Alembic para migraciones                                          | ✅ Completo  | P2          |
+| Implementar endpoints CRUD de usuarios en FastAPI                            | ✅ Completo  | P2          |
 | Conectar login del Front-End con Cognito real                          | ✅ Completo  | P1          |
 | Implementar middleware de rutas protegidas en Next.js                  | ⏳ Pendiente | P1          |
 | Probar flujo completo: login → token → request autenticado → logout    | ⏳ Pendiente | P1 + P2     |
@@ -433,6 +433,11 @@ docker-compose -f docker-compose.dev.yml up --build
 - ✅ `axiosInstance.ts` con interceptor JWT + redirect 401 a `/login`
 - ✅ Tipos espejo y servicios tipados: `consultaService`, `dashboardService`, `feedbackService`
 - ✅ Hooks TanStack Query: `useHistorial`, `useDashboard`
+- ✅ Modelos SQLAlchemy renombrados en español (`Usuario`, `Documento`, `HistorialChat`, `ReporteFeedback`)
+- ✅ Alembic configurado con `env.py` conectado a RDS — listo para `alembic upgrade head`
+- ✅ `usuario_routes.py` — endpoints `GET /usuarios`, `GET /usuarios/{id}`, `PUT /usuarios/{id}`, `DELETE /usuarios/{id}`
+- ✅ `usuario_service.py` — CRUD completo: crear, obtener, listar, actualizar, eliminar
+- ✅ `UsuarioActualizar` schema agregado en `auth_schema.py`
 
 **Entregable:** Usuario puede loguearse con Cognito real y acceder a rutas protegidas.
 
@@ -737,12 +742,12 @@ docker run -d --name qdrant \
 
 **Base de datos relacional (PostgreSQL RDS):**
 
-| Tabla              | Campos clave                                              | Propósito                                                 |
-| ------------------ | --------------------------------------------------------- | --------------------------------------------------------- |
-| `users`            | id, cognito_id, email, role (admin/operator/viewer)       | Gestión de usuarios RBAC sincronizada con Cognito         |
-| `documents`        | id, title, source_url, hierarchy, status, uploaded_by     | Registro de documentación oficial con prioridad normativa |
-| `chat_history`     | id, user_id, query, answer, confidence_score, is_fallback | Historial de consultas para hot topics y mejora continua  |
-| `feedback_reports` | id, chat_id, is_correct, comment, status (open/resolved)  | Motor de mejora continua — reportes de error              |
+| Tabla               | Campos clave                                                          | Propósito                                                 |
+| ------------------- | --------------------------------------------------------------------- | --------------------------------------------------------- |
+| `usuarios`          | id, cognito_sub, email, nombre, rol (admin/operador/visor)            | Gestión de usuarios RBAC sincronizada con Cognito         |
+| `documentos`        | id, titulo, url_fuente, jerarquia, estado, subido_por                 | Registro de documentación oficial con prioridad normativa |
+| `historial_chat`    | id, usuario_id, documento_id, pregunta, respuesta, puntaje_confianza  | Historial de consultas para hot topics y mejora continua  |
+| `reportes_feedback` | id, historial_id, es_correcto, comentario, estado (abierto/resuelto)  | Motor de mejora continua — reportes de error              |
 
 **Base de datos vectorial (Qdrant self-hosted en EC2):**
 
@@ -772,7 +777,7 @@ Vector Object
 | Sprint | Período | Hito principal | Estado | Fecha límite |
 | ------ | ------- | -------------- | ------ | ------------ |
 | S0 | Semanas 1-2 | Entorno AWS funcionando, equipo alineado | ✅ 100% | Cerrado |
-| S1 | Semanas 3-4 | Login real con Cognito de punta a punta | 🟡 50% | — |
+| S1 | Semanas 3-4 | Login real con Cognito de punta a punta | 🟡 75% (P2 ✅ Alembic + CRUD) | — |
 | S2 | Semanas 5-6 | Ingesta de documentos y búsqueda RAG básica | 🟡 71% (P3 ✅, P1 servicios ✅) | — |
 | S3 | Semanas 7-8 | Chat con IA real (Gemini + fallback + tickets) | 🟡 Parcial (adelantado en S2) | **24 mayo — MVP** |
 | S4 | Semanas 9-10 | Dashboard real + feedback + administración | ⏳ | ~14 junio |
@@ -831,5 +836,5 @@ Fallback automático a Groq llama-3.3-70b-versatile
 ---
 
 _INFODETS — Sistema de Gestión de Conocimiento Dinámico_
-_Plan de Desarrollo v2.0 — Equipo de 3 programadores_
+_Plan de Desarrollo v2.1 — Equipo de 3 programadores_
 _MVP: 24 de mayo de 2025 | Entrega final: 28 de junio de 2025_
