@@ -53,10 +53,25 @@ async def logout():
 
 
 @router.get("/me", status_code=200)
-async def me(request: Request):
+async def me(request: Request, db: Session = Depends(get_db)):
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="No autenticado")
     access_token = auth_header.split(" ")[1]
-    return await get_user_info(access_token)
-    raise HTTPException(status_code=404, detail="Not found")
+    userinfo = await get_user_info(access_token)
+
+    # Sincronizar email y nombre en RDS si el usuario existe con datos vacíos
+    cognito_sub = userinfo.get("sub", "")
+    email = userinfo.get("email", "")
+    nombre = userinfo.get("name", None)
+    if cognito_sub:
+        usuario = usuario_service.obtener_usuario_por_cognito_sub(db, cognito_sub)
+        if usuario and not usuario.email and email:
+            usuario.email = email
+            if nombre:
+                usuario.nombre = nombre
+            db.commit()
+        elif not usuario and email:
+            usuario_service.crear_usuario(db, cognito_sub=cognito_sub, email=email, nombre=nombre)
+
+    return userinfo

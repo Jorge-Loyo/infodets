@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from app.schemas.feedback_schema import FeedbackRequest, FeedbackResponse
 from app.middleware.auth_middleware import get_current_user
 
 router = APIRouter(prefix="/feedback", tags=["Feedback"])
 
 
-@router.post("/report", response_model=FeedbackResponse)
+@router.post("/report", response_model=FeedbackResponse, status_code=201)
 async def reportar_feedback(
     request: FeedbackRequest,
     current_user: dict = Depends(get_current_user)
@@ -19,7 +19,7 @@ async def reportar_feedback(
     raise NotImplementedError("Pendiente Sprint 4")
 
 
-@router.get("", response_model=list[FeedbackResponse])
+@router.get("", response_model=list[FeedbackResponse], status_code=200)
 async def listar_feedback(
     current_user: dict = Depends(get_current_user)
 ):
