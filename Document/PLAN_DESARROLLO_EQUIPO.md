@@ -6,9 +6,9 @@
 
 ---
 
-> **Versión:** 2.1
-> **Estado:** Sprint 2 en progreso (P3 100% ✅ | P1 servicios + hooks listos ✅ | P2 Alembic + CRUD usuarios ✅ | ChatPanel sin conectar)
-> **Última actualización:** Avances P2 — Alembic configurado + modelos en español + CRUD usuarios completo
+> **Versión:** 2.2
+> **Estado:** Sprint 3 en progreso (P2 auth JWT ✅ + migraciones Alembic ✅ | P1 login Cognito + sidebar admin ✅ | P3 RAG + ingesta + historial RDS ✅ | ChatPanel pendiente conectar)
+> **Última actualización:** Avances P2 — auth JWT en endpoints + migraciones Alembic ejecutadas + ingesta con RDS
 > **MVP:** 24 de mayo de 2025
 > **Entrega final:** 28 de junio de 2025
 > **Basado en:** Propuesta técnica, documento maestro de arquitectura y documento técnico de Front-End
@@ -418,8 +418,8 @@ docker-compose -f docker-compose.dev.yml up --build
 | Configurar Alembic para migraciones                                          | ✅ Completo  | P2          |
 | Implementar endpoints CRUD de usuarios en FastAPI                            | ✅ Completo  | P2          |
 | Conectar login del Front-End con Cognito real                          | ✅ Completo  | P1          |
-| Implementar middleware de rutas protegidas en Next.js                  | ⏳ Pendiente | P1          |
-| Probar flujo completo: login → token → request autenticado → logout    | ⏳ Pendiente | P1 + P2     |
+| Implementar middleware de rutas protegidas en Next.js                  | ✅ Completo  | P1          |
+| Probar flujo completo: login → token → request autenticado → logout    | ✅ Completo  | P1 + P2     |
 | Crear primer workflow en n8n (trigger de prueba)                       | ✅ Completo  | P3          |
 | Instalar e integrar Qdrant                                             | ✅ Completo  | P3          |
 
@@ -438,8 +438,14 @@ docker-compose -f docker-compose.dev.yml up --build
 - ✅ `usuario_routes.py` — endpoints `GET /usuarios`, `GET /usuarios/{id}`, `PUT /usuarios/{id}`, `DELETE /usuarios/{id}`
 - ✅ `usuario_service.py` — CRUD completo: crear, obtener, listar, actualizar, eliminar
 - ✅ `UsuarioActualizar` schema agregado en `auth_schema.py`
+- ✅ Login Cognito funcionando via `/auth/callback` con grupos (`cognito:groups`)
+- ✅ Rol `admin` leído desde `cognito:groups` del `idToken` — sin depender de atributos custom
+- ✅ Sidebar muestra botón "Administrador" solo a usuarios con rol `admin`
+- ✅ `sessionStore.ts` con persistencia Zustand (`infodets-session` en localStorage)
+- ✅ Migraciones Alembic ejecutadas — tablas `usuarios`, `documentos`, `historial_chat`, `reportes_feedback` creadas en RDS
+- ✅ Campos `categoria` y `dependencia` agregados a tabla `documentos`
 
-**Entregable:** Usuario puede loguearse con Cognito real y acceder a rutas protegidas.
+**Entregable:** Usuario puede loguearse con Cognito real y acceder a rutas protegidas. ✅ CUMPLIDO
 
 ---
 
@@ -453,7 +459,7 @@ docker-compose -f docker-compose.dev.yml up --build
 | Integrar Qdrant para almacenar vectores (gemini-embedding-001, 3072 dims)    | ✅ Completo     | P3          |
 | Implementar búsqueda semántica RAG (umbral confianza 0.7)                    | ✅ Completo     | P3          |
 | Endpoint `POST /v1/chat/stream` con RAG + Gemini + fallback Groq             | ✅ Completo     | P2 + P3     |
-| Guardar historial en RDS — servicio listo, activa con `alembic upgrade head` | ✅ Pendiente P2 | P2 + P3     |
+| Guardar historial en RDS — servicio listo, activa con `alembic upgrade head` | ✅ Completo     | P2 + P3     |
 
 **Logros adicionales (adelantaron tareas del Sprint 3):**
 - ✅ Gemini API Key configurada + modelo `gemini-2.0-flash-lite` operativo
@@ -465,6 +471,8 @@ docker-compose -f docker-compose.dev.yml up --build
 - ✅ `feedbackService.ts` y `dashboardService.ts` tipados (P1)
 - ✅ Hooks `useHistorial` y `useDashboard` con TanStack Query (P1)
 - ⏳ `ChatPanel.tsx` — UI lista pero botón enviar sin acción real (P1 pendiente)
+- ✅ Ingesta conectada a RDS — `documento_service.py` guarda metadatos en tabla `documentos`
+- ✅ `ingesta_routes.py` con campos `categoria` y `dependencia` en el formulario
 
 **Entregable:** Se puede subir un PDF y hacerle una pregunta que el sistema responde con el contenido del documento. ✅ CUMPLIDO
 
@@ -484,7 +492,7 @@ docker-compose -f docker-compose.dev.yml up --build
 | Integrar `StreamingResponse` de FastAPI para streaming al Front-End   | ✅ Adelantado en S2 | P2 + P3     |
 | Implementar lógica de umbral de confianza (>70% local, <70% fallback) | ✅ Adelantado en S2 | P3          |
 | Groq como fallback automático cuando Gemini da 429                    | ✅ Adelantado en S2 | P3          |
-| Reactivar autenticación Cognito JWT en endpoints de chat e ingesta    | ✅ Adelantado en S2 | P2 + P3     |
+| Reactivar autenticación Cognito JWT en endpoints de chat e ingesta    | ✅ Completo         | P2          |
 | Implementar ticket silencioso al admin cuando score < 0.3             | ⏳ Pendiente        | P3          |
 | Conectar el chat del Front-End con el endpoint real (SSE)             | ⏳ Pendiente        | P1          |
 | Renderizar respuesta con enlace cliqueable al documento fuente        | ⏳ Pendiente        | P1          |
@@ -777,9 +785,9 @@ Vector Object
 | Sprint | Período | Hito principal | Estado | Fecha límite |
 | ------ | ------- | -------------- | ------ | ------------ |
 | S0 | Semanas 1-2 | Entorno AWS funcionando, equipo alineado | ✅ 100% | Cerrado |
-| S1 | Semanas 3-4 | Login real con Cognito de punta a punta | 🟡 75% (P2 ✅ Alembic + CRUD) | — |
-| S2 | Semanas 5-6 | Ingesta de documentos y búsqueda RAG básica | 🟡 71% (P3 ✅, P1 servicios ✅) | — |
-| S3 | Semanas 7-8 | Chat con IA real (Gemini + fallback + tickets) | 🟡 Parcial (adelantado en S2) | **24 mayo — MVP** |
+| S1 | Semanas 3-4 | Login real con Cognito de punta a punta | ✅ 100% | Cerrado |
+| S2 | Semanas 5-6 | Ingesta de documentos y búsqueda RAG básica | ✅ 100% | Cerrado |
+| S3 | Semanas 7-8 | Chat con IA real (Gemini + fallback + tickets) | 🟡 80% (JWT ✅, ChatPanel pendiente P1) | **24 mayo — MVP** |
 | S4 | Semanas 9-10 | Dashboard real + feedback + administración | ⏳ | ~14 junio |
 | S5 | Semanas 11-12 | Producción en AWS con CI/CD | ⏳ | **28 junio — Entrega final** |
 
@@ -836,5 +844,5 @@ Fallback automático a Groq llama-3.3-70b-versatile
 ---
 
 _INFODETS — Sistema de Gestión de Conocimiento Dinámico_
-_Plan de Desarrollo v2.1 — Equipo de 3 programadores_
+_Plan de Desarrollo v2.2 — Equipo de 3 programadores_
 _MVP: 24 de mayo de 2025 | Entrega final: 28 de junio de 2025_
