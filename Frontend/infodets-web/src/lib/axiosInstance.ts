@@ -6,8 +6,18 @@ const axiosInstance = axios.create({
 })
 
 axiosInstance.interceptors.request.use((config) => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('infodets_token') : null
-  if (token) config.headers.Authorization = `Bearer ${token}`
+  if (typeof window !== 'undefined') {
+    try {
+      const session = localStorage.getItem('infodets-session')
+      if (session) {
+        const parsed = JSON.parse(session)
+        const token = parsed?.state?.token
+        if (token) config.headers.Authorization = `Bearer ${token}`
+      }
+    } catch {
+      // falla silenciosamente
+    }
+  }
   return config
 })
 

@@ -21,7 +21,7 @@ def verify_token(token: str, public_keys: dict) -> dict:
             token,
             key,
             algorithms=["RS256"],
-            audience=settings.cognito_client_id,
+            options={"verify_aud": False},
         )
         return payload
     except JWTError as e:

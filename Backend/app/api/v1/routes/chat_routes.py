@@ -11,6 +11,9 @@ from app.services.rag_service import (
 )
 from app.services.chat_service import guardar_historial
 from app.middleware.auth_middleware import get_current_user
+from app.core.database import get_db
+from app.models.models import HistorialChat
+from sqlalchemy.orm import Session
 import logging
 
 logger = logging.getLogger(__name__)
@@ -89,3 +92,18 @@ async def chat_stream(request: ChatRequest, current_user: dict = Depends(get_cur
             yield f"data: {error}\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")
+
+
+@router.get("/historial/usuario/{usuario_id}")
+def obtener_historial(usuario_id: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    items = db.query(HistorialChat).filter(
+        HistorialChat.usuario_id == usuario_id
+    ).order_by(HistorialChat.creado_en.desc()).limit(20).all()
+    return [
+        {
+            "id": str(h.id),
+            "pregunta": h.pregunta,
+            "creado_en": h.creado_en.isoformat(),
+        }
+        for h in items
+    ]

@@ -3,6 +3,7 @@
 import { useSessionStore } from '@/store/sessionStore'
 import { fetchAuthSession, signOut } from 'aws-amplify/auth'
 import { useEffect } from 'react'
+import axiosInstance from '@/lib/axiosInstance'
 
 export function useAuth() {
   const { usuario, token, setSession, clearSession, isAuthenticated, isAdmin } = useSessionStore()
@@ -20,13 +21,27 @@ export function useAuth() {
         const payload = idToken.payload
         const groups = (payload['cognito:groups'] as string[]) ?? []
         const rol: 'admin' | 'operador' = groups.includes('admin') ? 'admin' : 'operador'
+
+        // Obtener el id de RDS y datos del perfil desde el backend
+        let rdsId: string | undefined
+        let cargo: string | undefined
+        let nombre_rds: string | undefined
+        try {
+          const res = await axiosInstance.get('/usuarios/me')
+          rdsId = res.data.id
+          cargo = res.data.cargo
+          nombre_rds = res.data.nombre
+        } catch {}
+
         setSession(
           {
             id: (payload['sub'] as string) ?? '',
-            nombre: (payload['name'] as string) ?? (payload['email'] as string) ?? '',
+            rdsId,
+            nombre: nombre_rds ?? (payload['name'] as string) ?? (payload['email'] as string) ?? '',
             apellido: '',
             email: (payload['email'] as string) ?? '',
             rol,
+            cargo,
           },
           accessToken.toString()
         )

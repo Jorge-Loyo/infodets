@@ -31,11 +31,20 @@ class Usuario(Base):
     cognito_sub: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     nombre: Mapped[str | None] = mapped_column(String, nullable=True)
+    apellido: Mapped[str | None] = mapped_column(String, nullable=True)
+    dni: Mapped[str | None] = mapped_column(String, nullable=True)
+    fecha_nacimiento: Mapped[str | None] = mapped_column(String, nullable=True)
+    cargo: Mapped[str | None] = mapped_column(String, nullable=True)
+    institucion: Mapped[str | None] = mapped_column(String, nullable=True)
+    dependencia: Mapped[str | None] = mapped_column(String, nullable=True)
     rol: Mapped[RolEnum] = mapped_column(Enum(RolEnum), default=RolEnum.operador)
+    perfil_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("perfiles.id"), nullable=True)
     creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     documentos: Mapped[list["Documento"]] = relationship(back_populates="subidor")
     historial_chat: Mapped[list["HistorialChat"]] = relationship(back_populates="usuario")
+    permisos: Mapped[list["PermisoUsuario"]] = relationship(back_populates="usuario")
+    perfil: Mapped["Perfil | None"] = relationship(back_populates="usuarios")
 
 
 class Documento(Base):
@@ -69,6 +78,70 @@ class HistorialChat(Base):
     usuario: Mapped["Usuario"] = relationship(back_populates="historial_chat")
     documento: Mapped["Documento | None"] = relationship()
     feedback: Mapped[list["ReporteFeedback"]] = relationship(back_populates="historial")
+
+
+class Noticia(Base):
+    __tablename__ = "noticias"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    titulo: Mapped[str] = mapped_column(String, nullable=False)
+    contenido: Mapped[str] = mapped_column(Text, nullable=False)
+    categoria: Mapped[str | None] = mapped_column(String, nullable=True)
+    imagen_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    autor_nombre: Mapped[str | None] = mapped_column(String, nullable=True)
+    autor_cargo: Mapped[str | None] = mapped_column(String, nullable=True)
+    publicada: Mapped[bool] = mapped_column(Boolean, default=False)
+    likes: Mapped[int] = mapped_column(Integer, default=0)
+    creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    actualizado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class TablaValor(Base):
+    __tablename__ = "tabla_valores"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tabla_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    valor: Mapped[str] = mapped_column(String, nullable=False)
+    activo: Mapped[bool] = mapped_column(Boolean, default=True)
+    orden: Mapped[int] = mapped_column(Integer, default=0)
+    creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class Perfil(Base):
+    __tablename__ = "perfiles"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    nombre: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    descripcion: Mapped[str | None] = mapped_column(String, nullable=True)
+    color: Mapped[str] = mapped_column(String, default="blue")
+    rol: Mapped[str | None] = mapped_column(String, nullable=True)  # rol que representa este perfil
+    creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    permisos: Mapped[list["PerfilPermiso"]] = relationship(back_populates="perfil", cascade="all, delete-orphan")
+    usuarios: Mapped[list["Usuario"]] = relationship(back_populates="perfil")
+
+
+class PerfilPermiso(Base):
+    __tablename__ = "perfil_permisos"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    perfil_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("perfiles.id"), nullable=False)
+    seccion: Mapped[str] = mapped_column(String, nullable=False)
+    habilitado: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    perfil: Mapped["Perfil"] = relationship(back_populates="permisos")
+
+
+class PermisoUsuario(Base):
+    __tablename__ = "permisos_usuario"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    usuario_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=False)
+    seccion: Mapped[str] = mapped_column(String, nullable=False)
+    habilitado: Mapped[bool] = mapped_column(Boolean, default=True)
+    actualizado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    usuario: Mapped["Usuario"] = relationship(back_populates="permisos")
 
 
 class ReporteFeedback(Base):

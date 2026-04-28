@@ -6,6 +6,7 @@ type Rol = (typeof ROLES)[keyof typeof ROLES]
 
 interface Usuario {
   id: string
+  rdsId?: string
   nombre: string
   apellido: string
   email: string
