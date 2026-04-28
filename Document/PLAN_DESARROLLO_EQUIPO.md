@@ -6,9 +6,9 @@
 
 ---
 
-> **Versión:** 2.2
-> **Estado:** Sprint 3 en progreso (P2 auth JWT ✅ + migraciones Alembic ✅ | P1 login Cognito + sidebar admin ✅ | P3 RAG + ingesta + historial RDS ✅ | ChatPanel pendiente conectar)
-> **Última actualización:** Avances P2 — auth JWT en endpoints + migraciones Alembic ejecutadas + ingesta con RDS
+> **Versión:** 2.3
+> **Estado:** Sprint 3 en progreso (P2 auth JWT ✅ + migraciones ✅ | P1 formulario ingesta conectado ✅ | P3 RAG + ingesta + historial RDS ✅ | ChatPanel pendiente conectar)
+> **Última actualización:** Avances P1 — formulario de carga conectado al endpoint real (`ingestaService.ts`)
 > **MVP:** 24 de mayo de 2025
 > **Entrega final:** 28 de junio de 2025
 > **Basado en:** Propuesta técnica, documento maestro de arquitectura y documento técnico de Front-End
@@ -454,7 +454,7 @@ docker-compose -f docker-compose.dev.yml up --build
 | Tarea                                                                        | Estado          | Responsable |
 | ---------------------------------------------------------------------------- | --------------- | ----------- |
 | Implementar endpoint de carga de documentos en FastAPI                       | ✅ Completo     | P2          |
-| Conectar formulario de carga del Front-End con el endpoint real              | ⏳ Pendiente    | P1          |
+| Conectar formulario de carga del Front-End con el endpoint real              | ✅ Completo     | P1          |
 | Workflow n8n ingesta: FastAPI procesa PDF → notifica a n8n con resultado     | ✅ Completo     | P3          |
 | Integrar Qdrant para almacenar vectores (gemini-embedding-001, 3072 dims)    | ✅ Completo     | P3          |
 | Implementar búsqueda semántica RAG (umbral confianza 0.7)                    | ✅ Completo     | P3          |
@@ -473,6 +473,8 @@ docker-compose -f docker-compose.dev.yml up --build
 - ⏳ `ChatPanel.tsx` — UI lista pero botón enviar sin acción real (P1 pendiente)
 - ✅ Ingesta conectada a RDS — `documento_service.py` guarda metadatos en tabla `documentos`
 - ✅ `ingesta_routes.py` con campos `categoria` y `dependencia` en el formulario
+- ✅ `ingestaService.ts` — formulario de carga conectado al endpoint real `POST /admin/ingesta`
+- ✅ `ingestaService.listar()` — listado de documentos desde `GET /admin/ingesta`
 
 **Entregable:** Se puede subir un PDF y hacerle una pregunta que el sistema responde con el contenido del documento. ✅ CUMPLIDO
 
@@ -787,7 +789,7 @@ Vector Object
 | S0 | Semanas 1-2 | Entorno AWS funcionando, equipo alineado | ✅ 100% | Cerrado |
 | S1 | Semanas 3-4 | Login real con Cognito de punta a punta | ✅ 100% | Cerrado |
 | S2 | Semanas 5-6 | Ingesta de documentos y búsqueda RAG básica | ✅ 100% | Cerrado |
-| S3 | Semanas 7-8 | Chat con IA real (Gemini + fallback + tickets) | 🟡 80% (JWT ✅, ChatPanel pendiente P1) | **24 mayo — MVP** |
+| S3 | Semanas 7-8 | Chat con IA real (Gemini + fallback + tickets) | 🟡 85% (formulario ingesta ✅, ChatPanel pendiente P1) | **24 mayo — MVP** |
 | S4 | Semanas 9-10 | Dashboard real + feedback + administración | ⏳ | ~14 junio |
 | S5 | Semanas 11-12 | Producción en AWS con CI/CD | ⏳ | **28 junio — Entrega final** |
 
@@ -844,5 +846,5 @@ Fallback automático a Groq llama-3.3-70b-versatile
 ---
 
 _INFODETS — Sistema de Gestión de Conocimiento Dinámico_
-_Plan de Desarrollo v2.2 — Equipo de 3 programadores_
+_Plan de Desarrollo v2.3 — Equipo de 3 programadores_
 _MVP: 24 de mayo de 2025 | Entrega final: 28 de junio de 2025_
