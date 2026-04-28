@@ -12,6 +12,7 @@ from app.services.ingesta_service import procesar_documento
 from app.services import documento_service
 from app.core.settings import settings
 from app.core.database import get_db
+from app.middleware.auth_middleware import require_admin
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin/ingesta", tags=["Ingesta"])
@@ -38,6 +39,7 @@ async def cargar_documento(
     anio: Optional[int] = Form(None),
     archivo: UploadFile = File(...),
     db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin),
 ):
     """
     RF1 — Pipeline completo de ingesta:
@@ -95,7 +97,7 @@ async def cargar_documento(
 
 
 @router.get("", response_model=list[DocumentoListItem])
-async def listar_documentos(db: Session = Depends(get_db)):
+async def listar_documentos(db: Session = Depends(get_db), current_user: dict = Depends(require_admin)):
     """Retorna el listado de documentos cargados al sistema."""
     documentos = documento_service.listar_documentos(db)
     return [
