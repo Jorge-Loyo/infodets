@@ -10,7 +10,7 @@ Amplify.configure(
           oauth: {
             domain: process.env.NEXT_PUBLIC_COGNITO_DOMAIN!,
             scopes: ['phone', 'openid', 'email'],
-            redirectSignIn: [process.env.NEXT_PUBLIC_REDIRECT_SIGN_IN!],
+            redirectSignIn: [process.env.NEXT_PUBLIC_REDIRECT_SIGN_IN!, 'http://localhost:3000/auth/callback'],
             redirectSignOut: [process.env.NEXT_PUBLIC_REDIRECT_SIGN_OUT!],
             responseType: 'code',
           },

@@ -26,9 +26,10 @@ const ADMIN_MENU = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { checking } = useRequireAuth({ adminOnly: true })
-  if (checking) return <PageLoader />
   const pathname = usePathname()
   const router = useRouter()
+
+  if (checking) return <PageLoader />
 
   return (
     <Box style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>

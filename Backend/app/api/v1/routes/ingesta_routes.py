@@ -3,11 +3,16 @@ import uuid
 import tempfile
 import httpx
 import logging
+from datetime import datetime
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
+from sqlalchemy.orm import Session
 from typing import Optional
 from app.schemas.ingesta_schema import IngestaResponse, DocumentoListItem, EstadoDocumento
 from app.services.ingesta_service import procesar_documento
+from app.services import documento_service
 from app.core.settings import settings
+from app.core.database import get_db
+from app.middleware.auth_middleware import require_admin
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin/ingesta", tags=["Ingesta"])
@@ -33,6 +38,8 @@ async def cargar_documento(
     descripcion: Optional[str] = Form(None),
     anio: Optional[int] = Form(None),
     archivo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin),
 ):
     """
     RF1 — Pipeline completo de ingesta:
@@ -63,15 +70,18 @@ async def cargar_documento(
     finally:
         os.unlink(tmp_path)
 
+    url_fuente = f"/documentos/{document_id}"
+    documento_service.crear_documento(db, id=document_id, titulo=titulo, url_fuente=url_fuente, categoria=categoria, dependencia=dependencia)
+
     respuesta = IngestaResponse(
         id=document_id,
         titulo=titulo,
         categoria=categoria,
         dependencia=dependencia,
         estado=EstadoDocumento.PROCESADO,
-        archivo_url=f"/documentos/{document_id}",
+        archivo_url=url_fuente,
         vector_id=f"qdrant:{chunks_procesados}_chunks",
-        created_at="2026-01-01T00:00:00",
+        created_at=datetime.utcnow().isoformat(),
     )
 
     _notificar_n8n({
@@ -87,7 +97,17 @@ async def cargar_documento(
 
 
 @router.get("", response_model=list[DocumentoListItem])
-async def listar_documentos():
+async def listar_documentos(db: Session = Depends(get_db), current_user: dict = Depends(require_admin)):
     """Retorna el listado de documentos cargados al sistema."""
-    # TODO Sprint 2: implementar consulta a RDS
-    return []
+    documentos = documento_service.listar_documentos(db)
+    return [
+        DocumentoListItem(
+            id=str(d.id),
+            titulo=d.titulo,
+            categoria=d.categoria or "",
+            dependencia=d.dependencia or "",
+            estado=EstadoDocumento.PROCESADO,
+            created_at=d.creado_en.isoformat() if d.creado_en else "",
+        )
+        for d in documentos
+    ]
