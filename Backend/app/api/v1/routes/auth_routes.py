@@ -42,14 +42,15 @@ logger = __import__('logging').getLogger(__name__)
 
 @router.post("/login", response_model=TokenSchema)
 async def login(body: LoginRequest, db: Session = Depends(get_db)):
+    email = body.email.strip().lower()
     cognito = boto3.client("cognito-idp", region_name=settings.cognito_region)
     try:
         resp = cognito.initiate_auth(
             AuthFlow="USER_PASSWORD_AUTH",
             AuthParameters={
-                "USERNAME": body.email,
+                "USERNAME": email,
                 "PASSWORD": body.password,
-                "SECRET_HASH": _secret_hash(body.email),
+                "SECRET_HASH": _secret_hash(email),
             },
             ClientId=settings.cognito_client_id,
         )
@@ -58,10 +59,14 @@ async def login(body: LoginRequest, db: Session = Depends(get_db)):
     except cognito.exceptions.UserNotFoundException:
         raise HTTPException(status_code=401, detail="Email o contraseña incorrectos")
     except cognito.exceptions.UserNotConfirmedException:
-        raise HTTPException(status_code=403, detail="Usuario no confirmado")
+        raise HTTPException(status_code=403, detail="Tu cuenta no está confirmada. Revisá tu email")
+    except cognito.exceptions.PasswordResetRequiredException:
+        raise HTTPException(status_code=403, detail="Debés resetear tu contraseña. Revisá tu email")
+    except cognito.exceptions.TooManyRequestsException:
+        raise HTTPException(status_code=429, detail="Demasiados intentos. Esperá unos minutos e intentá de nuevo")
     except Exception as e:
         logger.error(f"[LOGIN] Error Cognito: {type(e).__name__}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Error interno al iniciar sesión")
 
     id_token = resp["AuthenticationResult"]["IdToken"]
     unverified = jwt.get_unverified_claims(id_token)
@@ -71,14 +76,13 @@ async def login(body: LoginRequest, db: Session = Depends(get_db)):
 
     usuario = usuario_service.obtener_usuario_por_cognito_sub(db, cognito_sub)
     if not usuario:
-        usuario = usuario_service.obtener_usuario_por_email(db, body.email)
+        usuario = usuario_service.obtener_usuario_por_email(db, email)
         if usuario and str(usuario.cognito_sub).startswith("pending_"):
             usuario.cognito_sub = cognito_sub
             db.commit()
             db.refresh(usuario)
     if not usuario:
-        from app.models.models import RolEnum
-        usuario = usuario_service.crear_usuario(db, cognito_sub=cognito_sub, email=body.email)
+        usuario = usuario_service.crear_usuario(db, cognito_sub=cognito_sub, email=email)
 
     token = _make_jwt(usuario)
     return {"access_token": token, "token_type": "bearer", "usuario": usuario}

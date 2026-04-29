@@ -17,17 +17,22 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleLogin = async () => {
     setLoading(true)
-    setError('')
     try {
-      const { data } = await axiosInstance.post('/auth/login', { email, password })
+      const { data } = await axiosInstance.post('/auth/login', { email: email.trim().toLowerCase(), password })
       setSession(data.usuario, data.access_token)
       router.replace(ROUTES.CONSULTA)
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-      setError(msg || 'Error al iniciar sesión')
+      const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } }
+      const detail = axiosErr?.response?.data?.detail
+      if (detail) {
+        setError(detail)
+      } else if (!axiosErr?.response) {
+        setError('No se pudo conectar con el servidor')
+      } else {
+        setError('Error al iniciar sesión')
+      }
     } finally {
       setLoading(false)
     }
@@ -35,18 +40,13 @@ export default function Home() {
 
   return (
     <Container size="xs" py={80}>
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
+      <div>
         <Paper withBorder shadow="sm" p="xl" radius="md">
           <Title order={3} mb="xs" ta="center">INFODETS</Title>
           <Text c="dimmed" mb="xl" size="sm" ta="center">
             Sistema de Gestión de Conocimiento Dinámico
           </Text>
-          <form onSubmit={handleLogin}>
-            <Stack>
+          <Stack>
               {error && (
                 <Alert icon={<IconAlertCircle size={16} />} color="red" variant="light">
                   {error}
@@ -56,26 +56,25 @@ export default function Home() {
                 label="Email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
+                onChange={(e) => { setEmail(e.target.value); setError('') }}
+                onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                 autoFocus
               />
               <PasswordInput
                 label="Contraseña"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
+                onChange={(e) => { setPassword(e.target.value); setError('') }}
+                onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
               />
-              <Button type="submit" fullWidth loading={loading} leftSection={<IconLogin size={18} />}>
+              <Button fullWidth loading={loading} onClick={handleLogin} leftSection={<IconLogin size={18} />}>
                 Iniciar sesión
               </Button>
               <Button fullWidth variant="light" onClick={() => router.push(ROUTES.INVITADO)} leftSection={<IconUserOff size={18} />}>
                 Continuar como invitado
               </Button>
             </Stack>
-          </form>
         </Paper>
-      </motion.div>
+      </div>
     </Container>
   )
 }
