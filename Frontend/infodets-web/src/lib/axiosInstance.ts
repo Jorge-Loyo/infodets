@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { useSessionStore } from '@/store/sessionStore'
 
 const axiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
@@ -6,7 +7,7 @@ const axiosInstance = axios.create({
 })
 
 axiosInstance.interceptors.request.use((config) => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('infodets_token') : null
+  const token = useSessionStore.getState().token
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
@@ -15,7 +16,8 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      if (typeof window !== 'undefined') window.location.href = '/login'
+      useSessionStore.getState().clearSession()
+      if (typeof window !== 'undefined') window.location.href = '/'
     }
     return Promise.reject(error)
   }

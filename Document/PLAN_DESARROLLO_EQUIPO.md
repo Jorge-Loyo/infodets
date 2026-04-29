@@ -6,9 +6,9 @@
 
 ---
 
-> **Versión:** 2.2
-> **Estado:** Sprint 3 en progreso (P2 auth JWT ✅ + migraciones Alembic ✅ | P1 login Cognito + sidebar admin ✅ | P3 RAG + ingesta + historial RDS ✅ | ChatPanel pendiente conectar)
-> **Última actualización:** Avances P2 — auth JWT en endpoints + migraciones Alembic ejecutadas + ingesta con RDS
+> **Versión:** 3.1
+> **Estado:** Sprint 3 ✅ CERRADO — MVP funcional | Sprint 4 🟡 50% en progreso
+> **Última actualización:** Ticket silencioso al admin ✅ + documentación funcional + links PDF en fuentes
 > **MVP:** 24 de mayo de 2025
 > **Entrega final:** 28 de junio de 2025
 > **Basado en:** Propuesta técnica, documento maestro de arquitectura y documento técnico de Front-End
@@ -91,6 +91,41 @@ Botón de feedback al final de cada respuesta
 ---
 
 ## 4. ESTADO ACTUAL DEL PROYECTO
+
+> 🟢 **Sistema operativo al 29 de abril de 2026** — MVP completado, Sprint 4 en progreso
+
+### Funcionalidades operativas
+
+| Área | Estado | Detalle |
+| ---- | ------ | ------- |
+| Login Cognito | ✅ | OAuth via `/auth/callback`, grupos → rol |
+| Chat con IA | ✅ | SSE real, Gemini + fallback Groq, fuentes PDF |
+| Ingesta de documentos | ✅ | PDF → Qdrant + RDS, link al PDF original |
+| Historial de consultas | ✅ | Últimas 20 desde RDS en panel lateral |
+| Tickets de vacío | ✅ | Score < 0.3 → ticket en `/dashboard/notificaciones` |
+| Gestión de usuarios | ✅ | CRUD completo con perfil extendido |
+| Perfiles y derechos | ✅ | Roles + permisos por sección del menú |
+| Noticias | ✅ | CRUD con imágenes, publicación/borrador |
+| Tablas administrables | ✅ | Instituciones, cargos, dependencias, categorías |
+| Sidebar dinámico | ✅ | Muestra/oculta según permisos del usuario |
+| Feedback | ⏳ | Schema listo, endpoint pendiente de conectar |
+| Dashboard con datos reales | ⏳ | Hot topics y gráficos pendientes |
+| Despliegue en producción | ⏳ | Pendiente Sprint 5 |
+
+### Tablas en RDS (9 migraciones aplicadas)
+
+| Tabla | Propósito |
+| ----- | --------- |
+| `usuarios` | Usuarios con perfil completo + rol |
+| `documentos` | Documentos indexados en Qdrant |
+| `historial_chat` | Consultas realizadas |
+| `reportes_feedback` | Feedback de respuestas |
+| `permisos_usuario` | Permisos por sección del menú |
+| `perfiles` | Perfiles de acceso con roles |
+| `perfil_permisos` | Permisos por perfil |
+| `tabla_valores` | Valores de desplegables |
+| `noticias` | Publicaciones institucionales |
+| `tickets_vacios` | Consultas sin documentación oficial |
 
 ### Sprint 0 — Progreso: 9/9 tareas completadas ✅ SPRINT CERRADO
 
@@ -410,7 +445,7 @@ docker-compose -f docker-compose.dev.yml up --build
 
 ---
 
-### Sprint 1 🟡 50% completado | Semana 3-4 | Base de datos y autenticación real
+### Sprint 1 ✅ 100% | Semana 3-4 | Base de datos y autenticación real
 
 | Tarea                                                                  | Estado       | Responsable |
 | ---------------------------------------------------------------------- | ------------ | ----------- |
@@ -449,12 +484,12 @@ docker-compose -f docker-compose.dev.yml up --build
 
 ---
 
-### SPRINT 2 🟡 71% completado | Semana 5-6 | Pipeline RAG e ingesta de documentos
+### SPRINT 2 ✅ 100% | Semana 5-6 | Pipeline RAG e ingesta de documentos
 
 | Tarea                                                                        | Estado          | Responsable |
 | ---------------------------------------------------------------------------- | --------------- | ----------- |
 | Implementar endpoint de carga de documentos en FastAPI                       | ✅ Completo     | P2          |
-| Conectar formulario de carga del Front-End con el endpoint real              | ⏳ Pendiente    | P1          |
+| Conectar formulario de carga del Front-End con el endpoint real              | ✅ Completo     | P1          |
 | Workflow n8n ingesta: FastAPI procesa PDF → notifica a n8n con resultado     | ✅ Completo     | P3          |
 | Integrar Qdrant para almacenar vectores (gemini-embedding-001, 3072 dims)    | ✅ Completo     | P3          |
 | Implementar búsqueda semántica RAG (umbral confianza 0.7)                    | ✅ Completo     | P3          |
@@ -470,49 +505,69 @@ docker-compose -f docker-compose.dev.yml up --build
 - ✅ `consultaService.ts` con `EventSource` SSE listo para conectar al chat (P1)
 - ✅ `feedbackService.ts` y `dashboardService.ts` tipados (P1)
 - ✅ Hooks `useHistorial` y `useDashboard` con TanStack Query (P1)
-- ⏳ `ChatPanel.tsx` — UI lista pero botón enviar sin acción real (P1 pendiente)
+- ✅ `ChatPanel.tsx` — conectado al endpoint real con streaming SSE via `fetch` + JWT
 - ✅ Ingesta conectada a RDS — `documento_service.py` guarda metadatos en tabla `documentos`
 - ✅ `ingesta_routes.py` con campos `categoria` y `dependencia` en el formulario
+- ✅ `ingestaService.ts` — formulario de carga conectado al endpoint real `POST /admin/ingesta`
+- ✅ `ingestaService.listar()` — listado de documentos desde `GET /admin/ingesta`
 
 **Entregable:** Se puede subir un PDF y hacerle una pregunta que el sistema responde con el contenido del documento. ✅ CUMPLIDO
 
 ---
 
-### SPRINT 3 — Semana 7-8 → **hasta 24 mayo (MVP)** | Motor de IA y flujos de decisión
+### SPRINT 3 ✅ 100% CERRADO — Semana 7-8 | Motor de IA y flujos de decisión — **MVP ✅ CUMPLIDO**
 
-> 🎯 **Este sprint define el MVP del 24 de mayo.** Al cerrarlo, el sistema debe poder recibir una consulta, responder con IA usando documentos oficiales y permitir login real.
+> 🎯 **MVP del 24 de mayo CUMPLIDO.** El sistema recibe consultas, responde con IA usando documentos oficiales y permite login real.
 
-> ⚠️ Se usa **API directa de Google Gemini** (no Amazon Bedrock). Ver sección 11 para detalles técnicos.
+| Tarea                                                                 | Estado   | Responsable |
+| --------------------------------------------------------------------- | -------- | ----------- |
+| Obtener API Key de Google Gemini (Google AI Studio)                   | ✅       | P3          |
+| Instalar `google-generativeai` en el Back-End                         | ✅       | P3          |
+| Implementar servicio de IA con streaming                              | ✅       | P3          |
+| Integrar `StreamingResponse` de FastAPI para streaming al Front-End   | ✅       | P2 + P3     |
+| Implementar lógica de umbral de confianza (>70% local, <70% fallback) | ✅       | P3          |
+| Groq como fallback automático cuando Gemini da 429                    | ✅       | P3          |
+| Reactivar autenticación Cognito JWT en endpoints de chat e ingesta    | ✅       | P2          |
+| Conectar el chat del Front-End con el endpoint real (SSE)             | ✅       | P1 + P3     |
+| Renderizar respuesta con enlace cliqueable al documento fuente        | ✅       | P1          |
+| Historial de consultas en panel lateral                               | ✅       | P1 + P2     |
+| Implementar ticket silencioso al admin cuando score < 0.3             | ✅       | P3          |
 
-| Tarea                                                                 | Estado              | Responsable |
-| --------------------------------------------------------------------- | ------------------- | ----------- |
-| Obtener API Key de Google Gemini (Google AI Studio)                   | ✅ Adelantado en S2 | P3          |
-| Instalar `google-generativeai` en el Back-End                         | ✅ Adelantado en S2 | P3          |
-| Implementar servicio de IA con streaming                              | ✅ Adelantado en S2 | P3          |
-| Integrar `StreamingResponse` de FastAPI para streaming al Front-End   | ✅ Adelantado en S2 | P2 + P3     |
-| Implementar lógica de umbral de confianza (>70% local, <70% fallback) | ✅ Adelantado en S2 | P3          |
-| Groq como fallback automático cuando Gemini da 429                    | ✅ Adelantado en S2 | P3          |
-| Reactivar autenticación Cognito JWT en endpoints de chat e ingesta    | ✅ Completo         | P2          |
-| Implementar ticket silencioso al admin cuando score < 0.3             | ⏳ Pendiente        | P3          |
-| Conectar el chat del Front-End con el endpoint real (SSE)             | ⏳ Pendiente        | P1          |
-| Renderizar respuesta con enlace cliqueable al documento fuente        | ⏳ Pendiente        | P1          |
+**Logros adicionales (Sprint 3 extendido — adelantaron Sprint 4):**
+- ✅ `ChatPanel.tsx` — streaming SSE real via `fetch` con JWT, chunks en tiempo real
+- ✅ Fuentes con links clicables y % de confianza al finalizar cada respuesta
+- ✅ `HistorialPanel.tsx` — últimas 20 consultas reales desde RDS
+- ✅ Gestión completa de usuarios (`/dashboard/usuarios`) — CRUD real con RDS
+- ✅ Derechos por usuario (`/dashboard/derechos`) — permisos por sección del menú, persistidos en RDS
+- ✅ Perfiles de acceso (`/dashboard/perfiles`) — roles + permisos, asignación a usuarios
+- ✅ Auto-registro en RDS al hacer login — sincronización automática de rol desde `cognito:groups`
+- ✅ Página de perfil (`/perfil`) — edición con datos reales de RDS, modo lectura/edición
+- ✅ Noticias (`/dashboard/noticias` + `/noticias`) — CRUD completo con imágenes, publicación/borrador
+- ✅ Tablas administrables (`/dashboard/tablas`) — instituciones, cargos, dependencias, categorías desde RDS
+- ✅ Desplegables dinámicos en perfil y usuarios — cargo, institución, dependencia desde tablas RDS
+- ✅ Sidebar dinámico — muestra/oculta opciones según permisos del usuario
+- ✅ 7 migraciones Alembic aplicadas en RDS
+- ✅ Tickets de vacío de información (`/dashboard/notificaciones`) — score < 0.3 crea ticket automático
+- ✅ Página `/documentacion` funcional — carga PDFs + listado con link al PDF
+- ✅ Página `/dashboard/documentacion` — admin puede eliminar documentos de Qdrant + RDS
+- ✅ Fuentes del chat con links directos al PDF original
 
-**Entregable:** Chat funcional con IA real. Responde con fuente oficial, hace fallback automático y notifica al admin cuando no sabe.
+**Entregable:** ✅ CUMPLIDO — Chat funcional con IA real, login Cognito, ingesta de documentos, gestión de usuarios y perfiles operativa.
 
 ---
 
-### SPRINT 4 — Semana 9-10 → hasta ~14 junio | Feedback, dashboard y administración
+### SPRINT 4 🟡 En progreso — Semana 9-10 | Feedback, dashboard y administración
 
-| Tarea                                                                     | Responsable |
-| ------------------------------------------------------------------------- | ----------- |
-| Implementar endpoint de feedback en FastAPI                               | P2          |
-| Conectar botón de feedback del Front-End con el endpoint real             | P1          |
-| Implementar endpoints del dashboard (hot topics, consultas por día)       | P2          |
-| Conectar gráficos del dashboard con datos reales de RDS                   | P1          |
-| Implementar CRUD real de usuarios desde el panel admin                    | P1 + P2     |
-| Implementar CRUD real de documentos desde el panel admin                  | P1 + P2     |
-| Implementar control de acceso por rol (admin vs operador) en el Front-End | P1          |
-| Workflow n8n de notificación al admin (WhatsApp o email)                  | P3          |
+| Tarea                                                                     | Estado      | Responsable |
+| ------------------------------------------------------------------------- | ----------- | ----------- |
+| Implementar endpoint de feedback en FastAPI                               | ⏳ Pendiente | P2          |
+| Conectar botón de feedback del Front-End con el endpoint real             | ⏳ Pendiente | P1          |
+| Implementar endpoints del dashboard (hot topics, consultas por día)       | ⏳ Pendiente | P2          |
+| Conectar gráficos del dashboard con datos reales de RDS                   | ⏳ Pendiente | P1          |
+| Implementar CRUD real de usuarios desde el panel admin                    | ✅ Completo  | P1 + P2     |
+| Implementar CRUD real de documentos desde el panel admin                  | ✅ Completo  | P1 + P2     |
+| Implementar control de acceso por rol (admin vs operador) en el Front-End | ✅ Completo  | P1          |
+| Workflow n8n de notificación al admin (WhatsApp o email)                  | ⏳ Pendiente | P3          |
 
 **Entregable:** Dashboard con datos reales. Admins pueden gestionar usuarios y documentos. Feedback operativo.
 
@@ -787,8 +842,8 @@ Vector Object
 | S0 | Semanas 1-2 | Entorno AWS funcionando, equipo alineado | ✅ 100% | Cerrado |
 | S1 | Semanas 3-4 | Login real con Cognito de punta a punta | ✅ 100% | Cerrado |
 | S2 | Semanas 5-6 | Ingesta de documentos y búsqueda RAG básica | ✅ 100% | Cerrado |
-| S3 | Semanas 7-8 | Chat con IA real (Gemini + fallback + tickets) | 🟡 80% (JWT ✅, ChatPanel pendiente P1) | **24 mayo — MVP** |
-| S4 | Semanas 9-10 | Dashboard real + feedback + administración | ⏳ | ~14 junio |
+| S3 | Semanas 7-8 | Chat con IA real (Gemini + fallback + tickets) | ✅ 100% | **24 mayo — MVP ✅ CUMPLIDO** |
+| S4 | Semanas 9-10 | Dashboard real + feedback + administración | 🟡 50% (CRUD admin ✅, feedback ⏳) | ~14 junio |
 | S5 | Semanas 11-12 | Producción en AWS con CI/CD | ⏳ | **28 junio — Entrega final** |
 
 > 🎯 **MVP (24 mayo):** Chat funcional con IA real + login Cognito + ingesta de documentos operativa.
@@ -844,5 +899,5 @@ Fallback automático a Groq llama-3.3-70b-versatile
 ---
 
 _INFODETS — Sistema de Gestión de Conocimiento Dinámico_
-_Plan de Desarrollo v2.2 — Equipo de 3 programadores_
-_MVP: 24 de mayo de 2025 | Entrega final: 28 de junio de 2025_
+_Plan de Desarrollo v3.1 — Equipo de 3 programadores_
+_MVP: 24 de mayo de 2025 ✅ CUMPLIDO | Entrega final: 28 de junio de 2025_

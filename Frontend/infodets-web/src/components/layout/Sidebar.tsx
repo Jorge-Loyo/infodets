@@ -7,36 +7,52 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useSidebar } from '@/hooks/ui/useSidebar'
 import { useSessionStore } from '@/store/sessionStore'
 import { ROUTES } from '@/lib/constants'
+import { useState, useEffect } from 'react'
+import { permisoService } from '@/services/api/permisoService'
 
 const MENU_ITEMS = [
-  { label: 'Home', icon: IconHome, href: ROUTES.CONSULTA, adminOnly: false },
-  { label: 'Perfil', icon: IconUser, href: '/perfil', adminOnly: false },
-  { label: 'Nueva documentación', icon: IconFilePlus, href: '/documentacion', adminOnly: false },
-  { label: 'Administrador', icon: IconShieldHalf, href: ROUTES.DASHBOARD, adminOnly: true },
-  { label: 'Noticias generales', icon: IconNews, href: '/noticias', adminOnly: false },
+  { label: 'Home', icon: IconHome, href: ROUTES.CONSULTA, adminOnly: false, key: 'consulta' },
+  { label: 'Perfil', icon: IconUser, href: '/perfil', adminOnly: false, key: 'perfil' },
+  { label: 'Nueva documentación', icon: IconFilePlus, href: '/documentacion', adminOnly: false, key: 'documentacion' },
+  { label: 'Administrador', icon: IconShieldHalf, href: ROUTES.DASHBOARD, adminOnly: true, key: 'dashboard' },
+  { label: 'Noticias generales', icon: IconNews, href: '/noticias', adminOnly: false, key: 'noticias' },
 ]
 
 export function Sidebar() {
   const { sidebarAbierto } = useSidebar()
-  const { isAdmin } = useSessionStore()
+  const { isAdmin, usuario } = useSessionStore()
   const pathname = usePathname()
   const router = useRouter()
+  const [montado, setMontado] = useState(false)
+  const [permisos, setPermisos] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    setMontado(true)
+    const cargarPermisos = () => {
+      const id = usuario?.rdsId
+      if (id) {
+        permisoService.obtener(id).then(setPermisos).catch(() => {})
+      }
+    }
+    cargarPermisos()
+    window.addEventListener('permisos-actualizados', cargarPermisos)
+    return () => window.removeEventListener('permisos-actualizados', cargarPermisos)
+  }, [usuario?.rdsId])
+
+  const esAdmin = montado && isAdmin()
+  const tienePermiso = (key: string) => !montado || permisos[key] !== false
 
   return (
     <AnimatePresence>
       {sidebarAbierto && (
         <Box
-          component={motion.div}
-          initial={{ width: 0, opacity: 0 }}
-          animate={{ width: 240, opacity: 1 }}
-          exit={{ width: 0, opacity: 0 }}
-          transition={{ duration: 0.25, ease: 'easeInOut' }}
           style={{
             borderRight: '1px solid var(--mantine-color-gray-2)',
             backgroundColor: 'var(--mantine-color-white)',
             height: '100%',
             overflow: 'hidden',
             flexShrink: 0,
+            width: 240,
           }}
         >
           <Stack gap={0} p="sm" style={{ minWidth: 240 }}>
@@ -44,7 +60,7 @@ export function Sidebar() {
               Menú
             </Text>
 
-            {MENU_ITEMS.filter(item => !item.adminOnly || isAdmin()).map((item) => (
+            {MENU_ITEMS.filter(item => (!item.adminOnly || esAdmin) && tienePermiso(item.key)).map((item) => (
               <NavLink
                 key={item.href}
                 label={item.label}
