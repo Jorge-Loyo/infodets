@@ -208,7 +208,12 @@ export function ChatPanel() {
                         {msg.fuentes.map((f, i) => (
                           <Group key={i} gap={4}>
                             <IconExternalLink size={12} opacity={0.5} />
-                            <Anchor href={f.url || '#'} target="_blank" size="xs" c="blue">
+                            <Anchor
+                              href={f.url ? (f.url.startsWith('http') ? f.url : `http://localhost:8000${f.url}`) : '#'}
+                              target="_blank"
+                              size="xs"
+                              c="blue"
+                            >
                               {f.nombre}{f.pagina ? ` (p. ${f.pagina})` : ''}
                             </Anchor>
                           </Group>

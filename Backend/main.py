@@ -28,6 +28,7 @@ app.add_middleware(
 app.include_router(api_router)
 
 os.makedirs("uploads/noticias", exist_ok=True)
+os.makedirs("uploads/documentos", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 

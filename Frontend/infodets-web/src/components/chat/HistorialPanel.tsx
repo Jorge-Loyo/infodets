@@ -1,6 +1,6 @@
 'use client'
 
-import { Box, Stack, Text, Paper, Skeleton } from '@mantine/core'
+import { Box, Stack, Text, Paper, Skeleton, Group } from '@mantine/core'
 import { IconClock } from '@tabler/icons-react'
 import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
