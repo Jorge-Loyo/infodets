@@ -6,9 +6,9 @@
 
 ---
 
-> **Versión:** 3.0
-> **Estado:** Sprint 3 ✅ CERRADO — MVP funcional | Sprint 4 en progreso
-> **Última actualización:** MVP completado — ChatPanel SSE operativo + gestión completa de usuarios, perfiles, derechos, noticias y tablas administrables
+> **Versión:** 3.1
+> **Estado:** Sprint 3 ✅ CERRADO — MVP funcional | Sprint 4 🟡 50% en progreso
+> **Última actualización:** Ticket silencioso al admin ✅ + documentación funcional + links PDF en fuentes
 > **MVP:** 24 de mayo de 2025
 > **Entrega final:** 28 de junio de 2025
 > **Basado en:** Propuesta técnica, documento maestro de arquitectura y documento técnico de Front-End
@@ -91,6 +91,41 @@ Botón de feedback al final de cada respuesta
 ---
 
 ## 4. ESTADO ACTUAL DEL PROYECTO
+
+> 🟢 **Sistema operativo al 29 de abril de 2026** — MVP completado, Sprint 4 en progreso
+
+### Funcionalidades operativas
+
+| Área | Estado | Detalle |
+| ---- | ------ | ------- |
+| Login Cognito | ✅ | OAuth via `/auth/callback`, grupos → rol |
+| Chat con IA | ✅ | SSE real, Gemini + fallback Groq, fuentes PDF |
+| Ingesta de documentos | ✅ | PDF → Qdrant + RDS, link al PDF original |
+| Historial de consultas | ✅ | Últimas 20 desde RDS en panel lateral |
+| Tickets de vacío | ✅ | Score < 0.3 → ticket en `/dashboard/notificaciones` |
+| Gestión de usuarios | ✅ | CRUD completo con perfil extendido |
+| Perfiles y derechos | ✅ | Roles + permisos por sección del menú |
+| Noticias | ✅ | CRUD con imágenes, publicación/borrador |
+| Tablas administrables | ✅ | Instituciones, cargos, dependencias, categorías |
+| Sidebar dinámico | ✅ | Muestra/oculta según permisos del usuario |
+| Feedback | ⏳ | Schema listo, endpoint pendiente de conectar |
+| Dashboard con datos reales | ⏳ | Hot topics y gráficos pendientes |
+| Despliegue en producción | ⏳ | Pendiente Sprint 5 |
+
+### Tablas en RDS (9 migraciones aplicadas)
+
+| Tabla | Propósito |
+| ----- | --------- |
+| `usuarios` | Usuarios con perfil completo + rol |
+| `documentos` | Documentos indexados en Qdrant |
+| `historial_chat` | Consultas realizadas |
+| `reportes_feedback` | Feedback de respuestas |
+| `permisos_usuario` | Permisos por sección del menú |
+| `perfiles` | Perfiles de acceso con roles |
+| `perfil_permisos` | Permisos por perfil |
+| `tabla_valores` | Valores de desplegables |
+| `noticias` | Publicaciones institucionales |
+| `tickets_vacios` | Consultas sin documentación oficial |
 
 ### Sprint 0 — Progreso: 9/9 tareas completadas ✅ SPRINT CERRADO
 
@@ -496,7 +531,7 @@ docker-compose -f docker-compose.dev.yml up --build
 | Conectar el chat del Front-End con el endpoint real (SSE)             | ✅       | P1 + P3     |
 | Renderizar respuesta con enlace cliqueable al documento fuente        | ✅       | P1          |
 | Historial de consultas en panel lateral                               | ✅       | P1 + P2     |
-| Implementar ticket silencioso al admin cuando score < 0.3             | ⏳       | P3          |
+| Implementar ticket silencioso al admin cuando score < 0.3             | ✅       | P3          |
 
 **Logros adicionales (Sprint 3 extendido — adelantaron Sprint 4):**
 - ✅ `ChatPanel.tsx` — streaming SSE real via `fetch` con JWT, chunks en tiempo real
@@ -512,6 +547,10 @@ docker-compose -f docker-compose.dev.yml up --build
 - ✅ Desplegables dinámicos en perfil y usuarios — cargo, institución, dependencia desde tablas RDS
 - ✅ Sidebar dinámico — muestra/oculta opciones según permisos del usuario
 - ✅ 7 migraciones Alembic aplicadas en RDS
+- ✅ Tickets de vacío de información (`/dashboard/notificaciones`) — score < 0.3 crea ticket automático
+- ✅ Página `/documentacion` funcional — carga PDFs + listado con link al PDF
+- ✅ Página `/dashboard/documentacion` — admin puede eliminar documentos de Qdrant + RDS
+- ✅ Fuentes del chat con links directos al PDF original
 
 **Entregable:** ✅ CUMPLIDO — Chat funcional con IA real, login Cognito, ingesta de documentos, gestión de usuarios y perfiles operativa.
 
@@ -860,5 +899,5 @@ Fallback automático a Groq llama-3.3-70b-versatile
 ---
 
 _INFODETS — Sistema de Gestión de Conocimiento Dinámico_
-_Plan de Desarrollo v3.0 — Equipo de 3 programadores_
+_Plan de Desarrollo v3.1 — Equipo de 3 programadores_
 _MVP: 24 de mayo de 2025 ✅ CUMPLIDO | Entrega final: 28 de junio de 2025_
