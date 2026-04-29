@@ -18,7 +18,6 @@ app.add_middleware(
         settings.frontend_url,
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        settings.cloudfront_url,
     ],
     allow_credentials=True,
     allow_methods=["*"],

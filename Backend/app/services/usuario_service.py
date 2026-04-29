@@ -46,10 +46,58 @@ def actualizar_usuario(db: Session, usuario_id: str, nombre: str | None = None, 
     return usuario
 
 
+def obtener_usuario_por_email(db: Session, email: str) -> Usuario | None:
+    return db.query(Usuario).filter(Usuario.email == email).first()
+
+
 def eliminar_usuario(db: Session, usuario_id: str) -> bool:
     usuario = obtener_usuario_por_id(db, usuario_id)
     if not usuario:
         return False
-    db.delete(usuario)
+    from sqlalchemy import text
+    import uuid as _uuid
+    uid = str(_uuid.UUID(usuario_id))
+    db.execute(text("DELETE FROM reportes_feedback WHERE historial_id IN (SELECT id FROM historial_chat WHERE usuario_id = :uid)"), {"uid": uid})
+    db.execute(text("DELETE FROM historial_chat WHERE usuario_id = :uid"), {"uid": uid})
+    db.execute(text("DELETE FROM permisos_usuario WHERE usuario_id = :uid"), {"uid": uid})
+    db.execute(text("UPDATE usuarios SET perfil_id = NULL WHERE id = :uid"), {"uid": uid})
+    db.execute(text("DELETE FROM usuarios WHERE id = :uid"), {"uid": uid})
     db.commit()
     return True
+
+
+def invitar_usuario(
+    db: Session,
+    email: str,
+    nombre: str | None = None,
+    apellido: str | None = None,
+    rol: str = "operador",
+    dni: str | None = None,
+    fecha_nacimiento: str | None = None,
+    cargo: str | None = None,
+    institucion: str | None = None,
+    dependencia: str | None = None,
+    perfil_id: str | None = None,
+) -> Usuario:
+    """Crea el usuario en RDS. cognito_sub queda vacío hasta que el usuario haga su primer login."""
+    if obtener_usuario_por_email(db, email):
+        raise ValueError(f"Ya existe un usuario con el email {email}")
+    rol_enum = RolEnum(rol) if rol in RolEnum._value2member_map_ else RolEnum.operador
+    usuario = Usuario(
+        id=str(uuid.uuid4()),
+        cognito_sub=f"pending_{email}",
+        email=email,
+        nombre=nombre,
+        apellido=apellido,
+        rol=rol_enum,
+        dni=dni,
+        fecha_nacimiento=fecha_nacimiento,
+        cargo=cargo,
+        institucion=institucion,
+        dependencia=dependencia,
+        perfil_id=perfil_id,
+    )
+    db.add(usuario)
+    db.commit()
+    db.refresh(usuario)
+    return usuario

@@ -46,17 +46,13 @@ export function Sidebar() {
     <AnimatePresence>
       {sidebarAbierto && (
         <Box
-          component={motion.div}
-          initial={{ width: 0, opacity: 0 }}
-          animate={{ width: 240, opacity: 1 }}
-          exit={{ width: 0, opacity: 0 }}
-          transition={{ duration: 0.25, ease: 'easeInOut' }}
           style={{
             borderRight: '1px solid var(--mantine-color-gray-2)',
             backgroundColor: 'var(--mantine-color-white)',
             height: '100%',
             overflow: 'hidden',
             flexShrink: 0,
+            width: 240,
           }}
         >
           <Stack gap={0} p="sm" style={{ minWidth: 240 }}>

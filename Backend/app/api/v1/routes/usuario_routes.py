@@ -1,19 +1,38 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+import httpx
 from app.core.database import get_db
+from app.core.settings import settings
 from app.schemas.auth_schema import UsuarioSchema, UsuarioActualizar
 from app.services import usuario_service
 from app.models.models import RolEnum
 from app.middleware.auth_middleware import require_admin, get_current_user
 from app.services import perfil_service as ps
+from pydantic import BaseModel, EmailStr
+from typing import Optional
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
+
+
+class UsuarioInvitar(BaseModel):
+    email: EmailStr
+    nombre: Optional[str] = None
+    apellido: Optional[str] = None
+    rol: str = "operador"
+    dni: Optional[str] = None
+    fecha_nacimiento: Optional[str] = None
+    cargo: Optional[str] = None
+    institucion: Optional[str] = None
+    dependencia: Optional[str] = None
+    perfil_id: Optional[str] = None
 
 
 @router.get("/me", response_model=UsuarioSchema)
 def obtener_mi_perfil(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    cognito_sub = current_user.get("_cognito_sub") or current_user.get("sub")
-    usuario = usuario_service.obtener_usuario_por_cognito_sub(db, cognito_sub)
+    usuario_id = current_user.get("sub")
+    usuario = usuario_service.obtener_usuario_por_id(db, usuario_id)
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return usuario
@@ -21,8 +40,8 @@ def obtener_mi_perfil(db: Session = Depends(get_db), current_user: dict = Depend
 
 @router.put("/me", response_model=UsuarioSchema)
 def actualizar_mi_perfil(datos: UsuarioActualizar, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    cognito_sub = current_user.get("_cognito_sub") or current_user.get("sub")
-    usuario = usuario_service.obtener_usuario_por_cognito_sub(db, cognito_sub)
+    usuario_id = current_user.get("sub")
+    usuario = usuario_service.obtener_usuario_por_id(db, usuario_id)
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     actualizado = usuario_service.actualizar_usuario(
@@ -80,3 +99,43 @@ def eliminar_usuario(usuario_id: str, db: Session = Depends(get_db), current_use
     eliminado = usuario_service.eliminar_usuario(db, usuario_id)
     if not eliminado:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+
+@router.post("/invitar", response_model=UsuarioSchema, status_code=201)
+async def invitar_usuario(datos: UsuarioInvitar, db: Session = Depends(get_db), current_user: dict = Depends(require_admin)):
+    try:
+        usuario = usuario_service.invitar_usuario(
+            db,
+            email=datos.email,
+            nombre=datos.nombre,
+            apellido=datos.apellido,
+            rol=datos.rol,
+            dni=datos.dni,
+            fecha_nacimiento=datos.fecha_nacimiento,
+            cargo=datos.cargo,
+            institucion=datos.institucion,
+            dependencia=datos.dependencia,
+            perfil_id=datos.perfil_id,
+        )
+        if datos.perfil_id:
+            ps.asignar_perfil_a_usuario(db, str(usuario.id), datos.perfil_id)
+
+        # Notificar via n8n para enviar email de bienvenida
+        login_url = f"{settings.frontend_url}"
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                await client.post(
+                    f"{settings.n8n_url}/webhook/invitar-usuario",
+                    json={
+                        "email": datos.email,
+                        "nombre": datos.nombre or datos.email,
+                        "login_url": login_url,
+                        "rol": datos.rol,
+                    },
+                )
+        except Exception as e:
+            logger.warning(f"[INVITAR] n8n no disponible, email no enviado: {e}")
+
+        return usuario
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

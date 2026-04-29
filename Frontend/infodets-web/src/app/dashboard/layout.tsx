@@ -1,6 +1,6 @@
 'use client'
 
-import { Box, NavLink, Stack, Text, ThemeIcon, Divider, Paper } from '@mantine/core'
+import { Box, NavLink, Stack, Text, ThemeIcon, Divider } from '@mantine/core'
 import {
   IconUsers, IconShieldCheck, IconIdBadge,
   IconBellRinging, IconBell, IconFiles, IconNews, IconTable,
@@ -38,12 +38,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <Box style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar />
 
-        {/* Menú lateral administrativo */}
         <Box
-          component={motion.div}
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3 }}
           style={{
             width: 260,
             flexShrink: 0,
@@ -57,9 +52,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Text size="xs" fw={600} c="dimmed" px="sm" py="xs" tt="uppercase">
               Panel Administrativo
             </Text>
-
             <Divider mb="xs" />
-
             {ADMIN_MENU.map((item, i) => (
               <motion.div
                 key={item.href}
@@ -88,11 +81,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </Stack>
         </Box>
 
-        {/* Contenido de cada sección */}
         <Box style={{ flex: 1, overflowY: 'auto', backgroundColor: 'var(--mantine-color-gray-0)' }}>
           {children}
         </Box>
-
       </Box>
 
       <Footer />

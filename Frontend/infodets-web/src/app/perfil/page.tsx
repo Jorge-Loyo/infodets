@@ -38,16 +38,18 @@ export default function PerfilPage() {
   const [valoresOriginales, setValoresOriginales] = useState<PerfilForm | null>(null)
   const [guardando, setGuardando] = useState(false)
 
+  const fromStore = (): PerfilForm => ({
+    nombre: usuario?.nombre ?? '',
+    apellido: usuario?.apellido ?? '',
+    dni: usuario?.dni ?? '',
+    cargo: usuario?.cargo ?? '',
+    institucion: usuario?.institucion ?? '',
+    dependencia: usuario?.dependencia ?? '',
+    fecha_nacimiento: usuario?.fecha_nacimiento ?? '',
+  })
+
   const form = useForm<PerfilForm>({
-    initialValues: {
-      nombre: '',
-      apellido: '',
-      dni: '',
-      cargo: '',
-      institucion: '',
-      dependencia: '',
-      fecha_nacimiento: '',
-    },
+    initialValues: fromStore(),
   })
 
   const opcionesInstituciones = useTablaOpciones('instituciones')
@@ -55,6 +57,9 @@ export default function PerfilPage() {
   const opcionesDependencias = useTablaOpciones('dependencias')
 
   useEffect(() => {
+    const inicial = fromStore()
+    form.setValues(inicial)
+    setValoresOriginales(inicial)
     usuarioService.cargarPerfil().then((data) => {
       const valores = {
         nombre: data.nombre ?? '',
@@ -67,6 +72,7 @@ export default function PerfilPage() {
       }
       form.setValues(valores)
       setValoresOriginales(valores)
+      updatePerfil(valores)
     }).catch(() => {})
   }, [])
 
