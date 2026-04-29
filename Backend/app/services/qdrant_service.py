@@ -1,5 +1,5 @@
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams, PointStruct
+from qdrant_client.models import Distance, VectorParams, PointStruct, Filter, FieldCondition, MatchValue
 from app.core.settings import settings
 
 client = QdrantClient(url=settings.qdrant_url)
@@ -29,6 +29,7 @@ def search(vector: list[float], limit: int = 5) -> list[dict]:
             "text": r.payload.get("text", ""),
             "document_id": r.payload.get("document_id", ""),
             "source_url": r.payload.get("source_url", ""),
+            "titulo": r.payload.get("titulo", ""),
             "page_number": r.payload.get("page_number", 0),
             "score": r.score,
         }
@@ -40,8 +41,17 @@ def upsert(points: list[PointStruct]):
     """Inserta o actualiza vectores en la colección."""
     if not points:
         return
-    # Procesar en lotes de 100 para evitar requests muy grandes
     batch_size = 100
     for i in range(0, len(points), batch_size):
         batch = points[i:i + batch_size]
         client.upsert(collection_name=COLLECTION, points=batch)
+
+
+def eliminar_por_documento(document_id: str) -> None:
+    """Elimina todos los vectores de un documento de Qdrant."""
+    client.delete(
+        collection_name=COLLECTION,
+        points_selector=Filter(
+            must=[FieldCondition(key="document_id", match=MatchValue(value=document_id))]
+        ),
+    )

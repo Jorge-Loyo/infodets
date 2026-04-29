@@ -80,6 +80,17 @@ class HistorialChat(Base):
     feedback: Mapped[list["ReporteFeedback"]] = relationship(back_populates="historial")
 
 
+class TicketVacio(Base):
+    __tablename__ = "tickets_vacios"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    pregunta: Mapped[str] = mapped_column(Text, nullable=False)
+    usuario_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    puntaje_confianza: Mapped[float] = mapped_column(Float, default=0.0)
+    estado: Mapped[str] = mapped_column(String, default="pendiente")  # pendiente | revisado
+    creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class Noticia(Base):
     __tablename__ = "noticias"
 
