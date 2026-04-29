@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from app.core.database import get_db
 from app.services import permiso_service, usuario_service
-from app.middleware.auth_middleware import require_admin
+from app.middleware.auth_middleware import require_admin, get_current_user
 
 router = APIRouter(prefix="/permisos", tags=["Permisos"])
 
@@ -13,7 +13,13 @@ class PermisosActualizar(BaseModel):
 
 
 @router.get("/{usuario_id}", response_model=dict[str, bool])
-def obtener_permisos(usuario_id: str, db: Session = Depends(get_db), current_user: dict = Depends(require_admin)):
+def obtener_permisos(usuario_id: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    # Permite admin o el propio usuario
+    es_admin = current_user.get("_rol") == "admin"
+    usuario_rds = usuario_service.obtener_usuario_por_cognito_sub(db, current_user.get("_cognito_sub", ""))
+    es_propio = usuario_rds and str(usuario_rds.id) == usuario_id
+    if not es_admin and not es_propio:
+        raise HTTPException(status_code=403, detail="Sin acceso")
     usuario = usuario_service.obtener_usuario_por_id(db, usuario_id)
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")

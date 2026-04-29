@@ -1,13 +1,37 @@
 'use client'
 
-import { Container, Title, Text, Button, Paper, Stack } from '@mantine/core'
-import { IconLogin, IconUserOff } from '@tabler/icons-react'
+import { useState } from 'react'
+import { Container, Title, Text, Button, Paper, Stack, TextInput, PasswordInput, Alert } from '@mantine/core'
+import { IconLogin, IconUserOff, IconAlertCircle } from '@tabler/icons-react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { ROUTES } from '@/lib/constants'
+import { useSessionStore } from '@/store/sessionStore'
+import axiosInstance from '@/lib/axiosInstance'
 
 export default function Home() {
   const router = useRouter()
+  const { setSession } = useSessionStore()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    try {
+      const { data } = await axiosInstance.post('/auth/login', { email, password })
+      setSession(data.usuario, data.access_token)
+      router.replace(ROUTES.CONSULTA)
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setError(msg || 'Error al iniciar sesión')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <Container size="xs" py={80}>
@@ -21,28 +45,35 @@ export default function Home() {
           <Text c="dimmed" mb="xl" size="sm" ta="center">
             Sistema de Gestión de Conocimiento Dinámico
           </Text>
-
-          <Text fw={500} mb="md" ta="center">
-            ¿Tiene una cuenta registrada?
-          </Text>
-
-          <Stack>
-            <Button
-              fullWidth
-              onClick={() => router.push(ROUTES.LOGIN)}
-              leftSection={<IconLogin size={18} />}
-            >
-              Sí, iniciar sesión
-            </Button>
-            <Button
-              fullWidth
-              variant="light"
-              onClick={() => router.push(ROUTES.INVITADO)}
-              leftSection={<IconUserOff size={18} />}
-            >
-              No, continuar como invitado
-            </Button>
-          </Stack>
+          <form onSubmit={handleLogin}>
+            <Stack>
+              {error && (
+                <Alert icon={<IconAlertCircle size={16} />} color="red" variant="light">
+                  {error}
+                </Alert>
+              )}
+              <TextInput
+                label="Email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoFocus
+              />
+              <PasswordInput
+                label="Contraseña"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <Button type="submit" fullWidth loading={loading} leftSection={<IconLogin size={18} />}>
+                Iniciar sesión
+              </Button>
+              <Button fullWidth variant="light" onClick={() => router.push(ROUTES.INVITADO)} leftSection={<IconUserOff size={18} />}>
+                Continuar como invitado
+              </Button>
+            </Stack>
+          </form>
         </Paper>
       </motion.div>
     </Container>
