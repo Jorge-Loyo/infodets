@@ -34,6 +34,12 @@ class Settings(BaseSettings):
     qdrant_url: str = "http://172.31.40.141:6333"
     qdrant_collection: str = "infodets_docs"
 
+    # Loop de retroalimentacion - URLs oficiales predefinidas (separadas por coma)
+    urls_oficiales: str = ""
+    # API de busqueda web (ej: Serper, Tavily, etc.)
+    search_api_key: str = ""
+    search_api_url: str = ""
+
     class Config:
         env_file = ".env"
         extra = "ignore"

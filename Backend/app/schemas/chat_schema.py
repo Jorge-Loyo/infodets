@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from typing import Optional
 
 
@@ -7,6 +7,14 @@ class ChatRequest(BaseModel):
     usuario_id: str
     institucion: Optional[str] = None
     dependencia: Optional[str] = None
+
+
+class ChatInvitadoRequest(BaseModel):
+    nombre: str
+    apellido: str
+    email: EmailStr
+    institucion: Optional[str] = None
+    mensaje: str
 
 
 class FuenteDocumento(BaseModel):

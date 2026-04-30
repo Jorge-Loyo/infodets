@@ -293,9 +293,23 @@ el componente de chat. Las opciones son:
 ### 7.1 Módulo de Autenticación
 
 - Página de login con formulario Mantine
-- Integración con AWS Cognito via Amplify
-- Middleware de Next.js para protección de rutas
+- Login propio con email y contraseña via `POST /auth/login` (JWT HS256)
+- Sin redirección OAuth — flujo directo sin callbacks
 - Control de acceso por rol: `admin` y `operador`
+
+#### Política de contraseña (Cognito User Pool)
+
+| Regla | Valor |
+|---|---|
+| Longitud mínima | 8 caracteres |
+| Mayúsculas | Al menos 1 |
+| Minúsculas | Al menos 1 |
+| Números | Al menos 1 |
+| Símbolos | Al menos 1 (`!@#$%^&*()_+-=[]{};\':\"\\|,.<>/?`) |
+
+Ejemplo válido: `Infodets2024!`
+
+El botón de login permanece **deshabilitado** hasta que el email tenga formato válido y la contraseña cumpla todos los requisitos. La validación se realiza en el frontend antes de enviar la solicitud al backend.
 
 ---
 

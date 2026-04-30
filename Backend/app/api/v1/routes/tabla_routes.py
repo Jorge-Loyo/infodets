@@ -34,12 +34,12 @@ class ValorActualizar(BaseModel):
 
 
 @router.get("/disponibles", response_model=list[str])
-def listar_tablas(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+def listar_tablas(db: Session = Depends(get_db)):
     return tabla_service.listar_tablas_disponibles(db)
 
 
 @router.get("/{tabla_id}", response_model=list[TablaValorSchema])
-def listar_valores(tabla_id: str, solo_activos: bool = False, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+def listar_valores(tabla_id: str, solo_activos: bool = False, db: Session = Depends(get_db)):
     items = tabla_service.listar_por_tabla(db, tabla_id, solo_activos)
     return [TablaValorSchema.from_orm_safe(i) for i in items]
 
