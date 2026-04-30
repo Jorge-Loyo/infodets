@@ -5,6 +5,7 @@ from typing import Optional
 class ChatRequest(BaseModel):
     mensaje: str
     usuario_id: str
+    conversacion_id: Optional[str] = None
     institucion: Optional[str] = None
     dependencia: Optional[str] = None
 

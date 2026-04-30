@@ -11,6 +11,7 @@ import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { noticiaService, type Noticia } from '@/services/api/noticiaService'
+import { useUiStore } from '@/store/uiStore'
 
 const CATEGORIA_COLOR: Record<string, string> = {
   Institucional: 'blue', Normativa: 'violet', RRHH: 'teal', Tecnología: 'green', Finanzas: 'orange',
@@ -23,9 +24,11 @@ export default function NoticiasPage() {
   const [cargando, setCargando] = useState(true)
   const [likeados, setLikeados] = useState<Set<string>>(new Set())
   const [guardados, setGuardados] = useState<Set<string>>(new Set())
+  const { marcarNoticiasVistas } = useUiStore()
 
   useEffect(() => {
     noticiaService.listar(true).then(setNoticias).catch(() => {}).finally(() => setCargando(false))
+    marcarNoticiasVistas()
   }, [])
 
   const toggleLike = async (n: Noticia) => {

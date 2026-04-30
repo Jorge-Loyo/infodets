@@ -1,18 +1,48 @@
 'use client'
 
-import { Group, Text, Avatar, ActionIcon, Burger, Box } from '@mantine/core'
-import { IconLogout, IconUser } from '@tabler/icons-react'
+import { Group, Text, Avatar, ActionIcon, Burger, Box, Indicator, Tooltip, Badge } from '@mantine/core'
+import { IconLogout, IconUser, IconMessageCircle, IconBell } from '@tabler/icons-react'
 import { useAuth } from '@/hooks/auth/useAuth'
 import { useSidebar } from '@/hooks/ui/useSidebar'
 import { APP_NAME } from '@/lib/constants'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import axiosInstance from '@/lib/axiosInstance'
+import { useSessionStore } from '@/store/sessionStore'
+import { useUiStore } from '@/store/uiStore'
 
 export function Header() {
   const { usuario, logout } = useAuth()
   const { toggleSidebar } = useSidebar()
+  const { isAuthenticated } = useSessionStore()
   const [mounted, setMounted] = useState(false)
+  const { noLeidos, setNoLeidos, noticiasNoLeidas, setNoticiasNoLeidas, ultimaVisitaNoticias } = useUiStore()
+  const router = useRouter()
 
   useEffect(() => { setMounted(true) }, [])
+
+  useEffect(() => {
+    if (!isAuthenticated()) return
+    const fetchNoLeidos = () => {
+      axiosInstance.get<{ count: number }>('/tickets/usuario/no-leidos')
+        .then(res => setNoLeidos(res.data.count))
+        .catch(() => {})
+    }
+    fetchNoLeidos()
+    const interval = setInterval(fetchNoLeidos, 30000)
+    return () => clearInterval(interval)
+  }, [isAuthenticated])
+
+  useEffect(() => {
+    const fetchNoticias = () => {
+      axiosInstance.get<{ count: number }>(`/noticias/nuevas/count?desde=${encodeURIComponent(ultimaVisitaNoticias)}`)
+        .then(res => setNoticiasNoLeidas(res.data.count))
+        .catch(() => {})
+    }
+    fetchNoticias()
+    const interval = setInterval(fetchNoticias, 60000)
+    return () => clearInterval(interval)
+  }, [ultimaVisitaNoticias])
 
   return (
     <Box
@@ -35,6 +65,24 @@ export function Header() {
       </Group>
 
       <Group gap="sm">
+        {mounted && (
+          <Tooltip label={noLeidos > 0 ? `${noLeidos} respuesta${noLeidos > 1 ? 's' : ''} nueva${noLeidos > 1 ? 's' : ''}` : 'Mis consultas'} withArrow>
+            <Indicator disabled={noLeidos === 0} label={noLeidos} size={16} color="red" processing={noLeidos > 0}>
+              <ActionIcon variant="light" color="blue" radius="xl" onClick={() => router.push('/mis-consultas')}>
+                <IconMessageCircle size={16} />
+              </ActionIcon>
+            </Indicator>
+          </Tooltip>
+        )}
+        {mounted && (
+          <Tooltip label={noticiasNoLeidas > 0 ? `${noticiasNoLeidas} noticia${noticiasNoLeidas > 1 ? 's' : ''} nueva${noticiasNoLeidas > 1 ? 's' : ''}` : 'Noticias'} withArrow>
+            <Indicator disabled={noticiasNoLeidas === 0} label={noticiasNoLeidas} size={16} color="orange" processing={noticiasNoLeidas > 0}>
+              <ActionIcon variant="light" color="orange" radius="xl" onClick={() => router.push('/noticias')}>
+                <IconBell size={16} />
+              </ActionIcon>
+            </Indicator>
+          </Tooltip>
+        )}
         <Avatar radius="xl" size="sm" color="blue">
           <IconUser size={14} />
         </Avatar>
