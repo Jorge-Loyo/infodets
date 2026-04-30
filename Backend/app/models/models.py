@@ -63,11 +63,24 @@ class Documento(Base):
     subidor: Mapped["Usuario | None"] = relationship(back_populates="documentos")
 
 
+class Conversacion(Base):
+    __tablename__ = "conversaciones"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    usuario_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=False)
+    titulo: Mapped[str] = mapped_column(String, nullable=False)
+    fijada: Mapped[bool] = mapped_column(Boolean, default=False)
+    creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    mensajes: Mapped[list["HistorialChat"]] = relationship(back_populates="conversacion", cascade="all, delete-orphan")
+
+
 class HistorialChat(Base):
     __tablename__ = "historial_chat"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     usuario_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("usuarios.id"))
+    conversacion_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("conversaciones.id", ondelete="CASCADE"), nullable=True)
     documento_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("documentos.id"), nullable=True)
     pregunta: Mapped[str] = mapped_column(Text, nullable=False)
     respuesta: Mapped[str] = mapped_column(Text, nullable=False)
@@ -76,6 +89,7 @@ class HistorialChat(Base):
     creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     usuario: Mapped["Usuario"] = relationship(back_populates="historial_chat")
+    conversacion: Mapped["Conversacion | None"] = relationship(back_populates="mensajes")
     documento: Mapped["Documento | None"] = relationship()
     feedback: Mapped[list["ReporteFeedback"]] = relationship(back_populates="historial")
 
@@ -87,8 +101,27 @@ class TicketVacio(Base):
     pregunta: Mapped[str] = mapped_column(Text, nullable=False)
     usuario_id: Mapped[str | None] = mapped_column(String, nullable=True)
     puntaje_confianza: Mapped[float] = mapped_column(Float, default=0.0)
-    estado: Mapped[str] = mapped_column(String, default="pendiente")  # pendiente | revisado
+    nivel: Mapped[int] = mapped_column(Integer, default=0)
+    requiere_respuesta: Mapped[bool] = mapped_column(Boolean, default=False)
+    mensajes_no_leidos: Mapped[int] = mapped_column(Integer, default=0)
+    estado: Mapped[str] = mapped_column(String, default="pendiente")  # pendiente | revisado | respondido
     creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    mensajes: Mapped[list["MensajeTicket"]] = relationship(back_populates="ticket", cascade="all, delete-orphan")
+
+
+class MensajeTicket(Base):
+    __tablename__ = "mensajes_ticket"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    ticket_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tickets_vacios.id", ondelete="CASCADE"), nullable=False)
+    autor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    rol: Mapped[str] = mapped_column(String, nullable=False)  # admin | usuario
+    texto: Mapped[str] = mapped_column(Text, nullable=False)
+    leido: Mapped[bool] = mapped_column(Boolean, default=False)
+    creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    ticket: Mapped["TicketVacio"] = relationship(back_populates="mensajes")
 
 
 class Noticia(Base):
