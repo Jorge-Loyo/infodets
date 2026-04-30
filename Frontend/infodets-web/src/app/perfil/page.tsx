@@ -4,6 +4,7 @@ import {
   Box, Grid, TextInput, Button, Avatar, Text,
   Stack, Paper, Group, Badge, Divider, Title, Select,
 } from '@mantine/core'
+import { DatePickerInput } from '@mantine/dates'
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
 import {
@@ -31,6 +32,26 @@ interface PerfilForm {
   fecha_nacimiento: string
 }
 
+// Convierte string DD/MM/AAAA o AAAA-MM-DD a Date
+function strToDate(val: string): Date | null {
+  if (!val) return null
+  // formato DD/MM/AAAA
+  const dmy = val.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+  if (dmy) return new Date(+dmy[3], +dmy[2] - 1, +dmy[1])
+  // formato AAAA-MM-DD
+  const ymd = val.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (ymd) return new Date(+ymd[1], +ymd[2] - 1, +ymd[3])
+  return null
+}
+
+// Convierte Date a string DD/MM/AAAA
+function dateToStr(d: Date | null): string {
+  if (!d) return ''
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  return `${dd}/${mm}/${d.getFullYear()}`
+}
+
 export default function PerfilPage() {
   const { usuario } = useAuth()
   const { updatePerfil } = useSessionStore()
@@ -38,16 +59,18 @@ export default function PerfilPage() {
   const [valoresOriginales, setValoresOriginales] = useState<PerfilForm | null>(null)
   const [guardando, setGuardando] = useState(false)
 
+  const fromStore = (): PerfilForm => ({
+    nombre: usuario?.nombre ?? '',
+    apellido: usuario?.apellido ?? '',
+    dni: usuario?.dni ?? '',
+    cargo: usuario?.cargo ?? '',
+    institucion: usuario?.institucion ?? '',
+    dependencia: usuario?.dependencia ?? '',
+    fecha_nacimiento: usuario?.fecha_nacimiento ?? '',
+  })
+
   const form = useForm<PerfilForm>({
-    initialValues: {
-      nombre: '',
-      apellido: '',
-      dni: '',
-      cargo: '',
-      institucion: '',
-      dependencia: '',
-      fecha_nacimiento: '',
-    },
+    initialValues: fromStore(),
   })
 
   const opcionesInstituciones = useTablaOpciones('instituciones')
@@ -55,6 +78,9 @@ export default function PerfilPage() {
   const opcionesDependencias = useTablaOpciones('dependencias')
 
   useEffect(() => {
+    const inicial = fromStore()
+    form.setValues(inicial)
+    setValoresOriginales(inicial)
     usuarioService.cargarPerfil().then((data) => {
       const valores = {
         nombre: data.nombre ?? '',
@@ -67,6 +93,7 @@ export default function PerfilPage() {
       }
       form.setValues(valores)
       setValoresOriginales(valores)
+      updatePerfil(valores)
     }).catch(() => {})
   }, [])
 
@@ -190,7 +217,19 @@ export default function PerfilPage() {
                           <TextInput label="DNI" placeholder="Número de documento" leftSection={<IconId size={16} />} {...inputProps('dni')} />
                         </Grid.Col>
                         <Grid.Col span={{ base: 12, sm: 6 }}>
-                          <TextInput label="Fecha de nacimiento" placeholder="DD/MM/AAAA" leftSection={<IconCalendar size={16} />} {...inputProps('fecha_nacimiento')} />
+                          <DatePickerInput
+                            label="Fecha de nacimiento"
+                            placeholder="DD/MM/AAAA"
+                            leftSection={<IconCalendar size={16} />}
+                            valueFormat="DD/MM/YYYY"
+                            value={strToDate(form.values.fecha_nacimiento)}
+                            onChange={(d) => form.setFieldValue('fecha_nacimiento', dateToStr(d))}
+                            readOnly={!editando}
+                            styles={!editando ? { input: { backgroundColor: 'var(--mantine-color-gray-0)', cursor: 'default' } } : {}}
+                            maxDate={new Date()}
+                            radius="md"
+                            clearable
+                          />
                         </Grid.Col>
                       </Grid>
 

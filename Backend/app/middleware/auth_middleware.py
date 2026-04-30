@@ -2,9 +2,10 @@ import logging
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from app.services.auth_service import get_cognito_public_keys, verify_token, get_user_info
-from app.services.usuario_service import obtener_usuario_por_cognito_sub, crear_usuario, actualizar_usuario
-from app.models.models import RolEnum
+from jose import jwt, JWTError
+from app.core.settings import settings
+from app.services.usuario_service import obtener_usuario_por_id
+from app.services.permiso_service import tiene_permiso
 from app.core.database import get_db
 
 logger = logging.getLogger(__name__)
@@ -17,61 +18,55 @@ async def get_current_user(
 ) -> dict:
     token = credentials.credentials
     try:
-        public_keys = await get_cognito_public_keys()
-        payload = verify_token(token, public_keys)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+        payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
+    except JWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
 
-    # Usar valores por defecto explícitos para evitar KeyError
-    cognito_sub: str = payload.get("sub", "") or payload.get("username", "")
-    grupos: list = payload.get("cognito:groups", [])
-    rol: str = "admin" if "admin" in grupos else "operador"
+    usuario_id = payload.get("sub")
+    if not usuario_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
 
-    # Auto-registro y sincronización en RDS
-    if cognito_sub and db:
-        try:
-            usuario = obtener_usuario_por_cognito_sub(db, cognito_sub)
-            if not usuario:
-                # Obtener email desde Cognito userInfo
-                email = cognito_sub
-                nombre = None
-                try:
-                    user_info = await get_user_info(token)
-                    email = user_info.get("email", cognito_sub) or cognito_sub
-                    nombre = user_info.get("name", None)
-                except (ValueError, RuntimeError, ConnectionError) as info_err:
-                    logger.warning(f"[AUTH] No se pudo obtener userInfo: {info_err}")
-                usuario = crear_usuario(db, cognito_sub=cognito_sub, email=email, nombre=nombre)
+    usuario = obtener_usuario_por_id(db, usuario_id)
+    if not usuario:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no encontrado")
 
-            # Sincronizar rol en RDS si cambió
-            rol_enum = RolEnum.admin if rol == "admin" else RolEnum.operador
-            if usuario.rol != rol_enum:
-                actualizar_usuario(db, str(usuario.id), rol=rol_enum)
-
-        except (ValueError, RuntimeError, AttributeError) as db_err:
-            logger.warning(f"[AUTH] No se pudo sincronizar usuario en RDS: {db_err}")
-
-    payload["_rol"] = rol
-    payload["_cognito_sub"] = cognito_sub
+    payload["_usuario_id"] = str(usuario.id)
+    payload["_perfil_id"] = str(usuario.perfil_id) if usuario.perfil_id else None
+    # Mantener _rol por compatibilidad temporal
+    payload["_rol"] = usuario.rol.value if hasattr(usuario.rol, 'value') else str(usuario.rol)
+    payload["_cognito_sub"] = usuario.cognito_sub
     return payload
 
 
-async def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
-    if current_user.get("_rol", "") != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Acceso restringido a administradores",
-        )
+def require_permiso(seccion: str):
+    """Dependency que verifica si el usuario tiene un permiso específico."""
+    async def _check(
+        current_user: dict = Depends(get_current_user),
+        db: Session = Depends(get_db),
+    ) -> dict:
+        usuario_id = current_user.get("_usuario_id")
+        if not usuario_id:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sin identificación")
+        if not tiene_permiso(db, usuario_id, seccion):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"No tenés permiso para: {seccion}",
+            )
+        return current_user
+    return _check
+
+
+# Alias para compatibilidad — usa permiso 'gestionar_usuarios'
+async def require_admin(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
+    usuario_id = current_user.get("_usuario_id")
+    if not usuario_id or not tiene_permiso(db, usuario_id, "gestionar_usuarios"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acceso restringido")
     return current_user
 
 
 def require_rol(*roles: str):
-    """Factory que retorna un dependency para verificar roles específicos."""
     async def _check(current_user: dict = Depends(get_current_user)) -> dict:
         if current_user.get("_rol", "") not in roles:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Acceso restringido a: {', '.join(roles)}",
-            )
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Acceso restringido a: {', '.join(roles)}")
         return current_user
     return _check

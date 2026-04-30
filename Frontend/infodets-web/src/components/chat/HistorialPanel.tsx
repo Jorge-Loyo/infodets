@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import axiosInstance from '@/lib/axiosInstance'
 import { useSessionStore } from '@/store/sessionStore'
+import { useUiStore } from '@/store/uiStore'
 
 interface HistorialItem {
   id: string
@@ -17,14 +18,15 @@ export function HistorialPanel() {
   const [historial, setHistorial] = useState<HistorialItem[]>([])
   const [cargando, setCargando] = useState(true)
   const { usuario } = useSessionStore()
+  const { consultasCount } = useUiStore()
 
   useEffect(() => {
-    if (!usuario?.rdsId) { setCargando(false); return }
-    axiosInstance.get<HistorialItem[]>(`/chat/historial/usuario/${usuario.rdsId}`)
+    if (!usuario?.rdsId && !usuario?.id) { setCargando(false); return }
+    axiosInstance.get<HistorialItem[]>(`/chat/historial/usuario/${usuario.rdsId ?? usuario.id}`)
       .then((res) => setHistorial(res.data))
       .catch(() => {})
       .finally(() => setCargando(false))
-  }, [usuario?.rdsId])
+  }, [usuario?.rdsId, consultasCount])
 
   return (
     <Box

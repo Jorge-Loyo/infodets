@@ -4,9 +4,11 @@ from pydantic import BaseModel
 from typing import Optional
 from app.core.database import get_db
 from app.services import tabla_service
-from app.middleware.auth_middleware import require_admin, get_current_user
+from app.middleware.auth_middleware import require_permiso, get_current_user
 
 router = APIRouter(prefix="/tablas", tags=["Tablas"])
+
+TABLAS_PUBLICAS = {"instituciones", "dependencias", "cargos"}
 
 
 class TablaValorSchema(BaseModel):
@@ -34,24 +36,26 @@ class ValorActualizar(BaseModel):
 
 
 @router.get("/disponibles", response_model=list[str])
-def listar_tablas(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+def listar_tablas(db: Session = Depends(get_db), current_user: dict = Depends(require_permiso("gestionar_tablas"))):
     return tabla_service.listar_tablas_disponibles(db)
 
 
 @router.get("/{tabla_id}", response_model=list[TablaValorSchema])
-def listar_valores(tabla_id: str, solo_activos: bool = False, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+def listar_valores(tabla_id: str, solo_activos: bool = False, db: Session = Depends(get_db)):
+    if tabla_id not in TABLAS_PUBLICAS:
+        raise HTTPException(status_code=403, detail="Acceso no autorizado a esta tabla")
     items = tabla_service.listar_por_tabla(db, tabla_id, solo_activos)
     return [TablaValorSchema.from_orm_safe(i) for i in items]
 
 
 @router.post("/{tabla_id}", response_model=TablaValorSchema, status_code=201)
-def crear_valor(tabla_id: str, body: ValorCrear, db: Session = Depends(get_db), current_user: dict = Depends(require_admin)):
+def crear_valor(tabla_id: str, body: ValorCrear, db: Session = Depends(get_db), current_user: dict = Depends(require_permiso("gestionar_tablas"))):
     item = tabla_service.crear_valor(db, tabla_id, body.valor)
     return TablaValorSchema.from_orm_safe(item)
 
 
 @router.put("/{tabla_id}/{item_id}", response_model=TablaValorSchema)
-def actualizar_valor(tabla_id: str, item_id: str, body: ValorActualizar, db: Session = Depends(get_db), current_user: dict = Depends(require_admin)):
+def actualizar_valor(tabla_id: str, item_id: str, body: ValorActualizar, db: Session = Depends(get_db), current_user: dict = Depends(require_permiso("gestionar_tablas"))):
     item = tabla_service.actualizar_valor(db, item_id, body.valor, body.activo)
     if not item:
         raise HTTPException(status_code=404, detail="Valor no encontrado")
@@ -59,6 +63,6 @@ def actualizar_valor(tabla_id: str, item_id: str, body: ValorActualizar, db: Ses
 
 
 @router.delete("/{tabla_id}/{item_id}", status_code=204)
-def eliminar_valor(tabla_id: str, item_id: str, db: Session = Depends(get_db), current_user: dict = Depends(require_admin)):
+def eliminar_valor(tabla_id: str, item_id: str, db: Session = Depends(get_db), current_user: dict = Depends(require_permiso("gestionar_tablas"))):
     if not tabla_service.eliminar_valor(db, item_id):
         raise HTTPException(status_code=404, detail="Valor no encontrado")
