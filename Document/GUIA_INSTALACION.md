@@ -102,6 +102,38 @@ npm run dev
 
 ---
 
+## SISTEMA EN PRODUCCIÓN
+
+El sistema está desplegado y accesible públicamente:
+
+| Servicio | URL | Estado |
+|---|---|---|
+| Frontend | `http://32.192.124.14:3000` | ✅ Docker |
+| Backend API | `http://32.192.124.14:8000` | ✅ systemd |
+| Qdrant | `http://32.192.124.14:6333` | ✅ Docker |
+| n8n | `http://32.192.124.14:5678` | ✅ Docker |
+
+> ⚠️ **Credenciales AWS temporales:** Las credenciales `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` y `AWS_SESSION_TOKEN` en `Backend/.env` del EC2 expiran con cada sesión del laboratorio AWS Academy. Actualizarlas y reiniciar el backend con `sudo systemctl restart fastapi`.
+
+**Gestión del frontend en producción:**
+```bash
+# Ver estado
+docker ps | grep infodets-frontend
+
+# Reiniciar
+docker restart infodets-frontend
+
+# Ver logs
+docker logs infodets-frontend --tail 50
+```
+
+**Nota de deploy:** El EC2 `t3.small` (2GB RAM) requiere swap para compilar Next.js. El swap de 2GB ya está configurado en el EC2. Si se pierde tras un reinicio:
+```bash
+sudo swapon /swapfile
+```
+
+---
+
 ## AUTENTICACIÓN
 
 El sistema usa **login propio con JWT HS256** — sin OAuth ni redirects de Cognito.
