@@ -16,6 +16,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 600s
           script: |
             cd ~/infodets
             git pull origin main
@@ -24,19 +25,20 @@ jobs:
             cd ~/infodets/Backend
             source venv/bin/activate
             pip install -r requirements.txt -q
+            alembic upgrade head
             sudo systemctl restart fastapi
+            deactivate
             echo "Backend desplegado ✅"
 
             # ── Frontend ─────────────────────────────────────────
-            cd ~/infodets/Frontend/infodets-web
-            docker build -t infodets-frontend .
-            docker stop infodets-frontend 2>/dev/null || true
-            docker rm infodets-frontend 2>/dev/null || true
+            cd ~/infodets
+            docker build --no-cache -t infodets-frontend ./Frontend/infodets-web
+            docker stop infodets-web 2>/dev/null || true
+            docker rm infodets-web 2>/dev/null || true
             docker run -d \
-              --name infodets-frontend \
+              --name infodets-web \
               --restart unless-stopped \
               -p 3000:3000 \
-              -e NEXT_PUBLIC_API_URL=http://32.192.124.14:8000/v1 \
               infodets-frontend
             echo "Frontend desplegado ✅"
 
