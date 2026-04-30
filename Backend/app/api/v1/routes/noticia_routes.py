@@ -10,6 +10,7 @@ from typing import Optional
 from app.core.database import get_db
 from app.services import noticia_service
 from app.middleware.auth_middleware import require_permiso, get_current_user
+from app.models.models import Noticia
 
 router = APIRouter(prefix="/noticias", tags=["Noticias"])
 
@@ -60,6 +61,20 @@ class NoticiaActualizar(BaseModel):
 @router.get("", response_model=list[NoticiaSchema])
 def listar_noticias(solo_publicadas: bool = False, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     return [NoticiaSchema.from_model(n) for n in noticia_service.listar(db, solo_publicadas)]
+
+
+@router.get("/nuevas/count")
+def contar_noticias_nuevas(desde: str, db: Session = Depends(get_db)):
+    """Endpoint público — retorna cuántas noticias publicadas hay desde una fecha ISO."""
+    try:
+        desde_dt = datetime.fromisoformat(desde)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Fecha inválida")
+    count = db.query(Noticia).filter(
+        Noticia.publicada == True,
+        Noticia.creado_en > desde_dt,
+    ).count()
+    return {"count": count}
 
 
 @router.post("", response_model=NoticiaSchema, status_code=201)

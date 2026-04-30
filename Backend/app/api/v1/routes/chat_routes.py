@@ -11,13 +11,13 @@ from app.services.rag_service import (
     MENSAJE_ESCALAMIENTO,
     CONFIDENCE_THRESHOLD,
 )
-from app.services.chat_service import guardar_historial
+from app.services.chat_service import guardar_historial, crear_conversacion, eliminar_conversacion, fijar_conversacion
 from app.services.ticket_service import crear_ticket, UMBRAL_TICKET
 from app.services.validacion_service import crear_validacion
 from app.services.notificacion_service import notificar_admin_sync
 from app.middleware.auth_middleware import get_current_user
 from app.core.database import get_db, SessionLocal
-from app.models.models import HistorialChat, ConsultaInvitado
+from app.models.models import HistorialChat, ConsultaInvitado, Conversacion
 from sqlalchemy.orm import Session
 import logging
 
@@ -28,7 +28,8 @@ router = APIRouter(prefix="/chat", tags=["Chat"])
 @router.post("/stream")
 async def chat_stream(request: ChatRequest, current_user: dict = Depends(get_current_user)):
     consulta_id = str(uuid.uuid4())
-    usuario_id = current_user.get("sub", "") or request.usuario_id
+    usuario_id = current_user.get("_usuario_id", "") or request.usuario_id
+    conversacion_id = request.conversacion_id
 
     def generate():
         try:
@@ -42,7 +43,7 @@ async def chat_stream(request: ChatRequest, current_user: dict = Depends(get_cur
                 yield f"data: {json.dumps({'tipo': 'chunk', 'texto': MENSAJE_ESCALAMIENTO})}\n\n"
                 db_t = SessionLocal()
                 try:
-                    crear_ticket(db_t, pregunta=request.mensaje, usuario_id=usuario_id, puntaje=max_score)
+                    crear_ticket(db_t, pregunta=request.mensaje, usuario_id=usuario_id, puntaje=max_score, nivel=3)
                 finally:
                     db_t.close()
                 notificar_admin_sync('nivel3_escalamiento', {
@@ -75,12 +76,13 @@ async def chat_stream(request: ChatRequest, current_user: dict = Depends(get_cur
                 answer="".join(respuesta_completa),
                 confidence_score=max_score,
                 is_fallback=resultado.nivel > 0,
+                conversacion_id=conversacion_id,
             )
 
             if max_score < UMBRAL_TICKET:
                 db_t = SessionLocal()
                 try:
-                    crear_ticket(db_t, pregunta=request.mensaje, usuario_id=usuario_id, puntaje=max_score)
+                    crear_ticket(db_t, pregunta=request.mensaje, usuario_id=usuario_id, puntaje=max_score, nivel=resultado.nivel)
                 finally:
                     db_t.close()
 
@@ -179,15 +181,78 @@ async def chat_invitado(request: ChatInvitadoRequest):
     return StreamingResponse(generate(), media_type="text/event-stream")
 
 
+@router.post("/conversacion")
+def nueva_conversacion(body: dict, current_user: dict = Depends(get_current_user)):
+    """Crea una nueva conversación para el usuario. Elimina la más antigua si ya tiene 5."""
+    usuario_id = current_user.get("_usuario_id", "")
+    conv_id = crear_conversacion(usuario_id, body.get("pregunta", "Nueva conversación"))
+    if not conv_id:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail="No se pudo crear la conversación")
+    return {"conversacion_id": conv_id}
+
+
+@router.patch("/conversacion/{conversacion_id}/fijar")
+def toggle_fijar(conversacion_id: str, body: dict, current_user: dict = Depends(get_current_user)):
+    """Fija o desfija una conversación. Máximo 5 fijadas por usuario."""
+    from fastapi import HTTPException
+    usuario_id = current_user.get("_usuario_id", "")
+    fijar = body.get("fijada", True)
+    ok = fijar_conversacion(conversacion_id, usuario_id, fijar)
+    if not ok:
+        raise HTTPException(status_code=400, detail="Límite de conversaciones fijadas alcanzado (máx 5)" if fijar else "Conversación no encontrada")
+    return {"ok": True}
+
+
+@router.delete("/conversacion/{conversacion_id}", status_code=204)
+def borrar_conversacion(conversacion_id: str, current_user: dict = Depends(get_current_user)):
+    """Elimina una conversación y todos sus mensajes."""
+    usuario_id = current_user.get("_usuario_id", "")
+    if not eliminar_conversacion(conversacion_id, usuario_id):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Conversación no encontrada")
+
+
+@router.get("/conversaciones/{usuario_id}")
+def listar_conversaciones(usuario_id: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    import uuid as _uuid
+    convs = (
+        db.query(Conversacion)
+        .filter(Conversacion.usuario_id == _uuid.UUID(usuario_id))
+        .order_by(Conversacion.fijada.desc(), Conversacion.creado_en.desc())
+        .all()
+    )
+    return [
+        {
+            "id": str(c.id),
+            "titulo": c.titulo,
+            "fijada": c.fijada,
+            "creado_en": c.creado_en.isoformat(),
+            "mensajes": [
+                {
+                    "pregunta": m.pregunta,
+                    "respuesta": m.respuesta,
+                    "confianza": round(m.puntaje_confianza, 3),
+                    "creado_en": m.creado_en.isoformat(),
+                }
+                for m in sorted(c.mensajes, key=lambda x: x.creado_en)
+            ],
+        }
+        for c in convs
+    ]
+
+
 @router.get("/historial/usuario/{usuario_id}")
 def obtener_historial(usuario_id: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     items = db.query(HistorialChat).filter(
         HistorialChat.usuario_id == usuario_id
-    ).order_by(HistorialChat.creado_en.desc()).limit(20).all()
+    ).order_by(HistorialChat.creado_en.desc()).limit(5).all()
     return [
         {
             "id": str(h.id),
             "pregunta": h.pregunta,
+            "respuesta": h.respuesta,
+            "confianza": round(h.puntaje_confianza, 3),
             "creado_en": h.creado_en.isoformat(),
         }
         for h in items

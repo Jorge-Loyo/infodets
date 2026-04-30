@@ -27,15 +27,52 @@ const SUGERENCIAS = [
   '¿Qué normativas aplican para permisos?',
 ]
 
+function RobotAnimado() {
+  return (
+    <motion.div
+      animate={{ y: [0, -8, 0] }}
+      transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+      style={{ display: 'flex', justifyContent: 'center' }}
+    >
+      <Box style={{ position: 'relative', display: 'inline-block' }}>
+        {/* Cabeza */}
+        <ThemeIcon size={72} radius={20} variant="filled" color="blue" style={{ boxShadow: '0 8px 32px rgba(34,139,230,0.35)' }}>
+          <IconRobot size={40} />
+        </ThemeIcon>
+        {/* Ojos parpadeando */}
+        <motion.div
+          animate={{ opacity: [1, 0, 1] }}
+          transition={{ duration: 3.5, repeat: Infinity, times: [0, 0.05, 0.1] }}
+          style={{ position: 'absolute', top: 22, left: 18, width: 8, height: 8, borderRadius: '50%', backgroundColor: 'white' }}
+        />
+        <motion.div
+          animate={{ opacity: [1, 0, 1] }}
+          transition={{ duration: 3.5, repeat: Infinity, times: [0, 0.05, 0.1] }}
+          style={{ position: 'absolute', top: 22, right: 18, width: 8, height: 8, borderRadius: '50%', backgroundColor: 'white' }}
+        />
+        {/* Antena */}
+        <motion.div
+          animate={{ rotate: [-8, 8, -8] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+          style={{ position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', width: 3, height: 14, backgroundColor: 'var(--mantine-color-blue-4)', borderRadius: 4 }}
+        >
+          <div style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: 'var(--mantine-color-blue-3)', marginTop: -4, marginLeft: -2 }} />
+        </motion.div>
+      </Box>
+    </motion.div>
+  )
+}
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/v1'
 
 export function ChatPanel() {
   const [pregunta, setPregunta] = useState('')
   const [mensajes, setMensajes] = useState<Mensaje[]>([])
   const [enviando, setEnviando] = useState(false)
+  const [conversacionId, setConversacionId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const { usuario, token } = useSessionStore()
-  const { incrementarConsultas } = useUiStore()
+  const { incrementarConsultas, conversacionCargada, limpiarConversacion } = useUiStore()
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -43,27 +80,53 @@ export function ChatPanel() {
     }
   }, [mensajes])
 
+  // Cargar conversación desde historial
+  useEffect(() => {
+    if (conversacionCargada) {
+      setConversacionId(conversacionCargada.conversacionId)
+      setMensajes(conversacionCargada.mensajes.flatMap((m, i) => [
+        { id: `h-u-${i}`, rol: 'usuario' as const, texto: m.pregunta },
+        { id: `h-a-${i}`, rol: 'asistente' as const, texto: m.respuesta, confianza: m.confianza },
+      ]))
+      limpiarConversacion()
+    }
+  }, [conversacionCargada])
+
   const enviar = async (texto: string) => {
     if (!texto.trim() || enviando) return
     const preguntaTexto = texto.trim()
     setPregunta('')
     setEnviando(true)
 
+    // Si no hay conversación activa, crear una nueva
+    let convId = conversacionId
+    if (!convId) {
+      try {
+        const res = await fetch(`${API_URL}/chat/conversacion`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ pregunta: preguntaTexto }),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          convId = data.conversacion_id
+          setConversacionId(convId)
+        }
+      } catch {}
+    }
+
     const msgUsuario: Mensaje = { id: Date.now().toString(), rol: 'usuario', texto: preguntaTexto }
     const msgAsistente: Mensaje = { id: (Date.now() + 1).toString(), rol: 'asistente', texto: '', cargando: true }
-
     setMensajes((prev) => [...prev, msgUsuario, msgAsistente])
 
     try {
       const res = await fetch(`${API_URL}/chat/stream`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           mensaje: preguntaTexto,
           usuario_id: usuario?.rdsId ?? usuario?.id ?? '',
+          conversacion_id: convId,
         }),
       })
 
@@ -86,9 +149,7 @@ export function ChatPanel() {
             const evento = JSON.parse(line.slice(6))
             if (evento.tipo === 'chunk') {
               setMensajes((prev) => prev.map((m) =>
-                m.id === msgAsistente.id
-                  ? { ...m, texto: m.texto + evento.texto, cargando: false }
-                  : m
+                m.id === msgAsistente.id ? { ...m, texto: m.texto + evento.texto, cargando: false } : m
               ))
             } else if (evento.tipo === 'final') {
               setMensajes((prev) => prev.map((m) =>
@@ -98,19 +159,15 @@ export function ChatPanel() {
               ))
             } else if (evento.tipo === 'error') {
               setMensajes((prev) => prev.map((m) =>
-                m.id === msgAsistente.id
-                  ? { ...m, texto: `❌ ${evento.mensaje}`, cargando: false }
-                  : m
+                m.id === msgAsistente.id ? { ...m, texto: `❌ ${evento.mensaje}`, cargando: false } : m
               ))
             }
           } catch {}
         }
       }
-    } catch (e: any) {
+    } catch {
       setMensajes((prev) => prev.map((m) =>
-        m.id === msgAsistente.id
-          ? { ...m, texto: '❌ Error al conectar con el servidor.', cargando: false }
-          : m
+        m.id === msgAsistente.id ? { ...m, texto: '❌ Error al conectar con el servidor.', cargando: false } : m
       ))
     } finally {
       setEnviando(false)
@@ -119,39 +176,43 @@ export function ChatPanel() {
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      enviar(pregunta)
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(pregunta) }
   }
 
   return (
     <Box style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-
-      {/* Área de mensajes */}
       <ScrollArea style={{ flex: 1 }} viewportRef={scrollRef}>
         <Box p={24}>
           {mensajes.length === 0 && (
-            <Stack align="center" gap="md" mt={60}>
-              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }}>
-                <ThemeIcon size={56} radius="xl" variant="light" color="blue">
-                  <IconRobot size={28} />
-                </ThemeIcon>
+            <Stack align="center" gap="lg" mt={48}>
+              <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}>
+                <RobotAnimado />
               </motion.div>
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-                <Stack align="center" gap={4}>
-                  <Text fw={600} size="lg">¿En qué puedo ayudarte?</Text>
-                  <Text c="dimmed" size="sm" ta="center" maw={400}>
-                    Realiza una consulta en lenguaje natural sobre normativas, procedimientos o documentos institucionales.
+
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                <Stack align="center" gap={6}>
+                  <Text fw={700} size="xl" ta="center">
+                    Hola, soy{' '}
+                    <Text component="span" fw={700} size="xl" variant="gradient" gradient={{ from: 'blue', to: 'cyan' }}>
+                      Infobot
+                    </Text>
+                    {' '}🤖
+                  </Text>
+                  <Text c="dimmed" size="sm" ta="center" maw={380}>
+                    Estoy listo para responder tus consultas sobre normativas, resoluciones y documentos institucionales.
                   </Text>
                 </Stack>
               </motion.div>
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} style={{ width: '100%', maxWidth: 500 }}>
+
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.55 }} style={{ width: '100%', maxWidth: 460 }}>
+                <Text size="xs" c="dimmed" ta="center" mb="xs" tt="uppercase" fw={600}>Sugerencias</Text>
                 <Stack gap="xs">
                   {SUGERENCIAS.map((s, i) => (
-                    <Paper key={i} p="sm" radius="md" withBorder style={{ cursor: 'pointer', textAlign: 'center' }} onClick={() => enviar(s)}>
-                      <Text size="sm" c="dimmed">{s}</Text>
-                    </Paper>
+                    <motion.div key={i} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                      <Paper p="sm" radius="md" withBorder style={{ cursor: 'pointer', textAlign: 'center' }} onClick={() => enviar(s)}>
+                        <Text size="sm" c="dimmed">{s}</Text>
+                      </Paper>
+                    </motion.div>
                   ))}
                 </Stack>
               </motion.div>
@@ -160,44 +221,22 @@ export function ChatPanel() {
 
           <AnimatePresence>
             {mensajes.map((msg) => (
-              <motion.div
-                key={msg.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25 }}
-                style={{ marginBottom: 16 }}
-              >
+              <motion.div key={msg.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} style={{ marginBottom: 16 }}>
                 <Group align="flex-start" gap="sm" justify={msg.rol === 'usuario' ? 'flex-end' : 'flex-start'}>
                   {msg.rol === 'asistente' && (
-                    <Avatar size="sm" radius="xl" color="blue" variant="filled">
-                      <IconRobot size={14} />
-                    </Avatar>
+                    <Avatar size="sm" radius="xl" color="blue" variant="filled"><IconRobot size={14} /></Avatar>
                   )}
-
                   <Stack gap={6} style={{ maxWidth: '75%' }}>
-                    <Paper
-                      p="sm"
-                      radius="md"
-                      style={{
-                        backgroundColor: msg.rol === 'usuario'
-                          ? 'var(--mantine-color-blue-6)'
-                          : 'var(--mantine-color-gray-1)',
-                        color: msg.rol === 'usuario' ? 'white' : 'inherit',
-                      }}
-                    >
+                    <Paper p="sm" radius="md" style={{
+                      backgroundColor: msg.rol === 'usuario' ? 'var(--mantine-color-blue-6)' : 'var(--mantine-color-gray-1)',
+                      color: msg.rol === 'usuario' ? 'white' : 'inherit',
+                    }}>
                       {msg.cargando ? (
-                        <Group gap="xs">
-                          <Loader size="xs" color="gray" />
-                          <Text size="sm" c="dimmed">Pensando...</Text>
-                        </Group>
+                        <Group gap="xs"><Loader size="xs" color="gray" /><Text size="sm" c="dimmed">Pensando...</Text></Group>
                       ) : (
-                        <Text size="sm" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
-                          {msg.texto}
-                        </Text>
+                        <Text size="sm" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{msg.texto}</Text>
                       )}
                     </Paper>
-
-                    {/* Fuentes y confianza */}
                     {msg.fuentes && msg.fuentes.length > 0 && (
                       <Stack gap={4}>
                         <Group gap="xs">
@@ -211,12 +250,7 @@ export function ChatPanel() {
                         {msg.fuentes.map((f, i) => (
                           <Group key={i} gap={4}>
                             <IconExternalLink size={12} opacity={0.5} />
-                            <Anchor
-                              href={f.url ? (f.url.startsWith('http') ? f.url : `http://localhost:8000${f.url}`) : '#'}
-                              target="_blank"
-                              size="xs"
-                              c="blue"
-                            >
+                            <Anchor href={f.url ? (f.url.startsWith('http') ? f.url : `http://localhost:8000${f.url}`) : '#'} target="_blank" size="xs" c="blue">
                               {f.nombre}{f.pagina ? ` (p. ${f.pagina})` : ''}
                             </Anchor>
                           </Group>
@@ -224,11 +258,8 @@ export function ChatPanel() {
                       </Stack>
                     )}
                   </Stack>
-
                   {msg.rol === 'usuario' && (
-                    <Avatar size="sm" radius="xl" color="gray" variant="filled">
-                      <IconUser size={14} />
-                    </Avatar>
+                    <Avatar size="sm" radius="xl" color="gray" variant="filled"><IconUser size={14} /></Avatar>
                   )}
                 </Group>
               </motion.div>
@@ -237,7 +268,6 @@ export function ChatPanel() {
         </Box>
       </ScrollArea>
 
-      {/* Input */}
       <Box style={{ borderTop: '1px solid var(--mantine-color-gray-2)', padding: 16, backgroundColor: 'var(--mantine-color-white)' }}>
         <Group align="flex-end" gap="xs">
           <Textarea
@@ -245,20 +275,12 @@ export function ChatPanel() {
             value={pregunta}
             onChange={(e) => setPregunta(e.currentTarget.value)}
             onKeyDown={handleKeyDown}
-            autosize
-            minRows={1}
-            maxRows={4}
-            radius="md"
-            style={{ flex: 1 }}
+            autosize minRows={1} maxRows={4}
+            radius="md" style={{ flex: 1 }}
             disabled={enviando}
           />
-          <ActionIcon
-            size="lg"
-            radius="md"
-            variant="filled"
-            color="blue"
-            disabled={!pregunta.trim() || enviando}
-            loading={enviando}
+          <ActionIcon size="lg" radius="md" variant="filled" color="blue"
+            disabled={!pregunta.trim() || enviando} loading={enviando}
             onClick={() => enviar(pregunta)}
           >
             <IconSend size={16} />
