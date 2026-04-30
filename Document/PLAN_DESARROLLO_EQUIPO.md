@@ -303,7 +303,7 @@ Al aprobar una validación manual → se indexa en Qdrant inmediatamente.
 | S3 | Semanas 7-8 | Chat IA real = **MVP** | ✅ 100% CERRADO — 24 mayo ✅ |
 | S4 | Semanas 9-10 | Dashboard + feedback | 🟡 50% |
 | Testeo | En curso | Correcciones + refactoring | 🟡 En progreso |
-| S5 | Semanas 11-12 | Producción | ⏳ Pendiente — 28 junio |
+| S5 | Semanas 11-12 | Producción | 🟡 En curso — frontend desplegado ✅ |
 
 ---
 
@@ -443,24 +443,25 @@ Al aprobar una validación manual → se indexa en Qdrant inmediatamente.
 | Fusión `/dashboard/perfiles` en `/dashboard/derechos` | ✅ |
 | Permisos backend: require_permiso() reemplazó require_admin() | ✅ |
 | 3 nuevas tablas en RDS: consultas_invitado, validaciones_respuesta, urls_oficiales | ✅ |
+| Despliegue frontend en producción EC2 | ✅ `http://32.192.124.14:3000` |
 | Feedback botón en chat | ⏳ Pendiente |
 | Dashboard con datos reales (hot topics, gráficos) | ⏳ Pendiente |
-| Despliegue en producción | ⏳ Pendiente |
 
 ---
 
-### Sprint 5 ⏳ Pendiente — Producción
+### Sprint 5 ⏳ En curso — Producción
 
-| Tarea | Responsable |
-|---|---|
-| Feedback botón en chat + endpoint | P1 + P2 |
-| Dashboard con datos reales (hot topics, gráficos) | P1 + P2 |
-| Pruebas de integración Frontend ↔ Backend | P1 + P2 |
-| Pruebas del pipeline RAG con documentos reales | P3 |
-| Configurar CloudFront para el Frontend | P2 |
-| Configurar dominio y certificado SSL | P2 |
-| Revisión de seguridad (variables de entorno, permisos IAM) | P2 |
-| Pruebas de usuario final con flujo completo | Todos |
+| Tarea | Estado | Responsable |
+|---|---|---|
+| Frontend desplegado en EC2 | ✅ `http://32.192.124.14:3000` | P1 |
+| Feedback botón en chat + endpoint | ⏳ Pendiente | P1 + P2 |
+| Dashboard con datos reales (hot topics, gráficos) | ⏳ Pendiente | P1 + P2 |
+| Pruebas de integración Frontend ↔ Backend | ⏳ Pendiente | P1 + P2 |
+| Pruebas del pipeline RAG con documentos reales | ⏳ Pendiente | P3 |
+| Configurar CloudFront para el Frontend | ⏳ Pendiente | P2 |
+| Configurar dominio y certificado SSL | ⏳ Pendiente | P2 |
+| Revisión de seguridad (variables de entorno, permisos IAM) | ⏳ Pendiente | P2 |
+| Pruebas de usuario final con flujo completo | ⏳ Pendiente | Todos |
 
 **Entregable:** Sistema en producción en AWS. URL pública funcionando.
 
