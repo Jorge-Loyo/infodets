@@ -13,7 +13,7 @@ from app.services.ingesta_service import procesar_documento
 from app.services import documento_service
 from app.core.settings import settings
 from app.core.database import get_db
-from app.middleware.auth_middleware import require_admin, get_current_user
+from app.middleware.auth_middleware import require_permiso, get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin/ingesta", tags=["Ingesta"])
@@ -43,7 +43,7 @@ async def cargar_documento(
     anio: Optional[int] = Form(None),
     archivo: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permiso('gestionar_documentos')),
 ):
     """
     RF1 — Pipeline completo de ingesta:
@@ -115,7 +115,7 @@ async def ver_documento(documento_id: str):
 async def eliminar_documento(
     documento_id: str,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permiso('gestionar_documentos')),
 ):
     """Elimina el documento de RDS, Qdrant y el archivo PDF."""
     from app.services.qdrant_service import eliminar_por_documento
@@ -138,7 +138,7 @@ async def eliminar_documento(
 
 
 @router.get("", response_model=list[DocumentoListItem])
-async def listar_documentos(db: Session = Depends(get_db), current_user: dict = Depends(require_admin)):
+async def listar_documentos(db: Session = Depends(get_db), current_user: dict = Depends(require_permiso('gestionar_documentos'))):
     """Retorna el listado de documentos cargados al sistema."""
     documentos = documento_service.listar_documentos(db)
     return [

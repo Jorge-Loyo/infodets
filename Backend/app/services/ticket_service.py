@@ -6,7 +6,7 @@ from app.models.models import TicketVacio
 
 logger = logging.getLogger(__name__)
 
-UMBRAL_TICKET = 0.3
+UMBRAL_TICKET = 0.70  # < 70% activa el loop de retroalimentacion (alineado con CONFIDENCE_THRESHOLD)
 
 
 def crear_ticket(db: Session, pregunta: str, usuario_id: str | None, puntaje: float) -> None:
