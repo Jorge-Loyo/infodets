@@ -3,10 +3,12 @@
 
 ---
 
-> **Versión:** 4.0
+> **Versión:** 4.1
 > **Estado:** Sprint Testeo 🟡 En progreso
-> **Última actualización:** Refactoring completo — login propio JWT, sistema de perfiles, loop de retroalimentación
+> **Última actualización:** Mayo 2026
 > **Rama activa:** `Testeo`
+> **MVP:** 24 de mayo de 2025 ✅ CUMPLIDO
+> **Entrega final:** 28 de junio de 2025
 
 ---
 
@@ -14,12 +16,12 @@
 
 1. [Resumen del sistema](#1-resumen-del-sistema)
 2. [Stack tecnológico](#2-stack-tecnológico)
-3. [Estado actual del proyecto](#3-estado-actual-del-proyecto)
-4. [Infraestructura AWS](#4-infraestructura-aws)
-5. [Arquitectura de autenticación](#5-arquitectura-de-autenticación)
-6. [Sistema de perfiles y permisos](#6-sistema-de-perfiles-y-permisos)
-7. [Loop de retroalimentación](#7-loop-de-retroalimentación)
-8. [Tablas en RDS](#8-tablas-en-rds)
+3. [Infraestructura AWS](#3-infraestructura-aws)
+4. [Arquitectura de autenticación](#4-arquitectura-de-autenticación)
+5. [Sistema de perfiles y permisos](#5-sistema-de-perfiles-y-permisos)
+6. [Loop de retroalimentación](#6-loop-de-retroalimentación)
+7. [Tablas en RDS](#7-tablas-en-rds)
+8. [Plan de sprints](#8-plan-de-sprints)
 9. [Convenciones de trabajo](#9-convenciones-de-trabajo)
 10. [Decisiones de arquitectura](#10-decisiones-de-arquitectura)
 
@@ -40,82 +42,58 @@ RAG busca en Qdrant (base vectorial)
         ↓
 Si confianza ≥ 70% → Gemini responde con documentación oficial
 Si confianza < 70% → Loop de retroalimentación escalonado:
-    Nivel 1: Busca en URLs oficiales configuradas
+    Nivel 1: Busca en URLs oficiales configuradas en el dashboard
     Nivel 2: Búsqueda web via Serper API
-    Nivel 3: Escalamiento humano → ticket automático + notificación n8n
+    Nivel 3: Escalamiento humano → ticket + notificación n8n al admin
         ↓
 Respuesta con enlace al documento fuente
         ↓
-Sistema de validaciones para entrenamiento de la IA
+Sistema de validaciones para entrenamiento continuo de la IA
 ```
 
 ---
 
 ## 2. STACK TECNOLÓGICO
 
-| Capa | Tecnología |
-|---|---|
-| Frontend | Next.js 16 + React + TypeScript |
-| UI | Mantine UI v9 + Framer Motion + Tabler Icons |
-| Estado | Zustand (sesión + permisos persistidos) |
-| HTTP | Axios con interceptores JWT |
-| Backend | FastAPI (Python 3.13) |
-| Autenticación | JWT HS256 propio + AWS Cognito (USER_PASSWORD_AUTH) |
-| Base de datos relacional | AWS RDS PostgreSQL 17 |
-| Base de datos vectorial | Qdrant (self-hosted en EC2 via Docker) |
-| Embeddings | Google Gemini `gemini-embedding-001` (3072 dims) |
-| Generación IA | Gemini `gemini-2.0-flash-lite` + Groq `llama-3.3-70b-versatile` (fallback) |
-| Búsqueda web | Serper API (google.serper.dev) |
-| Orquestación | n8n (Docker self-hosted en EC2) |
-| Infraestructura | AWS EC2 + RDS + Cognito |
-
----
-
-## 3. ESTADO ACTUAL DEL PROYECTO
-
-### Funcionalidades operativas ✅
-
-| Área | Estado | Detalle |
+| Capa | Tecnología | Detalle |
 |---|---|---|
-| Login propio JWT | ✅ | Email/password → Cognito USER_PASSWORD_AUTH → JWT HS256 |
-| Permisos en sesión | ✅ | Cargados al login, persistidos en localStorage, sin parpadeo |
-| Chat con IA | ✅ | SSE real, Gemini + fallback Groq, fuentes PDF |
-| Loop retroalimentación | ✅ | 3 niveles: local → URLs → web → escalamiento |
-| Validaciones IA | ✅ | Score 50-85% → revisión manual, ≥85% → auto-indexado en Qdrant |
-| Notificaciones n8n | ✅ | Email al admin por nivel 1/2/3 y validaciones pendientes |
-| Ingesta de documentos | ✅ | PDF → Qdrant + RDS |
-| Historial de consultas | ✅ | Últimas 20 desde RDS, se actualiza tras cada consulta |
-| Gestión de usuarios | ✅ | CRUD, perfil obligatorio al crear, blanqueo de contraseña |
-| Sistema de perfiles | ✅ | Perfiles con permisos frontend + backend, sin rol duplicado |
-| Derechos y perfiles | ✅ | `/dashboard/derechos` — gestión unificada |
-| URLs oficiales | ✅ | Gestionadas desde `/dashboard/documentacion` → pestaña URLs |
-| Consulta invitado | ✅ | Formulario con datos del consultante, institución desde tabla |
-| Noticias | ✅ | CRUD con imágenes, publicación/borrador |
-| Tablas administrables | ✅ | Instituciones, cargos, dependencias, categorías |
-| Fecha de nacimiento | ✅ | DatePicker con validación DD/MM/AAAA |
-| Tickets de vacío | ✅ | Score < 70% → ticket en notificaciones |
-| Feedback | ⏳ | Schema listo, botón pendiente de conectar al chat |
-| Dashboard con datos reales | ⏳ | Hot topics y gráficos pendientes |
-| Despliegue en producción | ⏳ | Pendiente |
+| Frontend | Next.js 16 + React + TypeScript | App Router, SSR |
+| UI | Mantine UI v9 + Framer Motion + Tabler Icons | |
+| Estado | Zustand con persist | Sesión + permisos en localStorage |
+| HTTP | Axios | Interceptores JWT, excluye /auth/login del 401 global |
+| Backend | FastAPI (Python 3.13) | Estructura modular por dominio |
+| Autenticación | JWT HS256 propio + AWS Cognito | USER_PASSWORD_AUTH, sin OAuth redirects |
+| Base de datos relacional | AWS RDS PostgreSQL 17 | 13 tablas, migraciones con Alembic |
+| Base de datos vectorial | Qdrant self-hosted en EC2 | gemini-embedding-001, 3072 dims |
+| Generación IA | Gemini `gemini-2.0-flash-lite` | Fallback automático a Groq en 429 |
+| Fallback IA | Groq `llama-3.3-70b-versatile` | 30 RPM gratis |
+| Embeddings | Google Gemini `gemini-embedding-001` | 3072 dimensiones |
+| Búsqueda web | Serper API | 2.500 búsquedas/mes gratis, Nivel 2 del loop |
+| Orquestación | n8n Docker self-hosted en EC2 | Notificaciones email al admin |
+| Infraestructura | AWS EC2 + RDS + Cognito | us-east-1 |
 
 ---
 
-## 4. INFRAESTRUCTURA AWS
+## 3. INFRAESTRUCTURA AWS
 
-### EC2
+### EC2 — Servidor principal
 
 | Campo | Valor |
 |---|---|
-| IP pública | `32.192.124.14` |
+| IP pública | `32.192.124.14` (Elastic IP fija) |
 | IP privada | `172.31.40.141` |
 | Sistema operativo | Ubuntu 24.04 LTS |
 | Región | `us-east-1` |
 | Conexión SSH | `ssh -i "keyinfodets.pem" ubuntu@32.192.124.14` |
 
-**Servicios en EC2:**
-- FastAPI → `http://32.192.124.14:8000`
-- Qdrant → `http://32.192.124.14:6333` (Docker, restart=always)
-- n8n → `http://32.192.124.14:5678` (Docker)
+**Servicios corriendo en EC2:**
+
+| Servicio | URL | Estado |
+|---|---|---|
+| FastAPI | `http://32.192.124.14:8000` | ✅ systemd auto-reinicio |
+| Qdrant | `http://32.192.124.14:6333` | ✅ Docker restart=always |
+| n8n | `http://32.192.124.14:5678` | ✅ Docker |
+| Next.js | `http://32.192.124.14:3000` | ⏳ Pendiente despliegue |
 
 ### RDS PostgreSQL
 
@@ -125,26 +103,20 @@ Sistema de validaciones para entrenamiento de la IA
 | Puerto | `5432` |
 | Base de datos | `infodets` |
 | Usuario | `infodets_admin` |
-| Versión | PostgreSQL 17 |
+| Versión | PostgreSQL 17.6 |
+| Instancia | `db.t4g.micro` |
 
 **Tunnel SSH para desarrollo local:**
 ```bash
 ssh -i "keyinfodets.pem" -L 5432:infodets-db.cjgfkaqwabgp.us-east-1.rds.amazonaws.com:5432 ubuntu@32.192.124.14 -N
 ```
 
-### Cognito
-
-| Campo | Valor |
-|---|---|
-| User Pool ID | `us-east-1_uOuYTO6Ce` |
-| App Client (backend) | `40g4ffmsvf8mmk77kc37abucvd` |
-| Auth Flow habilitado | `ALLOW_USER_PASSWORD_AUTH` |
-
 ### Qdrant
 
 | Campo | Valor |
 |---|---|
-| URL local (tunnel) | `http://localhost:6333` |
+| URL interna EC2 | `http://172.31.40.141:6333` |
+| Dashboard | `http://32.192.124.14:6333/dashboard` |
 | Colección | `infodets_docs` |
 | Dimensiones | 3072 (gemini-embedding-001) |
 
@@ -153,40 +125,84 @@ ssh -i "keyinfodets.pem" -L 5432:infodets-db.cjgfkaqwabgp.us-east-1.rds.amazonaw
 ssh -i "keyinfodets.pem" -L 6333:localhost:6333 ubuntu@32.192.124.14 -N
 ```
 
+**Gestión en EC2:**
+```bash
+docker start qdrant   # Levantar
+docker stop qdrant    # Detener
+docker logs qdrant    # Ver logs
+```
+
+### Cognito
+
+| Campo | Valor |
+|---|---|
+| User Pool ID | `us-east-1_uOuYTO6Ce` |
+| App Client backend | `40g4ffmsvf8mmk77kc37abucvd` |
+| Auth Flow habilitado | `ALLOW_USER_PASSWORD_AUTH` |
+| Dominio | `us-east-1uouyto6ce.auth.us-east-1.amazoncognito.com` |
+
+### n8n
+
+| Campo | Valor |
+|---|---|
+| URL | `http://32.192.124.14:5678` |
+| Usuario | `admin` |
+| Workflows activos | `INFODETS - Invitar Usuario`, `INFODETS - Notificaciones Loop Retroalimentacion` |
+
+### CI/CD — GitHub Actions
+
+| Campo | Valor |
+|---|---|
+| Workflow | `.github/workflows/deploy.yml` |
+| Trigger | Push a rama `main` |
+| Acción | `git pull` + `pip install` + `systemctl restart fastapi` |
+
 ---
 
-## 5. ARQUITECTURA DE AUTENTICACIÓN
+## 4. ARQUITECTURA DE AUTENTICACIÓN
 
-El sistema usa **login propio** — sin OAuth ni redirects de Cognito.
+El sistema usa **login propio con JWT HS256** — sin OAuth ni redirects de Cognito.
 
 ```
 Frontend (email + password)
         ↓
+Validación: EMAIL_REGEX + PASSWORD_REGEX (botón deshabilitado si no cumple)
+        ↓
 POST /v1/auth/login
         ↓
-Backend llama a Cognito initiate_auth (USER_PASSWORD_AUTH)
+Backend: Cognito initiate_auth (USER_PASSWORD_AUTH) → valida credenciales
         ↓
-Cognito valida credenciales → devuelve IdToken
+Backend genera JWT HS256 (sub=usuario_id_RDS, exp=8h)
         ↓
-Backend genera JWT HS256 propio (sub=usuario_id_RDS, exp=8h)
+Frontend: GET /v1/permisos/{usuario_id} con el token recibido
         ↓
-Frontend guarda JWT + permisos en Zustand (persistido en localStorage)
+setSession(usuario, token, permisos) → Zustand + localStorage
         ↓
-Todas las requests llevan Authorization: Bearer <jwt>
+Todas las requests: Authorization: Bearer <jwt>
         ↓
 Backend verifica JWT HS256 con secret_key local (sin llamadas a Cognito)
 ```
 
-**Ventajas:**
-- Sin redirects OAuth → login instantáneo
-- Sin dependencia de Cognito en cada request → más rápido
-- Permisos cargados una sola vez al login
+**Política de contraseñas (Cognito):**
+
+| Regla | Valor |
+|---|---|
+| Longitud mínima | 8 caracteres |
+| Mayúsculas | Al menos 1 |
+| Minúsculas | Al menos 1 |
+| Números | Al menos 1 |
+| Símbolos | Al menos 1 (`!@#$%^&*...`) |
+
+Ejemplo válido: `Infodets2024!`
+
+**Credenciales AWS para blanqueo de contraseñas:**
+Las credenciales son temporales (sesión de laboratorio AWS Academy). Deben actualizarse en `Backend/.env` cada vez que se inicia una nueva sesión en el portal.
 
 ---
 
-## 6. SISTEMA DE PERFILES Y PERMISOS
+## 5. SISTEMA DE PERFILES Y PERMISOS
 
-El perfil es la **única fuente de verdad** para los permisos. No existe el concepto de "rol" como entidad separada.
+El perfil es la **única fuente de verdad** para los permisos. No existe rol como entidad separada.
 
 ### Secciones del perfil
 
@@ -197,9 +213,9 @@ El perfil es la **única fuente de verdad** para los permisos. No existe el conc
 | `documentacion` | Menú | Acceso a documentación |
 | `noticias` | Menú | Acceso a noticias |
 | `dashboard` | Menú | Acceso al panel administrativo |
-| `gestionar_usuarios` | Acción | CRUD de usuarios, perfiles, derechos |
+| `gestionar_usuarios` | Acción | CRUD usuarios, perfiles, derechos, blanqueo |
 | `blanquear_password` | Acción | Blanqueo de contraseñas en Cognito |
-| `gestionar_documentos` | Acción | Subir/eliminar documentos e indexar en Qdrant |
+| `gestionar_documentos` | Acción | Subir/eliminar documentos, URLs oficiales |
 | `gestionar_noticias` | Acción | CRUD de noticias |
 | `gestionar_tablas` | Acción | Administrar tablas de valores |
 | `ver_validaciones` | Acción | Ver y aprobar validaciones de IA |
@@ -207,89 +223,91 @@ El perfil es la **única fuente de verdad** para los permisos. No existe el conc
 ### Flujo de permisos
 
 ```
-Login → GET /permisos/{usuario_id} → guardado en Zustand
+Login → GET /permisos/{usuario_id} → guardado en Zustand (persist)
         ↓
-Sidebar lee permisos del store (sin fetch, sin parpadeo)
+Sidebar lee tienePermiso() del store → sin fetch, sin parpadeo
         ↓
-Backend verifica permiso específico en cada endpoint
+Backend: require_permiso('seccion') verifica en DB por endpoint
         ↓
-Al asignar/cambiar perfil → permisos se propagan automáticamente
+Al asignar/editar perfil → permisos se propagan a todos sus usuarios
 ```
 
-### Gestión desde el dashboard
+### Gestión
 
-- `/dashboard/derechos` — crear perfiles, definir permisos, asignar usuarios
-- `/dashboard/usuarios` — crear usuarios (perfil obligatorio), editar, blanquear contraseña
+- `/dashboard/derechos` — crear perfiles, definir permisos (menú + acciones), asignar usuarios
+- `/dashboard/usuarios` — CRUD usuarios, perfil obligatorio al crear, blanqueo de contraseña
 
 ---
 
-## 7. LOOP DE RETROALIMENTACIÓN
+## 6. LOOP DE RETROALIMENTACIÓN
 
-Sistema de mejora continua que detecta vacíos de información.
+Sistema de mejora continua implementado en `rag_service.py` → `ejecutar_loop_retroalimentacion()`.
 
-### Niveles de acción (umbral: 70%)
+### Niveles de acción
 
-| Nivel | Condición | Acción |
-|---|---|---|
-| 0 | Score ≥ 70% | Responde con documentación oficial local |
-| 1 | Score < 70% | Busca en URLs oficiales (configuradas en `/dashboard/documentacion`) |
-| 2 | Nivel 1 vacío | Búsqueda web via Serper API |
-| 3 | Todo vacío | Mensaje de escalamiento + ticket + notificación n8n al admin |
+| Nivel | Condición | Acción | Mensaje al usuario |
+|---|---|---|---|
+| 0 | Score ≥ 70% | Responde con documentación oficial local | Sin aviso |
+| 1 | Score < 70% | Busca en URLs oficiales activas (tabla `urls_oficiales`) | ⚠️ Fuente externa |
+| 2 | Nivel 1 vacío | Búsqueda web via Serper API | ⚠️ Fuente externa |
+| 3 | Todo vacío | Mensaje de escalamiento + ticket + email n8n | Mensaje de escalamiento |
 
 ### Sistema de validaciones para entrenamiento IA
 
 | Score | Acción |
 |---|---|
 | < 50% | No se crea validación |
-| 50% - 85% | Validación pendiente → revisión manual en `/dashboard/notificaciones` |
-| ≥ 85% | Auto-indexado en Qdrant (background thread) |
+| 50% – 85% | Validación `pendiente` → revisión manual en `/dashboard/notificaciones` |
+| ≥ 85% | `auto_indexado` → indexado en Qdrant en background thread |
 
-### Notificaciones n8n
+Al aprobar una validación manual → se indexa en Qdrant inmediatamente.
 
-El workflow `INFODETS - Notificaciones Loop Retroalimentacion` envía emails al admin para:
-- `nivel1_externo` / `nivel2_web` — respuesta desde fuente externa
-- `nivel3_escalamiento` — sin respuesta, requiere atención humana
-- `validacion_pendiente` — respuesta requiere revisión manual
+### Notificaciones n8n (workflow activo)
+
+| Evento | Cuándo | Email |
+|---|---|---|
+| `nivel1_externo` | Respuesta desde URL oficial | ⚠️ Naranja — sugerir subir doc |
+| `nivel2_web` | Respuesta desde búsqueda web | ⚠️ Naranja — sugerir subir doc |
+| `nivel3_escalamiento` | Sin respuesta en ninguna fuente | 🚨 Rojo — urgente |
+| `validacion_pendiente` | Score 50-85% requiere revisión | 🔵 Azul — link al dashboard |
 
 ---
 
-## 8. TABLAS EN RDS
+## 7. TABLAS EN RDS
 
-| Tabla | Propósito |
-|---|---|
-| `usuarios` | Usuarios con perfil completo |
-| `documentos` | Documentos indexados en Qdrant |
-| `historial_chat` | Consultas realizadas por usuarios autenticados |
-| `consultas_invitado` | Consultas de usuarios no registrados |
-| `reportes_feedback` | Feedback de respuestas |
-| `permisos_usuario` | Permisos individuales por sección |
-| `perfiles` | Perfiles de acceso |
-| `perfil_permisos` | Permisos por perfil |
-| `tabla_valores` | Valores de desplegables (instituciones, cargos, etc.) |
-| `noticias` | Publicaciones institucionales |
-| `tickets_vacios` | Consultas sin documentación oficial (score < 70%) |
-| `validaciones_respuesta` | Respuestas para entrenamiento de la IA |
-| `urls_oficiales` | URLs para el Nivel 1 del loop de retroalimentación |
+| Tabla | Propósito | Migraciones |
+|---|---|---|
+| `usuarios` | Usuarios con perfil completo y cognito_sub | S1 |
+| `documentos` | Documentos indexados en Qdrant | S1 |
+| `historial_chat` | Consultas de usuarios autenticados | S1 |
+| `reportes_feedback` | Feedback de respuestas (schema listo) | S1 |
+| `permisos_usuario` | Permisos individuales por sección (11 secciones) | S3 |
+| `perfiles` | Perfiles de acceso | S3 |
+| `perfil_permisos` | Permisos por perfil (11 secciones) | S3 |
+| `tabla_valores` | Valores de desplegables (instituciones, cargos, etc.) | S3 |
+| `noticias` | Publicaciones institucionales | S3 |
+| `tickets_vacios` | Consultas sin documentación (score < 70%) | S3 |
+| `consultas_invitado` | Consultas de usuarios no registrados | Testeo |
+| `validaciones_respuesta` | Respuestas para entrenamiento de la IA | Testeo |
+| `urls_oficiales` | URLs para Nivel 1 del loop de retroalimentación | Testeo |
 
-## 7. PLAN DE SPRINTS
+---
 
-> **Fechas clave:**
-> - 🎯 **MVP:** 24 de mayo de 2025 ✅ CUMPLIDO
-> - 🚀 **Entrega final:** 28 de junio de 2025
+## 8. PLAN DE SPRINTS
 
 | Sprint | Período | Hito | Estado |
 |---|---|---|---|
 | S0 | Semanas 1-2 | Entorno AWS | ✅ 100% CERRADO |
 | S1 | Semanas 3-4 | Autenticación real | ✅ 100% CERRADO |
 | S2 | Semanas 5-6 | Pipeline RAG | ✅ 100% CERRADO |
-| S3 | Semanas 7-8 | Chat IA real = **MVP** | ✅ 100% CERRADO |
+| S3 | Semanas 7-8 | Chat IA real = **MVP** | ✅ 100% CERRADO — 24 mayo ✅ |
 | S4 | Semanas 9-10 | Dashboard + feedback | 🟡 50% |
 | Testeo | En curso | Correcciones + refactoring | 🟡 En progreso |
-| S5 | Semanas 11-12 | Producción | ⏳ Pendiente |
+| S5 | Semanas 11-12 | Producción | ⏳ Pendiente — 28 junio |
 
 ---
 
-### Sprint 0 ✅ 100% CERRADO
+### Sprint 0 ✅ 100% CERRADO — Entorno AWS
 
 | Tarea | Estado | Responsable |
 |---|---|---|
@@ -302,6 +320,8 @@ El workflow `INFODETS - Notificaciones Loop Retroalimentacion` envía emails al 
 | Definir estructura de tablas | ✅ Modelo híbrido PostgreSQL + Qdrant | P2 + P3 |
 | Definir contratos de API | ✅ Schema-First Pydantic + TypeScript | P1 + P2 |
 | Actualizar variables de entorno | ✅ | Todos |
+
+**Entregable:** Entorno completo funcionando en EC2. ✅
 
 ---
 
@@ -320,10 +340,12 @@ El workflow `INFODETS - Notificaciones Loop Retroalimentacion` envía emails al 
 
 **Logros adicionales:**
 - ✅ FastAPI como servicio systemd en EC2 (auto-reinicio)
-- ✅ CI/CD GitHub Actions operativo
+- ✅ CI/CD GitHub Actions operativo — deploy automático en push a main
 - ✅ sessionStore.ts Zustand con token, rol, isAuthenticated, isAdmin
-- ✅ axiosInstance.ts con interceptor JWT
-- ✅ Migraciones Alembic ejecutadas en RDS
+- ✅ axiosInstance.ts con interceptor JWT + redirect 401
+- ✅ Migraciones Alembic ejecutadas — tablas usuarios, documentos, historial_chat, reportes_feedback
+
+**Entregable:** Usuario puede loguearse con Cognito real y acceder a rutas protegidas. ✅
 
 ---
 
@@ -343,6 +365,11 @@ El workflow `INFODETS - Notificaciones Loop Retroalimentacion` envía emails al 
 - ✅ Gemini gemini-2.0-flash-lite operativo
 - ✅ Groq llama-3.3-70b-versatile como fallback automático en 429
 - ✅ Pipeline probado con PDF real → 7 chunks en Qdrant
+- ✅ Lógica de umbral de confianza: ≥70% responde con docs oficiales, <70% avisa fallback
+
+**Nota arquitectura:** FastAPI procesa el PDF directamente, n8n recibe notificación con resultado (no el PDF). Esto resolvió un bug de n8n 2.17.5 con archivos binarios.
+
+**Entregable:** Se puede subir un PDF y hacerle una pregunta que el sistema responde con el contenido. ✅
 
 ---
 
@@ -352,19 +379,28 @@ El workflow `INFODETS - Notificaciones Loop Retroalimentacion` envía emails al 
 |---|---|---|
 | API Key Gemini + streaming | ✅ | P3 |
 | StreamingResponse FastAPI | ✅ | P2 + P3 |
-| Lógica umbral confianza >70% local / <70% fallback | ✅ | P3 |
+| Lógica umbral confianza ≥70% local / <70% fallback | ✅ | P3 |
 | Chat Frontend conectado SSE | ✅ | P1 + P3 |
 | Fuentes con links al PDF | ✅ | P1 |
 | Historial en panel lateral | ✅ | P1 + P2 |
 | Ticket silencioso score < 0.3 | ✅ | P3 |
 
-**Logros adicionales:**
-- ✅ CRUD completo de usuarios, perfiles, derechos
-- ✅ Página de perfil con datos reales de RDS
-- ✅ Noticias CRUD con imágenes
-- ✅ Tablas administrables (instituciones, cargos, dependencias)
-- ✅ Sidebar dinámico según permisos
-- ✅ 7 migraciones Alembic aplicadas
+**Logros adicionales (adelantaron Sprint 4):**
+- ✅ ChatPanel.tsx — streaming SSE real via fetch con JWT, chunks en tiempo real
+- ✅ HistorialPanel.tsx — últimas 20 consultas reales desde RDS
+- ✅ CRUD completo de usuarios (`/dashboard/usuarios`)
+- ✅ Derechos por usuario (`/dashboard/derechos`) — permisos por sección del menú
+- ✅ Perfiles de acceso (`/dashboard/perfiles`) — roles + permisos, asignación a usuarios
+- ✅ Auto-registro en RDS al hacer login — sincronización desde cognito:groups
+- ✅ Página de perfil (`/perfil`) — edición con datos reales de RDS
+- ✅ Noticias CRUD con imágenes, publicación/borrador
+- ✅ Tablas administrables (instituciones, cargos, dependencias, categorías)
+- ✅ Sidebar dinámico según permisos del usuario
+- ✅ 7 migraciones Alembic aplicadas en RDS
+- ✅ Tickets de vacío de información en `/dashboard/notificaciones`
+- ✅ Página `/documentacion` — carga PDFs + listado con link al PDF
+
+**Entregable:** Chat funcional con IA real, login Cognito, ingesta de documentos, gestión de usuarios y perfiles. ✅
 
 ---
 
@@ -388,19 +424,25 @@ El workflow `INFODETS - Notificaciones Loop Retroalimentacion` envía emails al 
 | Tarea | Estado |
 |---|---|
 | Login propio JWT HS256 (reemplazó OAuth Cognito) | ✅ |
-| Loop de retroalimentación 3 niveles (70% umbral) | ✅ |
+| Fix: mensaje de error en login no se borraba por refresh | ✅ |
+| Fix: interceptor axios excluye /auth/login del 401 global | ✅ |
+| Fix: historial de chat no se actualizaba tras consulta | ✅ |
+| Fix: usuario_id incorrecto en guardar_historial | ✅ |
+| Loop de retroalimentación 3 niveles (umbral 70%) | ✅ |
 | Sistema de validaciones para entrenamiento IA | ✅ |
-| Notificaciones n8n por nivel y validaciones | ✅ |
-| URLs oficiales gestionadas desde dashboard | ✅ |
-| Consulta invitado con formulario de datos | ✅ |
-| Sistema de perfiles como única fuente de verdad | ✅ |
-| Permisos en Zustand (sin parpadeo en sidebar) | ✅ |
-| Blanqueo de contraseña desde dashboard | ✅ |
-| DatePicker para fecha de nacimiento | ✅ |
-| Emails normalizados a minúsculas | ✅ |
+| Notificaciones n8n por nivel y validaciones pendientes | ✅ |
+| URLs oficiales gestionadas desde `/dashboard/documentacion` | ✅ |
+| Consulta invitado con formulario + institución desde tabla | ✅ |
+| Sistema de perfiles como única fuente de verdad (eliminó rol duplicado) | ✅ |
+| Permisos en Zustand al login (sin fetch, sin parpadeo en sidebar) | ✅ |
+| Blanqueo de contraseña desde `/dashboard/usuarios` | ✅ |
+| DatePicker para fecha de nacimiento (DD/MM/AAAA) | ✅ |
+| Emails normalizados a minúsculas en toda la app | ✅ |
 | Sincronización usuarios Cognito ↔ RDS | ✅ |
 | Perfil obligatorio al crear usuario | ✅ |
-| Eliminación de /dashboard/perfiles (fusionado en derechos) | ✅ |
+| Fusión `/dashboard/perfiles` en `/dashboard/derechos` | ✅ |
+| Permisos backend: require_permiso() reemplazó require_admin() | ✅ |
+| 3 nuevas tablas en RDS: consultas_invitado, validaciones_respuesta, urls_oficiales | ✅ |
 | Feedback botón en chat | ⏳ Pendiente |
 | Dashboard con datos reales (hot topics, gráficos) | ⏳ Pendiente |
 | Despliegue en producción | ⏳ Pendiente |
@@ -411,37 +453,30 @@ El workflow `INFODETS - Notificaciones Loop Retroalimentacion` envía emails al 
 
 | Tarea | Responsable |
 |---|---|
+| Feedback botón en chat + endpoint | P1 + P2 |
+| Dashboard con datos reales (hot topics, gráficos) | P1 + P2 |
 | Pruebas de integración Frontend ↔ Backend | P1 + P2 |
 | Pruebas del pipeline RAG con documentos reales | P3 |
 | Configurar CloudFront para el Frontend | P2 |
 | Configurar dominio y certificado SSL | P2 |
-| Revisión de seguridad | P2 |
+| Revisión de seguridad (variables de entorno, permisos IAM) | P2 |
 | Pruebas de usuario final con flujo completo | Todos |
 
----
-
-## 8. RESUMEN EJECUTIVO
-
-| Sprint | Hito principal | Estado |
-|---|---|---|
-| S0 | Entorno AWS funcionando | ✅ 100% |
-| S1 | Login real de punta a punta | ✅ 100% |
-| S2 | Ingesta de documentos y RAG | ✅ 100% |
-| S3 | Chat con IA real — **MVP** | ✅ 100% — 24 mayo ✅ |
-| S4 | Dashboard + feedback + admin | 🟡 50% |
-| Testeo | Correcciones + refactoring | 🟡 En progreso |
-| S5 | Producción en AWS | ⏳ — 28 junio |
+**Entregable:** Sistema en producción en AWS. URL pública funcionando.
 
 ---
 
+## 9. CONVENCIONES DE TRABAJO
 
 ### Ramas Git
 
 ```
-main          → Producción
+main          → Producción. Solo recibe merges.
 Testeo        → Rama activa de desarrollo y corrección de errores
-Frontend      → Desarrollo Frontend
-Backend       → Desarrollo Backend
+Frontend      → Desarrollo Frontend (P1)
+Backend       → Desarrollo Backend (P2)
+Configuracion → Configuración e infraestructura
+Data          → Datos y modelos IA (P3)
 ```
 
 ### Commits (Conventional Commits)
@@ -454,55 +489,75 @@ docs:     documentación
 chore:    mantenimiento
 ```
 
-### Política de contraseñas (Cognito)
+### Pull Requests
 
-| Regla | Valor |
-|---|---|
-| Longitud mínima | 8 caracteres |
-| Mayúsculas | Al menos 1 |
-| Minúsculas | Al menos 1 |
-| Números | Al menos 1 |
-| Símbolos | Al menos 1 |
-
-Ejemplo válido: `Infodets2024!`
+- Todo PR debe ser revisado por al menos 1 compañero antes de mergear
+- El PR debe incluir descripción de qué hace y cómo probarlo
+- No se mergea código que no compile
 
 ---
 
 ## 10. DECISIONES DE ARQUITECTURA
 
-### 10.1 Login propio JWT (reemplazó OAuth Cognito)
+### 10.1 Login propio JWT HS256 (reemplazó OAuth Cognito) — Sprint Testeo
 
-**Problema:** El flujo OAuth de Cognito requería redirects a `/auth/callback`, era lento y complejo.
+**Problema:** El flujo OAuth requería redirects a `/auth/callback`, era lento y complejo. El callback hacía polling con setInterval para esperar el token de Cognito.
 
-**Solución:** Login directo con email/password → Cognito valida → backend genera JWT HS256 propio.
+**Solución:** Login directo email/password → Cognito `initiate_auth` (USER_PASSWORD_AUTH) → backend genera JWT HS256 propio (sub=usuario_id_RDS, exp=8h).
 
 **Resultado:** Login instantáneo, sin redirects, sin dependencia de Cognito en cada request.
 
-### 10.2 Permisos en Zustand (reemplazó fetch en cada render)
+---
 
-**Problema:** El Sidebar hacía fetch de permisos en cada navegación → parpadeo visible.
+### 10.2 Permisos en Zustand al login (reemplazó fetch en cada render) — Sprint Testeo
 
-**Solución:** Permisos cargados una sola vez al login, guardados en Zustand con `persist` → disponibles desde el primer render.
+**Problema:** El Sidebar hacía `GET /permisos/{id}` en cada navegación → parpadeo visible de items del menú.
 
-### 10.3 Perfiles como única fuente de verdad (reemplazó sistema dual rol+perfil)
+**Solución:** Permisos cargados una sola vez al login junto con el token, guardados en Zustand con `persist` → disponibles desde el primer render sin ningún fetch.
 
-**Problema:** Existían dos sistemas paralelos: `RolEnum` en el modelo y `Perfil` con permisos → inconsistencias.
+---
 
-**Solución:** El perfil define todo — secciones visibles del menú Y acciones permitidas en el backend. `require_admin` reemplazado por `require_permiso('seccion')`.
+### 10.3 Perfiles como única fuente de verdad (reemplazó sistema dual rol+perfil) — Sprint Testeo
 
-### 10.4 Qdrant self-hosted (descartó Pinecone)
+**Problema:** Existían dos sistemas paralelos: `RolEnum` en el modelo y `Perfil` con permisos → inconsistencias y duplicación.
+
+**Solución:** El perfil define todo — 5 secciones de menú + 6 acciones de backend. `require_admin` reemplazado por `require_permiso('seccion')` en cada endpoint.
+
+---
+
+### 10.4 Qdrant self-hosted (descartó Pinecone) — Sprint 1
 
 **Razón:** Soberanía de datos para entidad pública + costo $0 vs ~$70/mes de Pinecone.
 
-### 10.5 Gemini + Groq fallback
+> ⚠️ **Escalabilidad:** Cuando el volumen supere los 10.000 chunks, escalar EC2: `t4g.micro` (1GB) → `t4g.medium` (4GB). Qdrant retoma automáticamente con datos persistidos en el volumen.
+
+---
+
+### 10.5 Gemini + Groq fallback — Sprint 2
 
 **Razón:** API Keys gratuitas de Gemini tienen límite de 15 RPM. Groq (`llama-3.3-70b-versatile`) activa automáticamente cuando Gemini devuelve 429.
 
-### 10.6 Serper API para búsqueda web (Nivel 2)
+| Aspecto | Gemini | Groq (fallback) |
+|---|---|---|
+| Modelo | gemini-2.0-flash-lite | llama-3.3-70b-versatile |
+| Límite gratuito | 15 RPM | 30 RPM |
+| Activación | Principal | Automático en 429 |
+
+---
+
+### 10.6 FastAPI procesa PDF directamente (reemplazó n8n como intermediario) — Sprint 2
+
+**Problema:** n8n 2.17.5 tiene un bug con archivos binarios en el nodo HTTP Request — no puede reenviar PDFs recibidos en un webhook.
+
+**Solución:** `curl → FastAPI directamente → FastAPI notifica a n8n` (solo metadatos, no el PDF).
+
+---
+
+### 10.7 Serper API para búsqueda web (Nivel 2 del loop) — Sprint Testeo
 
 **Razón:** 2.500 búsquedas/mes gratis. Se activa solo cuando Qdrant y URLs oficiales no tienen respuesta con ≥70% de confianza.
 
 ---
 
 *INFODETS — Sistema de Gestión de Conocimiento Dinámico*
-*Plan de Desarrollo v4.0 — Sprint Testeo*
+*Plan de Desarrollo v4.1 — Sprint Testeo — Mayo 2026*
