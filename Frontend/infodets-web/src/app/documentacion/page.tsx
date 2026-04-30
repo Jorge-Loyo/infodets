@@ -44,7 +44,7 @@ export default function DocumentacionPage() {
   const cargar = async () => {
     setCargando(true)
     try {
-      setDocumentos(await ingestaService.listar())
+      setDocumentos(await ingestaService.listarRecientes())
     } catch {
       notifications.show({ color: 'red', message: 'Error al cargar documentos' })
     } finally {
@@ -183,10 +183,10 @@ export default function DocumentacionPage() {
                     <Group justify="space-between">
                       <Group gap="xs">
                         <ThemeIcon variant="light" color="blue" radius="md"><IconFileTypePdf size={16} /></ThemeIcon>
-                        <Text fw={600} size="sm">Documentos disponibles</Text>
+                        <Text fw={600} size="sm">Últimos documentos disponibles</Text>
                       </Group>
                       <Group gap="sm">
-                        <Badge variant="light" color="blue">{documentos.length} documentos</Badge>
+                        <Badge variant="light" color="blue">{documentos.length} recientes</Badge>
                         <ActionIcon variant="light" radius="md" onClick={cargar}><IconRefresh size={16} /></ActionIcon>
                       </Group>
                     </Group>
@@ -246,7 +246,7 @@ export default function DocumentacionPage() {
                       <Stack align="center" py="xl" gap="xs">
                         <ThemeIcon size={40} variant="light" color="gray" radius="xl"><IconSearch size={20} /></ThemeIcon>
                         <Text size="sm" c="dimmed">
-                          {documentos.length === 0 ? 'No hay documentos cargados aún.' : 'No se encontraron documentos'}
+                          {documentos.length === 0 ? 'No hay documentos disponibles aún.' : 'No se encontraron documentos'}
                         </Text>
                       </Stack>
                     )}
