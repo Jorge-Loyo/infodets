@@ -93,7 +93,7 @@ Sistema de validaciones para entrenamiento continuo de la IA
 | FastAPI | `http://32.192.124.14:8000` | ✅ systemd auto-reinicio |
 | Qdrant | `http://32.192.124.14:6333` | ✅ Docker restart=always |
 | n8n | `http://32.192.124.14:5678` | ✅ Docker |
-| Next.js | `http://32.192.124.14:3000` | ⏳ Pendiente despliegue |
+| Next.js | `http://32.192.124.14:3000` | ✅ Docker restart=always |
 
 ### RDS PostgreSQL
 
