@@ -1,71 +1,35 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { fetchAuthSession } from 'aws-amplify/auth'
-import { Hub } from 'aws-amplify/utils'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSessionStore } from '@/store/sessionStore'
+import { useAuthReady } from '@/components/layout/AuthProvider'
 import { ROUTES } from '@/lib/constants'
 
 export function useRequireAuth({ adminOnly = false } = {}) {
   const router = useRouter()
-  const { isAuthenticated, isAdmin } = useSessionStore()
+  const isReady = useAuthReady()
+  const { isAuthenticated, tienePermiso } = useSessionStore()
   const [checking, setChecking] = useState(true)
+  const redirected = useRef(false)
 
   useEffect(() => {
-    // Si ya hay sesión en memoria, no llamar a Amplify
-    if (isAuthenticated()) {
-      if (adminOnly && !isAdmin()) router.replace(ROUTES.CONSULTA)
-      else setChecking(false)
+    if (!isReady || redirected.current) return
+
+    if (!isAuthenticated()) {
+      redirected.current = true
+      router.replace(ROUTES.HOME)
       return
     }
 
-    const hasCode = window.location.search.includes('code=')
-
-    const verify = async () => {
-      try {
-        const session = await fetchAuthSession({ forceRefresh: false })
-        const token = session.tokens?.accessToken
-        if (!token) {
-          router.replace(ROUTES.LOGIN)
-          return
-        }
-        if (adminOnly) {
-          const rol = (token.payload['custom:rol'] as string) ?? 'operador'
-          if (rol !== 'admin') {
-            router.replace(ROUTES.CONSULTA)
-            return
-          }
-        }
-        setChecking(false)
-      } catch {
-        router.replace(ROUTES.LOGIN)
-      }
+    if (adminOnly && !tienePermiso('dashboard')) {
+      redirected.current = true
+      router.replace(ROUTES.CONSULTA)
+      return
     }
 
-    if (hasCode) {
-      const unsubscribe = Hub.listen('auth', ({ payload }) => {
-        if (payload.event === 'signInWithRedirect') {
-          unsubscribe()
-          verify()
-        }
-        if (payload.event === 'signInWithRedirect_failure') {
-          unsubscribe()
-          router.replace(ROUTES.LOGIN)
-        }
-      })
-      const timeout = setTimeout(() => {
-        unsubscribe()
-        router.replace(ROUTES.LOGIN)
-      }, 10000)
-      return () => {
-        unsubscribe()
-        clearTimeout(timeout)
-      }
-    } else {
-      verify()
-    }
-  }, [])
+    setChecking(false)
+  }, [isReady])
 
-  return { checking }
+  return { checking: !isReady || checking }
 }

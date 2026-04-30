@@ -5,77 +5,65 @@
 
 > **Proyecto:** INFODETS — Sistema de Gestión de Conocimiento Dinámico
 > **Repositorio:** https://github.com/Jorge-Loyo/infodets
-> **Rama principal de desarrollo:** `Frontend`
+> **Rama activa de desarrollo:** `Testeo`
 
 ---
 
-## OPCIÓN A — Instalación manual (recomendada para desarrollo)
+## PREREQUISITOS
 
-### Prerequisitos
-
-Instalar en la máquina nueva antes de comenzar:
+Instalar antes de comenzar:
 
 | Herramienta | Versión | Descarga |
 |---|---|---|
 | Git | Cualquier versión reciente | https://git-scm.com/downloads |
 | Node.js | 20 o superior | https://nodejs.org |
 | Python | 3.13 | https://www.python.org/downloads/ |
-| Docker Desktop | Cualquier versión reciente | https://www.docker.com/products/docker-desktop/ |
 
 > Durante la instalación de Python marcar obligatoriamente: **Add Python to PATH**
 
 ---
+
+## INSTALACIÓN LOCAL (desarrollo)
 
 ### Paso 1 — Clonar el repositorio
 
 ```bash
 git clone https://github.com/Jorge-Loyo/infodets.git
 cd infodets
-git checkout Frontend
+git checkout Testeo
 ```
 
 ---
 
-### Paso 2 — Configurar el Front-End
+### Paso 2 — Tunnels SSH (obligatorios antes de levantar el backend)
 
+Abrir **dos terminales separadas** y dejarlas corriendo:
+
+**Terminal 1 — Base de datos RDS:**
 ```bash
-cd Frontend/infodets-web
-npm install
+ssh -i "/c/git/Popurri/Key/keyinfodets.pem" -L 5432:infodets-db.cjgfkaqwabgp.us-east-1.rds.amazonaws.com:5432 ubuntu@32.192.124.14 -N
 ```
 
-Crear el archivo `.env.local` dentro de `Frontend/infodets-web/` con este contenido:
-
-```env
-NEXT_PUBLIC_API_URL=http://localhost:8000/v1
-NEXT_PUBLIC_COGNITO_USER_POOL_ID=us-east-1_uOuYTO6Ce
-NEXT_PUBLIC_COGNITO_CLIENT_ID=6sr8e9s203gb8reco11d9gsal1
-NEXT_PUBLIC_COGNITO_REGION=us-east-1
-NEXT_PUBLIC_REDIRECT_SIGN_IN=http://localhost:3000/consulta
-NEXT_PUBLIC_REDIRECT_SIGN_OUT=http://localhost:3000/login
-```
-
-Correr el Front-End:
-
+**Terminal 2 — Qdrant:**
 ```bash
-npm run dev
+ssh -i "/c/git/Popurri/Key/keyinfodets.pem" -L 6333:localhost:6333 ubuntu@32.192.124.14 -N
 ```
 
 ---
 
-### Paso 3 — Configurar el Back-End
+### Paso 3 — Configurar el Backend
 
 ```bash
-cd /c/git/infodets/Backend
+cd Backend
 py -m venv venv
 source venv/Scripts/activate      # Windows Git Bash
 # source venv/bin/activate         # Mac / Linux
 pip install -r requirements.txt
 ```
 
-Solicitar el archivo `.env` al líder del proyecto — contiene credenciales sensibles y no se sube a Git.
-Copiarlo en `Backend/.env`.
+Solicitar el archivo `.env` al líder del proyecto y copiarlo en `Backend/.env`.
 
-Correr el Back-End:
+Levantar el backend:
 
 ```bash
 uvicorn main:app --reload
@@ -83,101 +71,137 @@ uvicorn main:app --reload
 
 ---
 
-### Paso 4 — Verificar que todo funciona
-
-Abrir en el navegador:
-
-| Servicio | URL |
-|---|---|
-| Front-End | http://localhost:3000 |
-| Back-End API | http://localhost:8000 |
-| Documentación API | http://localhost:8000/docs |
-
----
-
-## OPCIÓN B — Docker (más simple, recomendada para pruebas rápidas)
-
-Solo necesitas tener **Docker Desktop** instalado y el archivo `.env` del Back-End.
+### Paso 4 — Configurar el Frontend
 
 ```bash
-git clone https://github.com/Jorge-Loyo/infodets.git
-cd infodets
-git checkout Frontend
+cd Frontend/infodets-web
+npm install
 ```
 
-Solicitar el archivo `.env` al líder del proyecto y copiarlo en `Backend/.env`.
+El archivo `.env.local` debe contener:
 
-Levantar todo con un solo comando:
-
-```bash
-docker-compose -f docker-compose.dev.yml up --build
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000/v1
 ```
 
-Docker instala automáticamente todas las dependencias de Node.js y Python. No necesitas instalarlas manualmente.
-
-Verificar en el navegador:
-
-| Servicio | URL |
-|---|---|
-| Front-End | http://localhost:3000 |
-| Back-End API | http://localhost:8000 |
-| Documentación API | http://localhost:8000/docs |
-
-Para detener:
+Levantar el frontend:
 
 ```bash
-docker-compose down
+npm run dev
 ```
 
 ---
 
-## INFRAESTRUCTURA AWS (solo para referencia)
+### Paso 5 — Verificar
 
-Los servicios en la nube ya están configurados y corriendo:
+| Servicio | URL |
+|---|---|
+| Frontend | http://localhost:3000 |
+| Backend API | http://localhost:8000 |
+| Documentación API | http://localhost:8000/docs |
+
+---
+
+## AUTENTICACIÓN
+
+El sistema usa **login propio con JWT HS256** — sin OAuth ni redirects de Cognito.
+
+- Ir a http://localhost:3000
+- Ingresar email y contraseña (las credenciales se gestionan en AWS Cognito)
+- Los permisos se cargan al iniciar sesión y se persisten en localStorage
+
+**Usuarios disponibles:**
+
+| Email | Perfil |
+|---|---|
+| jorgenayati@gmail.com | Administrador |
+| jorgenayaticmi@gmail.com | Operador |
+| leryuslegys@gmail.com | Operador |
+| sni15396@gmail.com | Operador |
+
+> Para blanquear contraseñas ir a `/dashboard/usuarios` → ícono 🔒
+
+---
+
+## INFRAESTRUCTURA AWS
 
 | Servicio | URL / Endpoint |
 |---|---|
 | Servidor EC2 | `32.192.124.14` |
 | n8n | http://32.192.124.14:5678 |
 | RDS PostgreSQL | `infodets-db.cjgfkaqwabgp.us-east-1.rds.amazonaws.com` |
+| Qdrant | http://32.192.124.14:6333 |
 | Cognito User Pool | `us-east-1_uOuYTO6Ce` |
 
-Para conectarse al servidor EC2:
-
+**Conexión SSH al EC2:**
 ```bash
-ssh -i "keyinfodets.pem" ubuntu@32.192.124.14
+ssh -i "C:\git\Popurri\Key\keyinfodets.pem" ubuntu@32.192.124.14
 ```
 
-> El archivo `keyinfodets.pem` debe solicitarse al líder del proyecto.
-
-Para conectarse a la base de datos RDS desde VS Code (extensión PostgreSQL), primero abrir el túnel SSH en una terminal y dejarlo corriendo:
-
+**Levantar Qdrant si está caído:**
 ```bash
-ssh -i "keyinfodets.pem" -L 5432:infodets-db.cjgfkaqwabgp.us-east-1.rds.amazonaws.com:5432 ubuntu@32.192.124.14 -N
+ssh -i "C:\git\Popurri\Key\keyinfodets.pem" ubuntu@32.192.124.14 "docker start qdrant"
 ```
-
-Luego conectarse con:
-
-| Campo | Valor |
-|---|---|
-| Host | `127.0.0.1` |
-| Port | `5432` |
-| Database | `infodets` |
-| Username | `infodets_admin` |
-| SSL | `require` |
 
 ---
 
-## ARCHIVOS SENSIBLES — SOLICITAR AL LÍDER DEL PROYECTO
+## VARIABLES DE ENTORNO — Backend (.env)
 
-Estos archivos no están en Git por seguridad:
+```env
+# Cognito
+COGNITO_REGION=us-east-1
+COGNITO_USER_POOL_ID=us-east-1_uOuYTO6Ce
+COGNITO_CLIENT_ID=40g4ffmsvf8mmk77kc37abucvd
+COGNITO_CLIENT_SECRET=<solicitar al líder>
+
+# App
+APP_ENV=development
+SECRET_KEY=<solicitar al líder>
+
+# Base de datos
+DATABASE_URL=postgresql://infodets_admin:<password>@localhost:5432/infodets
+
+# Google Gemini
+GEMINI_API_KEY=<solicitar al líder>
+GEMINI_GENERATION_KEY=<solicitar al líder>
+
+# Groq (fallback IA)
+GROQ_API_KEY=<solicitar al líder>
+
+# n8n
+N8N_URL=http://32.192.124.14:5678
+N8N_USER=admin
+N8N_PASSWORD=<solicitar al líder>
+
+# Qdrant
+QDRANT_URL=http://localhost:6333
+QDRANT_COLLECTION=infodets_docs
+
+# Loop de retroalimentación
+SEARCH_API_KEY=<solicitar al líder>
+SEARCH_API_URL=https://google.serper.dev/search
+
+# Contraseña por defecto para blanqueo
+DEFAULT_PASSWORD=<solicitar al líder>
+
+# AWS Credentials (para blanqueo de passwords en Cognito)
+AWS_ACCESS_KEY_ID=<credenciales temporales del laboratorio>
+AWS_SECRET_ACCESS_KEY=<credenciales temporales del laboratorio>
+AWS_SESSION_TOKEN=<credenciales temporales del laboratorio>
+```
+
+> ⚠️ Las credenciales AWS son **temporales** (sesión de laboratorio). Deben actualizarse cada vez que se inicia una nueva sesión en el portal AWS Academy.
+
+---
+
+## ARCHIVOS SENSIBLES — SOLICITAR AL LÍDER
 
 | Archivo | Contiene |
 |---|---|
-| `Backend/.env` | Credenciales de Cognito, RDS, n8n y claves secretas |
+| `Backend/.env` | Todas las credenciales del sistema |
 | `keyinfodets.pem` | Clave SSH para acceder al EC2 |
 
 ---
 
 *INFODETS — Sistema de Gestión de Conocimiento Dinámico*
-*Guía de instalación v1.0*
+*Guía de instalación v2.0 — Actualizada al Sprint Testeo*

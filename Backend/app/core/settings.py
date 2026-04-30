@@ -6,16 +6,16 @@ class Settings(BaseSettings):
     cognito_user_pool_id: str
     cognito_client_id: str
     cognito_client_secret: str
-    cognito_domain: str
+    aws_access_key_id: str = ""
+    aws_secret_access_key: str = ""
+    aws_session_token: str = ""
     frontend_url: str
-    cloudfront_url: str
-    redirect_uri: str
     app_env: str = "development"
     secret_key: str
 
     # Google Gemini
-    gemini_api_key: str = ""  # para embeddings
-    gemini_generation_key: str = ""  # para generacion de texto
+    gemini_api_key: str = ""
+    gemini_generation_key: str = ""
 
     # Groq (fallback)
     groq_api_key: str = ""
@@ -37,16 +37,17 @@ class Settings(BaseSettings):
     qdrant_url: str = "http://172.31.40.141:6333"
     qdrant_collection: str = "infodets_docs"
 
-    @property
-    def cognito_authority(self) -> str:
-        return f"https://cognito-idp.{self.cognito_region}.amazonaws.com/{self.cognito_user_pool_id}"
+    # Loop de retroalimentacion
+    urls_oficiales: str = ""
+    search_api_key: str = ""
+    search_api_url: str = ""
 
-    @property
-    def cognito_metadata_url(self) -> str:
-        return f"{self.cognito_authority}/.well-known/openid-configuration"
+    # Contrasena por defecto para blanqueo
+    default_password: str = "Infodets2024!"
 
     class Config:
         env_file = ".env"
+        extra = "ignore"
 
 
 settings = Settings()

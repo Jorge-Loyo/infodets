@@ -3,7 +3,6 @@ export const APP_DESCRIPTION = 'Sistema de Gestión de Conocimiento Dinámico'
 
 export const ROUTES = {
   HOME: '/',
-  LOGIN: '/login',
   INVITADO: '/invitado',
   CONSULTA: '/consulta',
   DASHBOARD: '/dashboard',

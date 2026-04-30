@@ -1,77 +1,94 @@
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Depends
 from fastapi.responses import RedirectResponse
-from app.core.cognito import build_authorize_url, exchange_code_for_token, LOGOUT_ENDPOINT
 from app.core.settings import settings
 from app.core.database import get_db
-from app.services.auth_service import get_user_info
 from app.services import usuario_service
-from fastapi import Depends
+from app.schemas.auth_schema import TokenSchema
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
+import boto3
+import hmac
+import hashlib
+import base64
+from jose import jwt
+from datetime import datetime, timedelta
 
-router = APIRouter(prefix="/auth", tags=["Autenticación"], responses={404: {"message": "Not found"}})
+router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
 
-@router.get("/login", status_code=302)
-async def login():
-    url = build_authorize_url(redirect_uri=settings.cloudfront_url)
-    return RedirectResponse(url=url)
-    raise HTTPException(status_code=404, detail="Not found")
+class LoginRequest(BaseModel):
+    email: str
+    password: str
 
 
-@router.get("/callback", status_code=302)
-async def authorize(code: str, state: str | None = None, db: Session = Depends(get_db)):
-    token = await exchange_code_for_token(code, redirect_uri=settings.cloudfront_url)
-    userinfo = await get_user_info(token["access_token"])
+def _secret_hash(username: str) -> str:
+    msg = username + settings.cognito_client_id
+    dig = hmac.new(settings.cognito_client_secret.encode(), msg.encode(), hashlib.sha256).digest()
+    return base64.b64encode(dig).decode()
 
-    cognito_sub = userinfo.get("sub", "")
-    email = userinfo.get("email", "")
-    nombre = userinfo.get("name", email)
+
+def _make_jwt(usuario) -> str:
+    payload = {
+        "sub": str(usuario.id),
+        "email": usuario.email,
+        "rol": usuario.rol.value if hasattr(usuario.rol, 'value') else usuario.rol,
+        "exp": datetime.utcnow() + timedelta(hours=8),
+    }
+    return jwt.encode(payload, settings.secret_key, algorithm="HS256")
+
+
+logger = __import__('logging').getLogger(__name__)
+
+
+@router.post("/login", response_model=TokenSchema)
+async def login(body: LoginRequest, db: Session = Depends(get_db)):
+    email = body.email.strip().lower()
+    kwargs = {"region_name": settings.cognito_region}
+    if settings.aws_access_key_id and settings.aws_secret_access_key:
+        kwargs["aws_access_key_id"] = settings.aws_access_key_id
+        kwargs["aws_secret_access_key"] = settings.aws_secret_access_key
+        if settings.aws_session_token:
+            kwargs["aws_session_token"] = settings.aws_session_token
+    cognito = boto3.client("cognito-idp", **kwargs)
+    try:
+        resp = cognito.initiate_auth(
+            AuthFlow="USER_PASSWORD_AUTH",
+            AuthParameters={
+                "USERNAME": email,
+                "PASSWORD": body.password,
+                "SECRET_HASH": _secret_hash(email),
+            },
+            ClientId=settings.cognito_client_id,
+        )
+    except cognito.exceptions.NotAuthorizedException:
+        raise HTTPException(status_code=401, detail="Email o contraseña incorrectos")
+    except cognito.exceptions.UserNotFoundException:
+        raise HTTPException(status_code=401, detail="Email o contraseña incorrectos")
+    except cognito.exceptions.UserNotConfirmedException:
+        raise HTTPException(status_code=403, detail="Tu cuenta no está confirmada. Revisá tu email")
+    except cognito.exceptions.PasswordResetRequiredException:
+        raise HTTPException(status_code=403, detail="Debés resetear tu contraseña. Revisá tu email")
+    except cognito.exceptions.TooManyRequestsException:
+        raise HTTPException(status_code=429, detail="Demasiados intentos. Esperá unos minutos e intentá de nuevo")
+    except Exception as e:
+        logger.error(f"[LOGIN] Error Cognito: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail="Error interno al iniciar sesión")
+
+    id_token = resp["AuthenticationResult"]["IdToken"]
+    unverified = jwt.get_unverified_claims(id_token)
+    cognito_sub = unverified.get("sub", "")
+    groups = unverified.get("cognito:groups", [])
+    rol = "admin" if "admin" in groups else "operador"
 
     usuario = usuario_service.obtener_usuario_por_cognito_sub(db, cognito_sub)
     if not usuario:
-        usuario_service.crear_usuario(db, cognito_sub=cognito_sub, email=email, nombre=nombre)
-
-    redirect_url = (
-        f"{settings.frontend_url}"
-        f"?token={token['access_token']}"
-        f"&email={email}"
-        f"&nombre={nombre}"
-        f"&sub={cognito_sub}"
-    )
-    return RedirectResponse(url=redirect_url)
-
-
-@router.get("/logout", status_code=302)
-async def logout():
-    url = (
-        f"{LOGOUT_ENDPOINT}"
-        f"?client_id={settings.cognito_client_id}"
-        f"&logout_uri={settings.cloudfront_url}"
-    )
-    return RedirectResponse(url=url)
-    raise HTTPException(status_code=404, detail="Not found")
-
-
-@router.get("/me", status_code=200)
-async def me(request: Request, db: Session = Depends(get_db)):
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="No autenticado")
-    access_token = auth_header.split(" ")[1]
-    userinfo = await get_user_info(access_token)
-
-    # Sincronizar email y nombre en RDS si el usuario existe con datos vacíos
-    cognito_sub = userinfo.get("sub", "")
-    email = userinfo.get("email", "")
-    nombre = userinfo.get("name", None)
-    if cognito_sub:
-        usuario = usuario_service.obtener_usuario_por_cognito_sub(db, cognito_sub)
-        if usuario and not usuario.email and email:
-            usuario.email = email
-            if nombre:
-                usuario.nombre = nombre
+        usuario = usuario_service.obtener_usuario_por_email(db, email)
+        if usuario and str(usuario.cognito_sub).startswith("pending_"):
+            usuario.cognito_sub = cognito_sub
             db.commit()
-        elif not usuario and email:
-            usuario_service.crear_usuario(db, cognito_sub=cognito_sub, email=email, nombre=nombre)
+            db.refresh(usuario)
+    if not usuario:
+        usuario = usuario_service.crear_usuario(db, cognito_sub=cognito_sub, email=email)
 
-    return userinfo
+    token = _make_jwt(usuario)
+    return {"access_token": token, "token_type": "bearer", "usuario": usuario}
