@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Optional
 from app.core.database import get_db
 from app.services import url_service
-from app.middleware.auth_middleware import require_admin
+from app.middleware.auth_middleware import require_permiso
 
 router = APIRouter(prefix="/urls", tags=["URLs Oficiales"])
 
@@ -35,12 +35,12 @@ class UrlActualizar(BaseModel):
 
 
 @router.get("", response_model=list[UrlSchema])
-def listar(db: Session = Depends(get_db), current_user: dict = Depends(require_admin)):
+def listar(db: Session = Depends(get_db), current_user: dict = Depends(require_permiso('gestionar_documentos'))):
     return [UrlSchema.from_model(u) for u in url_service.listar(db)]
 
 
 @router.post("", response_model=UrlSchema, status_code=201)
-def crear(body: UrlCrear, db: Session = Depends(get_db), current_user: dict = Depends(require_admin)):
+def crear(body: UrlCrear, db: Session = Depends(get_db), current_user: dict = Depends(require_permiso('gestionar_documentos'))):
     try:
         return UrlSchema.from_model(url_service.crear(db, body.url, body.descripcion))
     except Exception:
@@ -48,7 +48,7 @@ def crear(body: UrlCrear, db: Session = Depends(get_db), current_user: dict = De
 
 
 @router.put("/{url_id}", response_model=UrlSchema)
-def actualizar(url_id: str, body: UrlActualizar, db: Session = Depends(get_db), current_user: dict = Depends(require_admin)):
+def actualizar(url_id: str, body: UrlActualizar, db: Session = Depends(get_db), current_user: dict = Depends(require_permiso('gestionar_documentos'))):
     item = url_service.actualizar(db, url_id, body.activa, body.descripcion)
     if not item:
         raise HTTPException(status_code=404, detail="URL no encontrada")
@@ -56,6 +56,6 @@ def actualizar(url_id: str, body: UrlActualizar, db: Session = Depends(get_db), 
 
 
 @router.delete("/{url_id}", status_code=204)
-def eliminar(url_id: str, db: Session = Depends(get_db), current_user: dict = Depends(require_admin)):
+def eliminar(url_id: str, db: Session = Depends(get_db), current_user: dict = Depends(require_permiso('gestionar_documentos'))):
     if not url_service.eliminar(db, url_id):
         raise HTTPException(status_code=404, detail="URL no encontrada")

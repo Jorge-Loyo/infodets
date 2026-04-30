@@ -43,7 +43,13 @@ logger = __import__('logging').getLogger(__name__)
 @router.post("/login", response_model=TokenSchema)
 async def login(body: LoginRequest, db: Session = Depends(get_db)):
     email = body.email.strip().lower()
-    cognito = boto3.client("cognito-idp", region_name=settings.cognito_region)
+    kwargs = {"region_name": settings.cognito_region}
+    if settings.aws_access_key_id and settings.aws_secret_access_key:
+        kwargs["aws_access_key_id"] = settings.aws_access_key_id
+        kwargs["aws_secret_access_key"] = settings.aws_secret_access_key
+        if settings.aws_session_token:
+            kwargs["aws_session_token"] = settings.aws_session_token
+    cognito = boto3.client("cognito-idp", **kwargs)
     try:
         resp = cognito.initiate_auth(
             AuthFlow="USER_PASSWORD_AUTH",

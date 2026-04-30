@@ -1,18 +1,5 @@
-import uuid
-from datetime import datetime
-from sqlalchemy import String, Boolean, DateTime
-from sqlalchemy.orm import Mapped, mapped_column, Session
-from app.core.database import Base
-
-
-class UrlOficial(Base):
-    __tablename__ = "urls_oficiales"
-
-    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    url: Mapped[str] = mapped_column(String, unique=True, nullable=False)
-    descripcion: Mapped[str | None] = mapped_column(String, nullable=True)
-    activa: Mapped[bool] = mapped_column(Boolean, default=True)
-    creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+from sqlalchemy.orm import Session
+from app.models.models import UrlOficial
 
 
 def listar(db: Session, solo_activas: bool = False) -> list[UrlOficial]:

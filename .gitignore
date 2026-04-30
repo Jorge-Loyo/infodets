@@ -1,3 +1,11 @@
 # Archivos personales de seguimiento
 ESTADO_SPRINT*.md
 *.personal.md
+
+# Credenciales y claves
+Popurri/Key/claves.txt
+Popurri/Key/*.pem
+**/.env
+**/.env.local
+**/.env.production
+**/.env.staging

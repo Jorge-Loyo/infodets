@@ -181,6 +181,16 @@ class ConsultaInvitado(Base):
     creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class UrlOficial(Base):
+    __tablename__ = "urls_oficiales"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    url: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    descripcion: Mapped[str | None] = mapped_column(String, nullable=True)
+    activa: Mapped[bool] = mapped_column(Boolean, default=True)
+    creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class ReporteFeedback(Base):
     __tablename__ = "reportes_feedback"
 

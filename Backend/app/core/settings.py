@@ -6,6 +6,9 @@ class Settings(BaseSettings):
     cognito_user_pool_id: str
     cognito_client_id: str
     cognito_client_secret: str
+    aws_access_key_id: str = ""
+    aws_secret_access_key: str = ""
+    aws_session_token: str = ""
     frontend_url: str
     app_env: str = "development"
     secret_key: str
@@ -34,11 +37,13 @@ class Settings(BaseSettings):
     qdrant_url: str = "http://172.31.40.141:6333"
     qdrant_collection: str = "infodets_docs"
 
-    # Loop de retroalimentacion - URLs oficiales predefinidas (separadas por coma)
+    # Loop de retroalimentacion
     urls_oficiales: str = ""
-    # API de busqueda web (ej: Serper, Tavily, etc.)
     search_api_key: str = ""
     search_api_url: str = ""
+
+    # Contrasena por defecto para blanqueo
+    default_password: str = "Infodets2024!"
 
     class Config:
         env_file = ".env"

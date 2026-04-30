@@ -29,7 +29,15 @@ export default function Home() {
     setLoading(true)
     try {
       const { data } = await axiosInstance.post('/auth/login', { email: email.trim().toLowerCase(), password })
-      setSession(data.usuario, data.access_token)
+      // Cargar permisos del usuario antes de redirigir
+      let permisos: Record<string, boolean> = {}
+      try {
+        const resPermisos = await axiosInstance.get(`/permisos/${data.usuario.id}`, {
+          headers: { Authorization: `Bearer ${data.access_token}` },
+        })
+        permisos = resPermisos.data
+      } catch {}
+      setSession(data.usuario, data.access_token, permisos)
       router.replace(ROUTES.CONSULTA)
     } catch (err: unknown) {
       const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } }

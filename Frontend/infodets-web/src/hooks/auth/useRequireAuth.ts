@@ -9,7 +9,7 @@ import { ROUTES } from '@/lib/constants'
 export function useRequireAuth({ adminOnly = false } = {}) {
   const router = useRouter()
   const isReady = useAuthReady()
-  const { isAuthenticated, isAdmin } = useSessionStore()
+  const { isAuthenticated, tienePermiso } = useSessionStore()
   const [checking, setChecking] = useState(true)
   const redirected = useRef(false)
 
@@ -21,11 +21,13 @@ export function useRequireAuth({ adminOnly = false } = {}) {
       router.replace(ROUTES.HOME)
       return
     }
-    if (adminOnly && !isAdmin()) {
+
+    if (adminOnly && !tienePermiso('dashboard')) {
       redirected.current = true
       router.replace(ROUTES.CONSULTA)
       return
     }
+
     setChecking(false)
   }, [isReady])
 

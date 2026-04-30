@@ -4,7 +4,7 @@ from pydantic import BaseModel, field_validator
 from typing import Optional
 from app.core.database import get_db
 from app.services import validacion_service
-from app.middleware.auth_middleware import require_admin
+from app.middleware.auth_middleware import require_permiso
 
 router = APIRouter(prefix="/validaciones", tags=["Validaciones IA"])
 
@@ -40,12 +40,12 @@ class ValidacionSchema(BaseModel):
 
 
 @router.get("", response_model=list[ValidacionSchema])
-def listar(estado: Optional[str] = None, db: Session = Depends(get_db), current_user: dict = Depends(require_admin)):
+def listar(estado: Optional[str] = None, db: Session = Depends(get_db), current_user: dict = Depends(require_permiso('ver_validaciones'))):
     return [ValidacionSchema.from_model(v) for v in validacion_service.listar_validaciones(db, estado)]
 
 
 @router.post("/{validacion_id}/aprobar", response_model=ValidacionSchema)
-def aprobar(validacion_id: str, db: Session = Depends(get_db), current_user: dict = Depends(require_admin)):
+def aprobar(validacion_id: str, db: Session = Depends(get_db), current_user: dict = Depends(require_permiso('ver_validaciones'))):
     v = validacion_service.aprobar(db, validacion_id)
     if not v:
         raise HTTPException(status_code=404, detail="Validación no encontrada o ya procesada")
@@ -53,7 +53,7 @@ def aprobar(validacion_id: str, db: Session = Depends(get_db), current_user: dic
 
 
 @router.post("/{validacion_id}/rechazar", response_model=ValidacionSchema)
-def rechazar(validacion_id: str, db: Session = Depends(get_db), current_user: dict = Depends(require_admin)):
+def rechazar(validacion_id: str, db: Session = Depends(get_db), current_user: dict = Depends(require_permiso('ver_validaciones'))):
     v = validacion_service.rechazar(db, validacion_id)
     if not v:
         raise HTTPException(status_code=404, detail="Validación no encontrada")

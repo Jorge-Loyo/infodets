@@ -21,8 +21,8 @@ export function HistorialPanel() {
   const { consultasCount } = useUiStore()
 
   useEffect(() => {
-    if (!usuario?.rdsId) { setCargando(false); return }
-    axiosInstance.get<HistorialItem[]>(`/chat/historial/usuario/${usuario.rdsId}`)
+    if (!usuario?.rdsId && !usuario?.id) { setCargando(false); return }
+    axiosInstance.get<HistorialItem[]>(`/chat/historial/usuario/${usuario.rdsId ?? usuario.id}`)
       .then((res) => setHistorial(res.data))
       .catch(() => {})
       .finally(() => setCargando(false))
