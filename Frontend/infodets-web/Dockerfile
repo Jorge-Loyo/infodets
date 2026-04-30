@@ -9,6 +9,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+ENV NEXT_PUBLIC_API_URL=http://32.192.124.14:8000/v1
 RUN npm run build
 
 # Etapa 3 — Produccion
