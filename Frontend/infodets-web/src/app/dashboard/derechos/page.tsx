@@ -197,7 +197,7 @@ export default function DerechosPage() {
                       </Group>
 
                       <Divider label="Menú" labelPosition="left" />
-                      <Grid gutter={4}>
+                      <Grid>
                         {SECCIONES_FRONTEND.map(s => (
                           <Grid.Col key={s.key} span={6}>
                             <Group gap={4}>
@@ -210,7 +210,7 @@ export default function DerechosPage() {
                       </Grid>
 
                       <Divider label="Acciones" labelPosition="left" />
-                      <Grid gutter={4}>
+                      <Grid>
                         {SECCIONES_BACKEND.map(s => (
                           <Grid.Col key={s.key} span={6}>
                             <Badge size="xs" variant="dot" color={perfil.permisos?.[s.key] ? 'green' : 'red'}>
