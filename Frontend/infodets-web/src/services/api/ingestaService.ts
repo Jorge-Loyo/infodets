@@ -1,5 +1,8 @@
 import axiosInstance from '@/lib/axiosInstance'
+import axios from 'axios'
 import type { IngestaResponse, DocumentoListItem } from '@/types/ingesta.types'
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/v1'
 
 export const ingestaService = {
   cargar: async (archivo: File, metadata: {
@@ -25,6 +28,11 @@ export const ingestaService = {
 
   listar: async (): Promise<DocumentoListItem[]> => {
     const res = await axiosInstance.get<DocumentoListItem[]>('/admin/ingesta')
+    return res.data
+  },
+
+  listarRecientes: async (): Promise<DocumentoListItem[]> => {
+    const res = await axios.get<DocumentoListItem[]>(`${API_BASE}/ingesta/recientes`)
     return res.data
   },
 }
