@@ -9,6 +9,7 @@ import { IconSend, IconRobot, IconUser, IconExternalLink } from '@tabler/icons-r
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useRef, useEffect } from 'react'
 import { useSessionStore } from '@/store/sessionStore'
+import { useUiStore } from '@/store/uiStore'
 import type { FuenteDocumento } from '@/types/consulta.types'
 
 interface Mensaje {
@@ -34,6 +35,7 @@ export function ChatPanel() {
   const [enviando, setEnviando] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const { usuario, token } = useSessionStore()
+  const { incrementarConsultas } = useUiStore()
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -112,6 +114,7 @@ export function ChatPanel() {
       ))
     } finally {
       setEnviando(false)
+      incrementarConsultas()
     }
   }
 

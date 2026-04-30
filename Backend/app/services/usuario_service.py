@@ -19,7 +19,7 @@ def crear_usuario(db: Session, cognito_sub: str, email: str, nombre: str | None 
     usuario = Usuario(
         id=str(uuid.uuid4()),
         cognito_sub=cognito_sub,
-        email=email,
+        email=email.strip().lower(),
         nombre=nombre,
     )
     db.add(usuario)
@@ -35,7 +35,7 @@ def actualizar_usuario(db: Session, usuario_id: str, nombre: str | None = None, 
     if nombre is not None: usuario.nombre = nombre
     if apellido is not None: usuario.apellido = apellido
     if rol is not None: usuario.rol = rol
-    if email is not None and email: usuario.email = email
+    if email is not None and email: usuario.email = email.strip().lower()
     if dni is not None: usuario.dni = dni
     if fecha_nacimiento is not None: usuario.fecha_nacimiento = fecha_nacimiento
     if cargo is not None: usuario.cargo = cargo
@@ -47,7 +47,7 @@ def actualizar_usuario(db: Session, usuario_id: str, nombre: str | None = None, 
 
 
 def obtener_usuario_por_email(db: Session, email: str) -> Usuario | None:
-    return db.query(Usuario).filter(Usuario.email == email).first()
+    return db.query(Usuario).filter(Usuario.email == email.strip().lower()).first()
 
 
 def eliminar_usuario(db: Session, usuario_id: str) -> bool:
@@ -85,8 +85,8 @@ def invitar_usuario(
     rol_enum = RolEnum(rol) if rol in RolEnum._value2member_map_ else RolEnum.operador
     usuario = Usuario(
         id=str(uuid.uuid4()),
-        cognito_sub=f"pending_{email}",
-        email=email,
+        cognito_sub=f"pending_{email.strip().lower()}",
+        email=email.strip().lower(),
         nombre=nombre,
         apellido=apellido,
         rol=rol_enum,

@@ -6,6 +6,7 @@ import { APP_NAME, APP_DESCRIPTION } from '@/lib/constants'
 import '@mantine/core/styles.css'
 import '@mantine/notifications/styles.css'
 import '@mantine/charts/styles.css'
+import '@mantine/dates/styles.css'
 
 const font = Plus_Jakarta_Sans({
   subsets: ['latin'],

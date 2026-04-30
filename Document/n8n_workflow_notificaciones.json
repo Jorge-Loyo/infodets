@@ -1,0 +1,150 @@
+{
+  "name": "INFODETS - Notificaciones Loop Retroalimentacion",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "infodets-notificacion",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "infodets-notificacion"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.body.evento }}",
+              "rightValue": "nivel3_escalamiento",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "switch-nivel3",
+      "name": "Es Nivel 3?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.body.evento }}",
+              "rightValue": "validacion_pendiente",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "switch-validacion",
+      "name": "Es Validacion?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [480, 500]
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@infodets.gob.ar",
+        "toEmail": "Jorgenayati@gmail.com",
+        "subject": "🚨 INFODETS — Escalamiento Nivel 3: Consulta sin respuesta",
+        "emailType": "html",
+        "message": "<!DOCTYPE html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"UTF-8\">\n  <style>\n    body { font-family: Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 0; }\n    .container { max-width: 560px; margin: 40px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }\n    .header { background: #e03131; padding: 32px; text-align: center; }\n    .header h1 { color: #ffffff; margin: 0; font-size: 22px; }\n    .body { padding: 32px; }\n    .body p { color: #444; line-height: 1.6; margin: 0 0 16px; }\n    .alert-box { background: #fff5f5; border-left: 4px solid #e03131; padding: 12px 16px; border-radius: 4px; margin: 16px 0; }\n    .alert-box p { margin: 4px 0; font-size: 13px; color: #555; }\n    .btn { display: inline-block; background: #e03131; color: #ffffff !important; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: bold; font-size: 15px; margin: 16px 0; }\n    .footer { background: #f4f6f9; padding: 20px 32px; text-align: center; }\n    .footer p { color: #999; font-size: 12px; margin: 0; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>🚨 Escalamiento — Nivel 3</h1>\n    </div>\n    <div class=\"body\">\n      <p>El sistema INFODETS no encontró respuesta en <strong>ninguna fuente</strong> para la siguiente consulta:</p>\n      <div class=\"alert-box\">\n        <p><strong>Consulta:</strong> {{ $json.body.pregunta }}</p>\n        <p><strong>Score de confianza:</strong> {{ $json.body.score }}</p>\n        <p><strong>Usuario:</strong> {{ $json.body.usuario_id }}</p>\n      </div>\n      <p>{{ $json.body.mensaje }}</p>\n      <p><strong>Acción requerida:</strong> Revisá la consulta y considerá subir documentación oficial sobre este tema al sistema.</p>\n      <div style=\"text-align: center;\">\n        <a href=\"http://localhost:3000/dashboard/notificaciones\" class=\"btn\">Ver en Dashboard</a>\n      </div>\n    </div>\n    <div class=\"footer\">\n      <p>INFODETS — Sistema de Gestión de Conocimiento Dinámico</p>\n      <p>Este es un mensaje automático, no respondas este email.</p>\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "email-nivel3",
+      "name": "Email Escalamiento",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [720, 200]
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@infodets.gob.ar",
+        "toEmail": "Jorgenayati@gmail.com",
+        "subject": "🔵 INFODETS — Validación pendiente: Respuesta requiere revisión",
+        "emailType": "html",
+        "message": "<!DOCTYPE html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"UTF-8\">\n  <style>\n    body { font-family: Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 0; }\n    .container { max-width: 560px; margin: 40px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }\n    .header { background: #1c7ed6; padding: 32px; text-align: center; }\n    .header h1 { color: #ffffff; margin: 0; font-size: 22px; }\n    .body { padding: 32px; }\n    .body p { color: #444; line-height: 1.6; margin: 0 0 16px; }\n    .info-box { background: #f0f4ff; border-left: 4px solid #1c7ed6; padding: 12px 16px; border-radius: 4px; margin: 16px 0; }\n    .info-box p { margin: 4px 0; font-size: 13px; color: #555; }\n    .btn { display: inline-block; background: #1c7ed6; color: #ffffff !important; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: bold; font-size: 15px; margin: 16px 0; }\n    .footer { background: #f4f6f9; padding: 20px 32px; text-align: center; }\n    .footer p { color: #999; font-size: 12px; margin: 0; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>🔵 Validación Pendiente</h1>\n    </div>\n    <div class=\"body\">\n      <p>Una respuesta generada por la IA requiere tu revisión para ser indexada como conocimiento oficial:</p>\n      <div class=\"info-box\">\n        <p><strong>Consulta:</strong> {{ $json.body.pregunta }}</p>\n        <p><strong>Confianza:</strong> {{ $json.body.score }}</p>\n        <p><strong>Fuente:</strong> {{ $json.body.fuente }}</p>\n      </div>\n      <p>{{ $json.body.mensaje }}</p>\n      <p>Podés <strong>aprobar</strong> la respuesta para que se indexe en la IA, o <strong>rechazarla</strong> si no es correcta.</p>\n      <div style=\"text-align: center;\">\n        <a href=\"http://localhost:3000/dashboard/notificaciones\" class=\"btn\">Revisar en Dashboard</a>\n      </div>\n    </div>\n    <div class=\"footer\">\n      <p>INFODETS — Sistema de Gestión de Conocimiento Dinámico</p>\n      <p>Este es un mensaje automático, no respondas este email.</p>\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "email-validacion",
+      "name": "Email Validacion",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [720, 500]
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@infodets.gob.ar",
+        "toEmail": "Jorgenayati@gmail.com",
+        "subject": "⚠️ INFODETS — Respuesta desde fuente externa (Nivel {{ $json.body.evento === 'nivel1_externo' ? '1 - URL Oficial' : '2 - Web' }})",
+        "emailType": "html",
+        "message": "<!DOCTYPE html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"UTF-8\">\n  <style>\n    body { font-family: Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 0; }\n    .container { max-width: 560px; margin: 40px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }\n    .header { background: #f08c00; padding: 32px; text-align: center; }\n    .header h1 { color: #ffffff; margin: 0; font-size: 22px; }\n    .body { padding: 32px; }\n    .body p { color: #444; line-height: 1.6; margin: 0 0 16px; }\n    .warn-box { background: #fff9db; border-left: 4px solid #f08c00; padding: 12px 16px; border-radius: 4px; margin: 16px 0; }\n    .warn-box p { margin: 4px 0; font-size: 13px; color: #555; }\n    .btn { display: inline-block; background: #f08c00; color: #ffffff !important; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: bold; font-size: 15px; margin: 16px 0; }\n    .footer { background: #f4f6f9; padding: 20px 32px; text-align: center; }\n    .footer p { color: #999; font-size: 12px; margin: 0; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>⚠️ Fuente Externa Utilizada</h1>\n    </div>\n    <div class=\"body\">\n      <p>La IA respondió una consulta usando una <strong>fuente externa</strong> porque no encontró documentación oficial con suficiente confianza:</p>\n      <div class=\"warn-box\">\n        <p><strong>Consulta:</strong> {{ $json.body.pregunta }}</p>\n        <p><strong>Score local:</strong> {{ $json.body.score }}</p>\n        <p><strong>Nivel activado:</strong> {{ $json.body.evento }}</p>\n      </div>\n      <p>{{ $json.body.mensaje }}</p>\n      <div style=\"text-align: center;\">\n        <a href=\"http://localhost:3000/dashboard/documentacion\" class=\"btn\">Subir documentación oficial</a>\n      </div>\n    </div>\n    <div class=\"footer\">\n      <p>INFODETS — Sistema de Gestión de Conocimiento Dinámico</p>\n      <p>Este es un mensaje automático, no respondas este email.</p>\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "email-externo",
+      "name": "Email Fuente Externa",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [720, 380]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"ok\": true }",
+        "options": {}
+      },
+      "id": "response-node",
+      "name": "Respuesta OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [960, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          { "node": "Es Nivel 3?", "type": "main", "index": 0 },
+          { "node": "Es Validacion?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Es Nivel 3?": {
+      "main": [
+        [{ "node": "Email Escalamiento", "type": "main", "index": 0 }],
+        [{ "node": "Email Fuente Externa", "type": "main", "index": 0 }]
+      ]
+    },
+    "Es Validacion?": {
+      "main": [
+        [{ "node": "Email Validacion", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Email Escalamiento": {
+      "main": [[{ "node": "Respuesta OK", "type": "main", "index": 0 }]]
+    },
+    "Email Validacion": {
+      "main": [[{ "node": "Respuesta OK", "type": "main", "index": 0 }]]
+    },
+    "Email Fuente Externa": {
+      "main": [[{ "node": "Respuesta OK", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": ["infodets", "notificaciones", "retroalimentacion"]
+}
