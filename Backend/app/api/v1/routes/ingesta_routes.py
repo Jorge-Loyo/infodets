@@ -139,8 +139,29 @@ async def eliminar_documento(
 
 @router.get("", response_model=list[DocumentoListItem])
 async def listar_documentos(db: Session = Depends(get_db), current_user: dict = Depends(require_permiso('gestionar_documentos'))):
-    """Retorna el listado de documentos cargados al sistema."""
+    """Retorna el listado completo de documentos (admin)."""
     documentos = documento_service.listar_documentos(db)
+    return [
+        DocumentoListItem(
+            id=str(d.id),
+            titulo=d.titulo,
+            categoria=d.categoria or "",
+            dependencia=d.dependencia or "",
+            estado=EstadoDocumento.PROCESADO,
+            created_at=d.creado_en.isoformat() if d.creado_en else "",
+        )
+        for d in documentos
+    ]
+
+
+# Router público — sin autenticación
+public_router = APIRouter(prefix="/ingesta", tags=["Ingesta Pública"])
+
+
+@public_router.get("/recientes", response_model=list[DocumentoListItem])
+async def listar_documentos_recientes(db: Session = Depends(get_db)):
+    """Retorna los últimos documentos indexados (público, sin auth)."""
+    documentos = documento_service.listar_documentos_publico(db, limite=6)
     return [
         DocumentoListItem(
             id=str(d.id),
