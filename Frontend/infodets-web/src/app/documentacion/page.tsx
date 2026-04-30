@@ -38,8 +38,8 @@ export default function DocumentacionPage() {
   const [dependencia, setDependencia] = useState('')
   const [anio, setAnio] = useState('')
 
-  const opcionesCategorias = useTablaOpciones('categorias')
-  const opcionesDependencias = useTablaOpciones('dependencias')
+  const opcionesCategorias = useTablaOpciones('categorias', true)
+  const opcionesDependencias = useTablaOpciones('dependencias', true)
 
   const cargar = async () => {
     setCargando(true)
