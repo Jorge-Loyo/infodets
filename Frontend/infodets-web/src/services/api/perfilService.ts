@@ -5,7 +5,6 @@ export interface Perfil {
   nombre: string
   descripcion?: string
   color: string
-  rol?: string
   permisos: Record<string, boolean>
   total_usuarios: number
 }
@@ -14,7 +13,6 @@ export interface PerfilCrear {
   nombre: string
   descripcion?: string
   color: string
-  rol?: string
   permisos: Record<string, boolean>
 }
 

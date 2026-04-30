@@ -15,7 +15,8 @@ axiosInstance.interceptors.request.use((config) => {
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const isLoginEndpoint = error.config?.url?.includes('/auth/login')
+    if (error.response?.status === 401 && !isLoginEndpoint) {
       useSessionStore.getState().clearSession()
       if (typeof window !== 'undefined') window.location.href = '/'
     }

@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from typing import Optional
 from app.core.database import get_db
 from app.services import noticia_service
-from app.middleware.auth_middleware import require_admin, get_current_user
+from app.middleware.auth_middleware import require_permiso, get_current_user
 
 router = APIRouter(prefix="/noticias", tags=["Noticias"])
 
@@ -71,7 +71,7 @@ async def crear_noticia(
     autor_cargo: Optional[str] = Form(None),
     imagen: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permiso('gestionar_noticias')),
 ):
     imagen_url = None
     if imagen and imagen.filename:
@@ -100,7 +100,7 @@ async def actualizar_noticia(
     publicada: Optional[str] = Form(None),  # recibe 'true'/'false' como string
     imagen: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_permiso('gestionar_noticias')),
 ):
     imagen_url = None
     if imagen and imagen.filename:
@@ -126,7 +126,7 @@ async def actualizar_noticia(
 
 
 @router.delete("/{noticia_id}", status_code=204)
-def eliminar_noticia(noticia_id: str, db: Session = Depends(get_db), current_user: dict = Depends(require_admin)):
+def eliminar_noticia(noticia_id: str, db: Session = Depends(get_db), current_user: dict = Depends(require_permiso('gestionar_noticias'))):
     if not noticia_service.eliminar(db, noticia_id):
         raise HTTPException(status_code=404, detail="Noticia no encontrada")
 

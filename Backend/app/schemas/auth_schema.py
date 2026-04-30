@@ -1,5 +1,8 @@
+import re
 from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional
+
+FECHA_REGEX = re.compile(r'^(0[1-9]|[12]\d|3[01])/(0[1-9]|1[0-2])/(\d{4})$')
 
 
 class UsuarioSchema(BaseModel):
@@ -35,6 +38,15 @@ class UsuarioActualizar(BaseModel):
     institucion: Optional[str] = None
     dependencia: Optional[str] = None
     rol: Optional[str] = None
+
+    @field_validator('fecha_nacimiento', mode='before')
+    @classmethod
+    def validar_fecha(cls, v):
+        if v is None or v == '':
+            return None
+        if not FECHA_REGEX.match(str(v)):
+            raise ValueError('Formato de fecha inválido. Use DD/MM/AAAA')
+        return v
 
 
 class TokenSchema(BaseModel):

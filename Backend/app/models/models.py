@@ -155,6 +155,42 @@ class PermisoUsuario(Base):
     usuario: Mapped["Usuario"] = relationship(back_populates="permisos")
 
 
+class ValidacionRespuesta(Base):
+    __tablename__ = "validaciones_respuesta"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    pregunta: Mapped[str] = mapped_column(Text, nullable=False)
+    respuesta: Mapped[str] = mapped_column(Text, nullable=False)
+    puntaje_confianza: Mapped[float] = mapped_column(Float, default=0.0)
+    fuente: Mapped[str] = mapped_column(String, default="usuario")  # usuario | invitado
+    estado: Mapped[str] = mapped_column(String, default="pendiente")  # pendiente | aprobado | rechazado | auto_indexado
+    creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class ConsultaInvitado(Base):
+    __tablename__ = "consultas_invitado"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    nombre: Mapped[str] = mapped_column(String, nullable=False)
+    apellido: Mapped[str] = mapped_column(String, nullable=False)
+    email: Mapped[str] = mapped_column(String, nullable=False)
+    institucion: Mapped[str | None] = mapped_column(String, nullable=True)
+    pregunta: Mapped[str] = mapped_column(Text, nullable=False)
+    respuesta: Mapped[str] = mapped_column(Text, nullable=False)
+    puntaje_confianza: Mapped[float] = mapped_column(Float, default=0.0)
+    creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class UrlOficial(Base):
+    __tablename__ = "urls_oficiales"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    url: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    descripcion: Mapped[str | None] = mapped_column(String, nullable=True)
+    activa: Mapped[bool] = mapped_column(Boolean, default=True)
+    creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class ReporteFeedback(Base):
     __tablename__ = "reportes_feedback"
 
