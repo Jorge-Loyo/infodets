@@ -40,6 +40,8 @@ jobs:
               --restart unless-stopped \
               -p 3000:3000 \
               infodets-frontend
+            # Limpiar imágenes huérfanas para liberar disco
+            docker image prune -f
             echo "Frontend desplegado ✅"
 
             echo "Deploy completado ✅"
