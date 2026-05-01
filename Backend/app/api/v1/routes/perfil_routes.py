@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
+
 from app.core.database import get_db
+from app.schemas.common import MensajeOk, R_400, R_401, R_403, R_404, R_409
 from app.services import perfil_service
 from app.middleware.auth_middleware import require_permiso
 
@@ -50,33 +52,88 @@ def _serializar(perfil, db) -> dict:
     }
 
 
-@router.get("", response_model=list[PerfilSchema])
-def listar_perfiles(db: Session = Depends(get_db), current_user: dict = Depends(require_permiso("gestionar_usuarios"))):
+@router.get(
+    "",
+    response_model=list[PerfilSchema],
+    summary="Listar perfiles",
+    responses={**R_401, **R_403},
+)
+def listar_perfiles(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permiso("gestionar_usuarios")),
+):
     return [_serializar(p, db) for p in perfil_service.listar_perfiles(db)]
 
 
-@router.post("", response_model=PerfilSchema, status_code=201)
-def crear_perfil(body: PerfilCrear, db: Session = Depends(get_db), current_user: dict = Depends(require_permiso("gestionar_usuarios"))):
+@router.post(
+    "",
+    response_model=PerfilSchema,
+    status_code=201,
+    summary="Crear perfil",
+    responses={
+        201: {"description": "Perfil creado exitosamente"},
+        **R_400,
+        **R_401,
+        **R_403,
+        **R_409,
+    },
+)
+def crear_perfil(
+    body: PerfilCrear,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permiso("gestionar_usuarios")),
+):
     perfil = perfil_service.crear_perfil(db, body.nombre, body.descripcion, body.color, body.permisos)
     return _serializar(perfil, db)
 
 
-@router.put("/{perfil_id}", response_model=PerfilSchema)
-def actualizar_perfil(perfil_id: str, body: PerfilActualizar, db: Session = Depends(get_db), current_user: dict = Depends(require_permiso("gestionar_usuarios"))):
+@router.put(
+    "/{perfil_id}",
+    response_model=PerfilSchema,
+    summary="Actualizar perfil",
+    responses={**R_401, **R_403, **R_404},
+)
+def actualizar_perfil(
+    perfil_id: str,
+    body: PerfilActualizar,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permiso("gestionar_usuarios")),
+):
     perfil = perfil_service.actualizar_perfil(db, perfil_id, body.nombre, body.descripcion, body.color, body.permisos)
     if not perfil:
         raise HTTPException(status_code=404, detail="Perfil no encontrado")
     return _serializar(perfil, db)
 
 
-@router.delete("/{perfil_id}", status_code=204)
-def eliminar_perfil(perfil_id: str, db: Session = Depends(get_db), current_user: dict = Depends(require_permiso("gestionar_usuarios"))):
+@router.delete(
+    "/{perfil_id}",
+    status_code=204,
+    summary="Eliminar perfil",
+    responses={**R_401, **R_403, **R_404},
+)
+def eliminar_perfil(
+    perfil_id: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permiso("gestionar_usuarios")),
+):
     if not perfil_service.eliminar_perfil(db, perfil_id):
         raise HTTPException(status_code=404, detail="Perfil no encontrado")
 
 
-@router.post("/asignar/{usuario_id}", status_code=200)
-def asignar_perfil(usuario_id: str, body: AsignarPerfil, db: Session = Depends(get_db), current_user: dict = Depends(require_permiso("gestionar_usuarios"))):
+@router.post(
+    "/asignar/{usuario_id}",
+    response_model=MensajeOk,
+    status_code=200,
+    summary="Asignar perfil a usuario",
+    description="Asigna o desasigna un perfil. Enviar `perfil_id: null` para quitar el perfil.",
+    responses={**R_401, **R_403, **R_404},
+)
+def asignar_perfil(
+    usuario_id: str,
+    body: AsignarPerfil,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permiso("gestionar_usuarios")),
+):
     if not perfil_service.asignar_perfil_a_usuario(db, usuario_id, body.perfil_id):
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return {"ok": True}

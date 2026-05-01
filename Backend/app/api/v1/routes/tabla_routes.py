@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
+
 from app.core.database import get_db
+from app.schemas.common import R_400, R_401, R_403, R_404
 from app.services import tabla_service
 from app.middleware.auth_middleware import require_permiso, get_current_user
 
@@ -22,8 +24,14 @@ class TablaValorSchema(BaseModel):
         from_attributes = True
 
     @classmethod
-    def from_orm_safe(cls, obj):
-        return cls(id=str(obj.id), tabla_id=obj.tabla_id, valor=obj.valor, activo=obj.activo, orden=obj.orden)
+    def from_orm_safe(cls, obj) -> "TablaValorSchema":
+        return cls(
+            id=str(obj.id),
+            tabla_id=obj.tabla_id,
+            valor=obj.valor,
+            activo=obj.activo,
+            orden=obj.orden,
+        )
 
 
 class ValorCrear(BaseModel):
@@ -35,34 +43,92 @@ class ValorActualizar(BaseModel):
     activo: Optional[bool] = None
 
 
-@router.get("/disponibles", response_model=list[str])
-def listar_tablas(db: Session = Depends(get_db), current_user: dict = Depends(require_permiso("gestionar_tablas"))):
+@router.get(
+    "/disponibles",
+    response_model=list[str],
+    summary="Listar tablas disponibles (admin)",
+    responses={**R_401, **R_403},
+)
+def listar_tablas(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permiso("gestionar_tablas")),
+):
     return tabla_service.listar_tablas_disponibles(db)
 
 
-@router.get("/{tabla_id}", response_model=list[TablaValorSchema])
-def listar_valores(tabla_id: str, solo_activos: bool = False, db: Session = Depends(get_db)):
+@router.get(
+    "/{tabla_id}",
+    response_model=list[TablaValorSchema],
+    summary="Listar valores de una tabla",
+    description=f"Tablas públicas disponibles sin autenticación: {', '.join(sorted(TABLAS_PUBLICAS))}.",
+    responses={
+        **R_403,
+        **R_404,
+    },
+)
+def listar_valores(
+    tabla_id: str,
+    solo_activos: bool = False,
+    db: Session = Depends(get_db),
+):
     if tabla_id not in TABLAS_PUBLICAS:
         raise HTTPException(status_code=403, detail="Acceso no autorizado a esta tabla")
     items = tabla_service.listar_por_tabla(db, tabla_id, solo_activos)
     return [TablaValorSchema.from_orm_safe(i) for i in items]
 
 
-@router.post("/{tabla_id}", response_model=TablaValorSchema, status_code=201)
-def crear_valor(tabla_id: str, body: ValorCrear, db: Session = Depends(get_db), current_user: dict = Depends(require_permiso("gestionar_tablas"))):
+@router.post(
+    "/{tabla_id}",
+    response_model=TablaValorSchema,
+    status_code=201,
+    summary="Agregar valor a una tabla",
+    responses={
+        201: {"description": "Valor creado"},
+        **R_400,
+        **R_401,
+        **R_403,
+    },
+)
+def crear_valor(
+    tabla_id: str,
+    body: ValorCrear,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permiso("gestionar_tablas")),
+):
     item = tabla_service.crear_valor(db, tabla_id, body.valor)
     return TablaValorSchema.from_orm_safe(item)
 
 
-@router.put("/{tabla_id}/{item_id}", response_model=TablaValorSchema)
-def actualizar_valor(tabla_id: str, item_id: str, body: ValorActualizar, db: Session = Depends(get_db), current_user: dict = Depends(require_permiso("gestionar_tablas"))):
+@router.put(
+    "/{tabla_id}/{item_id}",
+    response_model=TablaValorSchema,
+    summary="Actualizar valor de una tabla",
+    responses={**R_401, **R_403, **R_404},
+)
+def actualizar_valor(
+    tabla_id: str,
+    item_id: str,
+    body: ValorActualizar,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permiso("gestionar_tablas")),
+):
     item = tabla_service.actualizar_valor(db, item_id, body.valor, body.activo)
     if not item:
         raise HTTPException(status_code=404, detail="Valor no encontrado")
     return TablaValorSchema.from_orm_safe(item)
 
 
-@router.delete("/{tabla_id}/{item_id}", status_code=204)
-def eliminar_valor(tabla_id: str, item_id: str, db: Session = Depends(get_db), current_user: dict = Depends(require_permiso("gestionar_tablas"))):
+@router.delete(
+    "/{tabla_id}/{item_id}",
+    status_code=204,
+    summary="Eliminar valor de una tabla",
+    responses={**R_401, **R_403, **R_404},
+)
+def eliminar_valor(
+    tabla_id: str,
+    item_id: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permiso("gestionar_tablas")),
+):
     if not tabla_service.eliminar_valor(db, item_id):
         raise HTTPException(status_code=404, detail="Valor no encontrado")
