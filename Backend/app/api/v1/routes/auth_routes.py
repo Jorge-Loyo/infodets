@@ -4,6 +4,7 @@ from app.core.settings import settings
 from app.core.database import get_db
 from app.services import usuario_service
 from app.schemas.auth_schema import TokenSchema
+from app.schemas.common import ErrorDetail, R_400, R_401, R_403, R_422, R_500, R_503
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 import boto3
@@ -40,7 +41,23 @@ def _make_jwt(usuario) -> str:
 logger = __import__('logging').getLogger(__name__)
 
 
-@router.post("/login", response_model=TokenSchema)
+@router.post(
+    "/login",
+    response_model=TokenSchema,
+    status_code=200,
+    summary="Iniciar sesión",
+    description="Autentica al usuario contra AWS Cognito y retorna un JWT propio.",
+    responses={
+        200: {"description": "Login exitoso — retorna access_token y datos del usuario"},
+        **R_400,
+        **R_401,
+        **R_403,
+        **R_422,
+        429: {"model": ErrorDetail, "description": "Demasiados intentos — esperá unos minutos"},
+        **R_500,
+        **R_503,
+    },
+)
 async def login(body: LoginRequest, db: Session = Depends(get_db)):
     email = body.email.strip().lower()
     kwargs = {"region_name": settings.cognito_region}

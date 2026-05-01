@@ -31,10 +31,18 @@ os.makedirs("uploads/documentos", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 
-@app.get("/health", tags=["Sistema"] ,status_code=200)
+@app.get(
+    "/health",
+    tags=["Sistema"],
+    status_code=200,
+    summary="Estado del servicio",
+    responses={
+        200: {"description": "Servicio operativo"},
+        503: {"description": "Servicio no disponible"},
+    },
+)
 async def health():
     return {"status": "ok", "env": settings.app_env}
-    raise HTTPException(status_code=404, detail="Not found")
 
 
 if __name__ == "__main__":
