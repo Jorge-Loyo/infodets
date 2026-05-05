@@ -1,4 +1,5 @@
 # PLAN DE DESARROLLO — INFODETS
+
 ## Sistema de Gestión de Conocimiento Dinámico
 
 ---
@@ -55,22 +56,22 @@ Sistema de validaciones para entrenamiento continuo de la IA
 
 ## 2. STACK TECNOLÓGICO
 
-| Capa | Tecnología | Detalle |
-|---|---|---|
-| Frontend | Next.js 16 + React + TypeScript | App Router, SSR |
-| UI | Mantine UI v9 + Framer Motion + Tabler Icons | |
-| Estado | Zustand con persist | Sesión + permisos en localStorage |
-| HTTP | Axios | Interceptores JWT, excluye /auth/login del 401 global |
-| Backend | FastAPI (Python 3.13) | Estructura modular por dominio |
-| Autenticación | JWT HS256 propio + AWS Cognito | USER_PASSWORD_AUTH, sin OAuth redirects |
-| Base de datos relacional | AWS RDS PostgreSQL 17 | 13 tablas, migraciones con Alembic |
-| Base de datos vectorial | Qdrant self-hosted en EC2 | gemini-embedding-001, 3072 dims |
-| Generación IA | Gemini `gemini-2.0-flash-lite` | Fallback automático a Groq en 429 |
-| Fallback IA | Groq `llama-3.3-70b-versatile` | 30 RPM gratis |
-| Embeddings | Google Gemini `gemini-embedding-001` | 3072 dimensiones |
-| Búsqueda web | Serper API | 2.500 búsquedas/mes gratis, Nivel 2 del loop |
-| Orquestación | n8n Docker self-hosted en EC2 | Notificaciones email al admin |
-| Infraestructura | AWS EC2 + RDS + Cognito | us-east-1 |
+| Capa                     | Tecnología                                   | Detalle                                               |
+| ------------------------ | -------------------------------------------- | ----------------------------------------------------- |
+| Frontend                 | Next.js 16 + React + TypeScript              | App Router, SSR                                       |
+| UI                       | Mantine UI v9 + Framer Motion + Tabler Icons |                                                       |
+| Estado                   | Zustand con persist                          | Sesión + permisos en localStorage                     |
+| HTTP                     | Axios                                        | Interceptores JWT, excluye /auth/login del 401 global |
+| Backend                  | FastAPI (Python 3.13)                        | Estructura modular por dominio                        |
+| Autenticación            | JWT HS256 propio + AWS Cognito               | USER_PASSWORD_AUTH, sin OAuth redirects               |
+| Base de datos relacional | AWS RDS PostgreSQL 17                        | 13 tablas, migraciones con Alembic                    |
+| Base de datos vectorial  | Qdrant self-hosted en EC2                    | gemini-embedding-001, 3072 dims                       |
+| Generación IA            | Gemini `gemini-2.0-flash-lite`               | Fallback automático a Groq en 429                     |
+| Fallback IA              | Groq `llama-3.3-70b-versatile`               | 30 RPM gratis                                         |
+| Embeddings               | Google Gemini `gemini-embedding-001`         | 3072 dimensiones                                      |
+| Búsqueda web             | Serper API                                   | 2.500 búsquedas/mes gratis, Nivel 2 del loop          |
+| Orquestación             | n8n Docker self-hosted en EC2                | Notificaciones email al admin                         |
+| Infraestructura          | AWS EC2 + RDS + Cognito                      | us-east-1                                             |
 
 ---
 
@@ -78,54 +79,57 @@ Sistema de validaciones para entrenamiento continuo de la IA
 
 ### EC2 — Servidor principal
 
-| Campo | Valor |
-|---|---|
-| IP pública | `32.192.124.14` (Elastic IP fija) |
-| IP privada | `172.31.40.141` |
-| Sistema operativo | Ubuntu 24.04 LTS |
-| Región | `us-east-1` |
-| Conexión SSH | `ssh -i "keyinfodets.pem" ubuntu@32.192.124.14` |
+| Campo             | Valor                                           |
+| ----------------- | ----------------------------------------------- |
+| IP pública        | `32.192.124.14` (Elastic IP fija)               |
+| IP privada        | `172.31.40.141`                                 |
+| Sistema operativo | Ubuntu 24.04 LTS                                |
+| Región            | `us-east-1`                                     |
+| Conexión SSH      | `ssh -i "keyinfodets.pem" ubuntu@32.192.124.14` |
 
 **Servicios corriendo en EC2:**
 
-| Servicio | URL | Estado |
-|---|---|---|
-| FastAPI | `http://32.192.124.14:8000` | ✅ systemd auto-reinicio |
-| Qdrant | `http://32.192.124.14:6333` | ✅ Docker restart=always |
-| n8n | `http://32.192.124.14:5678` | ✅ Docker |
-| Next.js | `http://32.192.124.14:3000` | ✅ Docker restart=always |
+| Servicio | URL                         | Estado                   |
+| -------- | --------------------------- | ------------------------ |
+| FastAPI  | `http://32.192.124.14:8000` | ✅ systemd auto-reinicio |
+| Qdrant   | `http://32.192.124.14:6333` | ✅ Docker restart=always |
+| n8n      | `http://32.192.124.14:5678` | ✅ Docker                |
+| Next.js  | `http://32.192.124.14:3000` | ✅ Docker restart=always |
 
 ### RDS PostgreSQL
 
-| Campo | Valor |
-|---|---|
-| Host | `infodets-db.cjgfkaqwabgp.us-east-1.rds.amazonaws.com` |
-| Puerto | `5432` |
-| Base de datos | `infodets` |
-| Usuario | `infodets_admin` |
-| Versión | PostgreSQL 17.6 |
-| Instancia | `db.t4g.micro` |
+| Campo         | Valor                                                  |
+| ------------- | ------------------------------------------------------ |
+| Host          | `infodets-db.cjgfkaqwabgp.us-east-1.rds.amazonaws.com` |
+| Puerto        | `5432`                                                 |
+| Base de datos | `infodets`                                             |
+| Usuario       | `infodets_admin`                                       |
+| Versión       | PostgreSQL 17.6                                        |
+| Instancia     | `db.t4g.micro`                                         |
 
 **Tunnel SSH para desarrollo local:**
+
 ```bash
 ssh -i "keyinfodets.pem" -L 5432:infodets-db.cjgfkaqwabgp.us-east-1.rds.amazonaws.com:5432 ubuntu@32.192.124.14 -N
 ```
 
 ### Qdrant
 
-| Campo | Valor |
-|---|---|
-| URL interna EC2 | `http://172.31.40.141:6333` |
-| Dashboard | `http://32.192.124.14:6333/dashboard` |
-| Colección | `infodets_docs` |
-| Dimensiones | 3072 (gemini-embedding-001) |
+| Campo           | Valor                                 |
+| --------------- | ------------------------------------- |
+| URL interna EC2 | `http://172.31.40.141:6333`           |
+| Dashboard       | `http://32.192.124.14:6333/dashboard` |
+| Colección       | `infodets_docs`                       |
+| Dimensiones     | 3072 (gemini-embedding-001)           |
 
 **Tunnel SSH para desarrollo local:**
+
 ```bash
 ssh -i "keyinfodets.pem" -L 6333:localhost:6333 ubuntu@32.192.124.14 -N
 ```
 
 **Gestión en EC2:**
+
 ```bash
 docker start qdrant   # Levantar
 docker stop qdrant    # Detener
@@ -134,28 +138,28 @@ docker logs qdrant    # Ver logs
 
 ### Cognito
 
-| Campo | Valor |
-|---|---|
-| User Pool ID | `us-east-1_uOuYTO6Ce` |
-| App Client backend | `40g4ffmsvf8mmk77kc37abucvd` |
-| Auth Flow habilitado | `ALLOW_USER_PASSWORD_AUTH` |
-| Dominio | `us-east-1uouyto6ce.auth.us-east-1.amazoncognito.com` |
+| Campo                | Valor                                                 |
+| -------------------- | ----------------------------------------------------- |
+| User Pool ID         | `us-east-1_uOuYTO6Ce`                                 |
+| App Client backend   | `40g4ffmsvf8mmk77kc37abucvd`                          |
+| Auth Flow habilitado | `ALLOW_USER_PASSWORD_AUTH`                            |
+| Dominio              | `us-east-1uouyto6ce.auth.us-east-1.amazoncognito.com` |
 
 ### n8n
 
-| Campo | Valor |
-|---|---|
-| URL | `http://32.192.124.14:5678` |
-| Usuario | `admin` |
+| Campo             | Valor                                                                            |
+| ----------------- | -------------------------------------------------------------------------------- |
+| URL               | `http://32.192.124.14:5678`                                                      |
+| Usuario           | `admin`                                                                          |
 | Workflows activos | `INFODETS - Invitar Usuario`, `INFODETS - Notificaciones Loop Retroalimentacion` |
 
 ### CI/CD — GitHub Actions
 
-| Campo | Valor |
-|---|---|
-| Workflow | `.github/workflows/deploy.yml` |
-| Trigger | Push a rama `main` |
-| Acción | `git pull` + `pip install` + `systemctl restart fastapi` |
+| Campo    | Valor                                                    |
+| -------- | -------------------------------------------------------- |
+| Workflow | `.github/workflows/deploy.yml`                           |
+| Trigger  | Push a rama `main`                                       |
+| Acción   | `git pull` + `pip install` + `systemctl restart fastapi` |
 
 ---
 
@@ -185,13 +189,13 @@ Backend verifica JWT HS256 con secret_key local (sin llamadas a Cognito)
 
 **Política de contraseñas (Cognito):**
 
-| Regla | Valor |
-|---|---|
-| Longitud mínima | 8 caracteres |
-| Mayúsculas | Al menos 1 |
-| Minúsculas | Al menos 1 |
-| Números | Al menos 1 |
-| Símbolos | Al menos 1 (`!@#$%^&*...`) |
+| Regla           | Valor                      |
+| --------------- | -------------------------- |
+| Longitud mínima | 8 caracteres               |
+| Mayúsculas      | Al menos 1                 |
+| Minúsculas      | Al menos 1                 |
+| Números         | Al menos 1                 |
+| Símbolos        | Al menos 1 (`!@#$%^&*...`) |
 
 Ejemplo válido: `Infodets2024!`
 
@@ -206,19 +210,19 @@ El perfil es la **única fuente de verdad** para los permisos. No existe rol com
 
 ### Secciones del perfil
 
-| Sección | Tipo | Descripción |
-|---|---|---|
-| `consulta` | Menú | Acceso al chat con IA |
-| `perfil` | Menú | Acceso a la página de perfil |
-| `documentacion` | Menú | Acceso a documentación |
-| `noticias` | Menú | Acceso a noticias |
-| `dashboard` | Menú | Acceso al panel administrativo |
-| `gestionar_usuarios` | Acción | CRUD usuarios, perfiles, derechos, blanqueo |
-| `blanquear_password` | Acción | Blanqueo de contraseñas en Cognito |
-| `gestionar_documentos` | Acción | Subir/eliminar documentos, URLs oficiales |
-| `gestionar_noticias` | Acción | CRUD de noticias |
-| `gestionar_tablas` | Acción | Administrar tablas de valores |
-| `ver_validaciones` | Acción | Ver y aprobar validaciones de IA |
+| Sección                | Tipo   | Descripción                                 |
+| ---------------------- | ------ | ------------------------------------------- |
+| `consulta`             | Menú   | Acceso al chat con IA                       |
+| `perfil`               | Menú   | Acceso a la página de perfil                |
+| `documentacion`        | Menú   | Acceso a documentación                      |
+| `noticias`             | Menú   | Acceso a noticias                           |
+| `dashboard`            | Menú   | Acceso al panel administrativo              |
+| `gestionar_usuarios`   | Acción | CRUD usuarios, perfiles, derechos, blanqueo |
+| `blanquear_password`   | Acción | Blanqueo de contraseñas en Cognito          |
+| `gestionar_documentos` | Acción | Subir/eliminar documentos, URLs oficiales   |
+| `gestionar_noticias`   | Acción | CRUD de noticias                            |
+| `gestionar_tablas`     | Acción | Administrar tablas de valores               |
+| `ver_validaciones`     | Acción | Ver y aprobar validaciones de IA            |
 
 ### Flujo de permisos
 
@@ -245,81 +249,81 @@ Sistema de mejora continua implementado en `rag_service.py` → `ejecutar_loop_r
 
 ### Niveles de acción
 
-| Nivel | Condición | Acción | Mensaje al usuario |
-|---|---|---|---|
-| 0 | Score ≥ 70% | Responde con documentación oficial local | Sin aviso |
-| 1 | Score < 70% | Busca en URLs oficiales activas (tabla `urls_oficiales`) | ⚠️ Fuente externa |
-| 2 | Nivel 1 vacío | Búsqueda web via Serper API | ⚠️ Fuente externa |
-| 3 | Todo vacío | Mensaje de escalamiento + ticket + email n8n | Mensaje de escalamiento |
+| Nivel | Condición     | Acción                                                   | Mensaje al usuario      |
+| ----- | ------------- | -------------------------------------------------------- | ----------------------- |
+| 0     | Score ≥ 70%   | Responde con documentación oficial local                 | Sin aviso               |
+| 1     | Score < 70%   | Busca en URLs oficiales activas (tabla `urls_oficiales`) | ⚠️ Fuente externa       |
+| 2     | Nivel 1 vacío | Búsqueda web via Serper API                              | ⚠️ Fuente externa       |
+| 3     | Todo vacío    | Mensaje de escalamiento + ticket + email n8n             | Mensaje de escalamiento |
 
 ### Sistema de validaciones para entrenamiento IA
 
-| Score | Acción |
-|---|---|
-| < 50% | No se crea validación |
+| Score     | Acción                                                                  |
+| --------- | ----------------------------------------------------------------------- |
+| < 50%     | No se crea validación                                                   |
 | 50% – 85% | Validación `pendiente` → revisión manual en `/dashboard/notificaciones` |
-| ≥ 85% | `auto_indexado` → indexado en Qdrant en background thread |
+| ≥ 85%     | `auto_indexado` → indexado en Qdrant en background thread               |
 
 Al aprobar una validación manual → se indexa en Qdrant inmediatamente.
 
 ### Notificaciones n8n (workflow activo)
 
-| Evento | Cuándo | Email |
-|---|---|---|
-| `nivel1_externo` | Respuesta desde URL oficial | ⚠️ Naranja — sugerir subir doc |
-| `nivel2_web` | Respuesta desde búsqueda web | ⚠️ Naranja — sugerir subir doc |
-| `nivel3_escalamiento` | Sin respuesta en ninguna fuente | 🚨 Rojo — urgente |
-| `validacion_pendiente` | Score 50-85% requiere revisión | 🔵 Azul — link al dashboard |
+| Evento                 | Cuándo                          | Email                          |
+| ---------------------- | ------------------------------- | ------------------------------ |
+| `nivel1_externo`       | Respuesta desde URL oficial     | ⚠️ Naranja — sugerir subir doc |
+| `nivel2_web`           | Respuesta desde búsqueda web    | ⚠️ Naranja — sugerir subir doc |
+| `nivel3_escalamiento`  | Sin respuesta en ninguna fuente | 🚨 Rojo — urgente              |
+| `validacion_pendiente` | Score 50-85% requiere revisión  | 🔵 Azul — link al dashboard    |
 
 ---
 
 ## 7. TABLAS EN RDS
 
-| Tabla | Propósito | Migraciones |
-|---|---|---|
-| `usuarios` | Usuarios con perfil completo y cognito_sub | S1 |
-| `documentos` | Documentos indexados en Qdrant | S1 |
-| `historial_chat` | Consultas de usuarios autenticados | S1 |
-| `reportes_feedback` | Feedback de respuestas (schema listo) | S1 |
-| `permisos_usuario` | Permisos individuales por sección (11 secciones) | S3 |
-| `perfiles` | Perfiles de acceso | S3 |
-| `perfil_permisos` | Permisos por perfil (11 secciones) | S3 |
-| `tabla_valores` | Valores de desplegables (instituciones, cargos, etc.) | S3 |
-| `noticias` | Publicaciones institucionales | S3 |
-| `tickets_vacios` | Consultas sin documentación (score < 70%) | S3 |
-| `consultas_invitado` | Consultas de usuarios no registrados | Testeo |
-| `validaciones_respuesta` | Respuestas para entrenamiento de la IA | Testeo |
-| `urls_oficiales` | URLs para Nivel 1 del loop de retroalimentación | Testeo |
+| Tabla                    | Propósito                                             | Migraciones |
+| ------------------------ | ----------------------------------------------------- | ----------- |
+| `usuarios`               | Usuarios con perfil completo y cognito_sub            | S1          |
+| `documentos`             | Documentos indexados en Qdrant                        | S1          |
+| `historial_chat`         | Consultas de usuarios autenticados                    | S1          |
+| `reportes_feedback`      | Feedback de respuestas (schema listo)                 | S1          |
+| `permisos_usuario`       | Permisos individuales por sección (11 secciones)      | S3          |
+| `perfiles`               | Perfiles de acceso                                    | S3          |
+| `perfil_permisos`        | Permisos por perfil (11 secciones)                    | S3          |
+| `tabla_valores`          | Valores de desplegables (instituciones, cargos, etc.) | S3          |
+| `noticias`               | Publicaciones institucionales                         | S3          |
+| `tickets_vacios`         | Consultas sin documentación (score < 70%)             | S3          |
+| `consultas_invitado`     | Consultas de usuarios no registrados                  | Testeo      |
+| `validaciones_respuesta` | Respuestas para entrenamiento de la IA                | Testeo      |
+| `urls_oficiales`         | URLs para Nivel 1 del loop de retroalimentación       | Testeo      |
 
 ---
 
 ## 8. PLAN DE SPRINTS
 
-| Sprint | Período | Hito | Estado |
-|---|---|---|---|
-| S0 | Semanas 1-2 | Entorno AWS | ✅ 100% CERRADO |
-| S1 | Semanas 3-4 | Autenticación real | ✅ 100% CERRADO |
-| S2 | Semanas 5-6 | Pipeline RAG | ✅ 100% CERRADO |
-| S3 | Semanas 7-8 | Chat IA real = **MVP** | ✅ 100% CERRADO — 24 mayo ✅ |
-| S4 | Semanas 9-10 | Dashboard + feedback | 🟡 50% |
-| Testeo | En curso | Correcciones + refactoring | 🟡 En progreso |
-| S5 | Semanas 11-12 | Producción | 🟡 En curso — frontend desplegado ✅ |
+| Sprint | Período       | Hito                       | Estado                               |
+| ------ | ------------- | -------------------------- | ------------------------------------ |
+| S0     | Semanas 1-2   | Entorno AWS                | ✅ 100% CERRADO                      |
+| S1     | Semanas 3-4   | Autenticación real         | ✅ 100% CERRADO                      |
+| S2     | Semanas 5-6   | Pipeline RAG               | ✅ 100% CERRADO                      |
+| S3     | Semanas 7-8   | Chat IA real = **MVP**     | ✅ 100% CERRADO — 24 mayo ✅         |
+| S4     | Semanas 9-10  | Dashboard + feedback       | 🟡 50%                               |
+| Testeo | En curso      | Correcciones + refactoring | 🟡 En progreso                       |
+| S5     | Semanas 11-12 | Producción                 | 🟡 En curso — frontend desplegado ✅ |
 
 ---
 
 ### Sprint 0 ✅ 100% CERRADO — Entorno AWS
 
-| Tarea | Estado | Responsable |
-|---|---|---|
-| Clonar repo y levantar Docker local | ✅ | Todos |
-| Confirmar mecanismo de streaming del chat | ✅ SSE + Gemini stream=True | P1 + P2 |
-| Crear instancia EC2 en AWS | ✅ | P2 |
-| Cognito — 2 App Clients configurados | ✅ | P2 |
-| Crear base de datos RDS PostgreSQL | ✅ | P2 |
-| Instalar n8n en Docker en EC2 | ✅ | P3 |
-| Definir estructura de tablas | ✅ Modelo híbrido PostgreSQL + Qdrant | P2 + P3 |
-| Definir contratos de API | ✅ Schema-First Pydantic + TypeScript | P1 + P2 |
-| Actualizar variables de entorno | ✅ | Todos |
+| Tarea                                     | Estado                                | Responsable |
+| ----------------------------------------- | ------------------------------------- | ----------- |
+| Clonar repo y levantar Docker local       | ✅                                    | Todos       |
+| Confirmar mecanismo de streaming del chat | ✅ SSE + Gemini stream=True           | P1 + P2     |
+| Crear instancia EC2 en AWS                | ✅                                    | P2          |
+| Cognito — 2 App Clients configurados      | ✅                                    | P2          |
+| Crear base de datos RDS PostgreSQL        | ✅                                    | P2          |
+| Instalar n8n en Docker en EC2             | ✅                                    | P3          |
+| Definir estructura de tablas              | ✅ Modelo híbrido PostgreSQL + Qdrant | P2 + P3     |
+| Definir contratos de API                  | ✅ Schema-First Pydantic + TypeScript | P1 + P2     |
+| Actualizar variables de entorno           | ✅                                    | Todos       |
 
 **Entregable:** Entorno completo funcionando en EC2. ✅
 
@@ -327,18 +331,19 @@ Al aprobar una validación manual → se indexa en Qdrant inmediatamente.
 
 ### Sprint 1 ✅ 100% CERRADO — Base de datos y autenticación real
 
-| Tarea | Estado | Responsable |
-|---|---|---|
-| Crear modelos SQLAlchemy | ✅ | P2 |
-| Configurar Alembic para migraciones | ✅ | P2 |
-| Implementar endpoints CRUD de usuarios | ✅ | P2 |
-| Conectar login del Frontend con Cognito real | ✅ | P1 |
-| Implementar middleware de rutas protegidas | ✅ | P1 |
-| Probar flujo completo login → token → request → logout | ✅ | P1 + P2 |
-| Crear primer workflow en n8n | ✅ | P3 |
-| Instalar e integrar Qdrant | ✅ | P3 |
+| Tarea                                                  | Estado | Responsable |
+| ------------------------------------------------------ | ------ | ----------- |
+| Crear modelos SQLAlchemy                               | ✅     | P2          |
+| Configurar Alembic para migraciones                    | ✅     | P2          |
+| Implementar endpoints CRUD de usuarios                 | ✅     | P2          |
+| Conectar login del Frontend con Cognito real           | ✅     | P1          |
+| Implementar middleware de rutas protegidas             | ✅     | P1          |
+| Probar flujo completo login → token → request → logout | ✅     | P1 + P2     |
+| Crear primer workflow en n8n                           | ✅     | P3          |
+| Instalar e integrar Qdrant                             | ✅     | P3          |
 
 **Logros adicionales:**
+
 - ✅ FastAPI como servicio systemd en EC2 (auto-reinicio)
 - ✅ CI/CD GitHub Actions operativo — deploy automático en push a main
 - ✅ sessionStore.ts Zustand con token, rol, isAuthenticated, isAdmin
@@ -351,17 +356,18 @@ Al aprobar una validación manual → se indexa en Qdrant inmediatamente.
 
 ### Sprint 2 ✅ 100% CERRADO — Pipeline RAG e ingesta de documentos
 
-| Tarea | Estado | Responsable |
-|---|---|---|
-| Endpoint de carga de documentos en FastAPI | ✅ | P2 |
-| Formulario de carga conectado al endpoint real | ✅ | P1 |
-| Workflow n8n ingesta | ✅ | P3 |
-| Qdrant con gemini-embedding-001 (3072 dims) | ✅ | P3 |
-| Búsqueda semántica RAG (umbral 0.7) | ✅ | P3 |
-| Endpoint POST /v1/chat/stream con RAG + Gemini + Groq | ✅ | P2 + P3 |
-| Historial en RDS | ✅ | P2 + P3 |
+| Tarea                                                 | Estado | Responsable |
+| ----------------------------------------------------- | ------ | ----------- |
+| Endpoint de carga de documentos en FastAPI            | ✅     | P2          |
+| Formulario de carga conectado al endpoint real        | ✅     | P1          |
+| Workflow n8n ingesta                                  | ✅     | P3          |
+| Qdrant con gemini-embedding-001 (3072 dims)           | ✅     | P3          |
+| Búsqueda semántica RAG (umbral 0.7)                   | ✅     | P3          |
+| Endpoint POST /v1/chat/stream con RAG + Gemini + Groq | ✅     | P2 + P3     |
+| Historial en RDS                                      | ✅     | P2 + P3     |
 
 **Logros adicionales:**
+
 - ✅ Gemini gemini-2.0-flash-lite operativo
 - ✅ Groq llama-3.3-70b-versatile como fallback automático en 429
 - ✅ Pipeline probado con PDF real → 7 chunks en Qdrant
@@ -375,17 +381,18 @@ Al aprobar una validación manual → se indexa en Qdrant inmediatamente.
 
 ### Sprint 3 ✅ 100% CERRADO — Motor de IA — **MVP ✅ CUMPLIDO**
 
-| Tarea | Estado | Responsable |
-|---|---|---|
-| API Key Gemini + streaming | ✅ | P3 |
-| StreamingResponse FastAPI | ✅ | P2 + P3 |
-| Lógica umbral confianza ≥70% local / <70% fallback | ✅ | P3 |
-| Chat Frontend conectado SSE | ✅ | P1 + P3 |
-| Fuentes con links al PDF | ✅ | P1 |
-| Historial en panel lateral | ✅ | P1 + P2 |
-| Ticket silencioso score < 0.3 | ✅ | P3 |
+| Tarea                                              | Estado | Responsable |
+| -------------------------------------------------- | ------ | ----------- |
+| API Key Gemini + streaming                         | ✅     | P3          |
+| StreamingResponse FastAPI                          | ✅     | P2 + P3     |
+| Lógica umbral confianza ≥70% local / <70% fallback | ✅     | P3          |
+| Chat Frontend conectado SSE                        | ✅     | P1 + P3     |
+| Fuentes con links al PDF                           | ✅     | P1          |
+| Historial en panel lateral                         | ✅     | P1 + P2     |
+| Ticket silencioso score < 0.3                      | ✅     | P3          |
 
 **Logros adicionales (adelantaron Sprint 4):**
+
 - ✅ ChatPanel.tsx — streaming SSE real via fetch con JWT, chunks en tiempo real
 - ✅ HistorialPanel.tsx — últimas 20 consultas reales desde RDS
 - ✅ CRUD completo de usuarios (`/dashboard/usuarios`)
@@ -406,62 +413,62 @@ Al aprobar una validación manual → se indexa en Qdrant inmediatamente.
 
 ### Sprint 4 🟡 50% — Dashboard + feedback + administración
 
-| Tarea | Estado | Responsable |
-|---|---|---|
-| Endpoint de feedback en FastAPI | ⏳ Pendiente | P2 |
-| Botón de feedback en el chat | ⏳ Pendiente | P1 |
-| Endpoints dashboard (hot topics, consultas por día) | ⏳ Pendiente | P2 |
-| Gráficos dashboard con datos reales | ⏳ Pendiente | P1 |
-| CRUD real de usuarios desde panel admin | ✅ Completo | P1 + P2 |
-| CRUD real de documentos desde panel admin | ✅ Completo | P1 + P2 |
-| Control de acceso por rol en Frontend | ✅ Completo | P1 |
-| Workflow n8n notificación al admin | ✅ Completo | P3 |
+| Tarea                                               | Estado       | Responsable |
+| --------------------------------------------------- | ------------ | ----------- |
+| Endpoint de feedback en FastAPI                     | ⏳ Pendiente | P2          |
+| Botón de feedback en el chat                        | ⏳ Pendiente | P1          |
+| Endpoints dashboard (hot topics, consultas por día) | ✅ Completo  | P2          |
+| Gráficos dashboard con datos reales                 | ✅ Completo  | P1          |
+| CRUD real de usuarios desde panel admin             | ✅ Completo  | P1 + P2     |
+| CRUD real de documentos desde panel admin           | ✅ Completo  | P1 + P2     |
+| Control de acceso por rol en Frontend               | ✅ Completo  | P1          |
+| Workflow n8n notificación al admin                  | ✅ Completo  | P3          |
 
 ---
 
 ### Sprint Testeo 🟡 En progreso — Correcciones y refactoring
 
-| Tarea | Estado |
-|---|---|
-| Login propio JWT HS256 (reemplazó OAuth Cognito) | ✅ |
-| Fix: mensaje de error en login no se borraba por refresh | ✅ |
-| Fix: interceptor axios excluye /auth/login del 401 global | ✅ |
-| Fix: historial de chat no se actualizaba tras consulta | ✅ |
-| Fix: usuario_id incorrecto en guardar_historial | ✅ |
-| Loop de retroalimentación 3 niveles (umbral 70%) | ✅ |
-| Sistema de validaciones para entrenamiento IA | ✅ |
-| Notificaciones n8n por nivel y validaciones pendientes | ✅ |
-| URLs oficiales gestionadas desde `/dashboard/documentacion` | ✅ |
-| Consulta invitado con formulario + institución desde tabla | ✅ |
-| Sistema de perfiles como única fuente de verdad (eliminó rol duplicado) | ✅ |
-| Permisos en Zustand al login (sin fetch, sin parpadeo en sidebar) | ✅ |
-| Blanqueo de contraseña desde `/dashboard/usuarios` | ✅ |
-| DatePicker para fecha de nacimiento (DD/MM/AAAA) | ✅ |
-| Emails normalizados a minúsculas en toda la app | ✅ |
-| Sincronización usuarios Cognito ↔ RDS | ✅ |
-| Perfil obligatorio al crear usuario | ✅ |
-| Fusión `/dashboard/perfiles` en `/dashboard/derechos` | ✅ |
-| Permisos backend: require_permiso() reemplazó require_admin() | ✅ |
-| 3 nuevas tablas en RDS: consultas_invitado, validaciones_respuesta, urls_oficiales | ✅ |
-| Despliegue frontend en producción EC2 | ✅ `http://32.192.124.14:3000` |
-| Feedback botón en chat | ⏳ Pendiente |
-| Dashboard con datos reales (hot topics, gráficos) | ⏳ Pendiente |
+| Tarea                                                                              | Estado                         |
+| ---------------------------------------------------------------------------------- | ------------------------------ |
+| Login propio JWT HS256 (reemplazó OAuth Cognito)                                   | ✅                             |
+| Fix: mensaje de error en login no se borraba por refresh                           | ✅                             |
+| Fix: interceptor axios excluye /auth/login del 401 global                          | ✅                             |
+| Fix: historial de chat no se actualizaba tras consulta                             | ✅                             |
+| Fix: usuario_id incorrecto en guardar_historial                                    | ✅                             |
+| Loop de retroalimentación 3 niveles (umbral 70%)                                   | ✅                             |
+| Sistema de validaciones para entrenamiento IA                                      | ✅                             |
+| Notificaciones n8n por nivel y validaciones pendientes                             | ✅                             |
+| URLs oficiales gestionadas desde `/dashboard/documentacion`                        | ✅                             |
+| Consulta invitado con formulario + institución desde tabla                         | ✅                             |
+| Sistema de perfiles como única fuente de verdad (eliminó rol duplicado)            | ✅                             |
+| Permisos en Zustand al login (sin fetch, sin parpadeo en sidebar)                  | ✅                             |
+| Blanqueo de contraseña desde `/dashboard/usuarios`                                 | ✅                             |
+| DatePicker para fecha de nacimiento (DD/MM/AAAA)                                   | ✅                             |
+| Emails normalizados a minúsculas en toda la app                                    | ✅                             |
+| Sincronización usuarios Cognito ↔ RDS                                              | ✅                             |
+| Perfil obligatorio al crear usuario                                                | ✅                             |
+| Fusión `/dashboard/perfiles` en `/dashboard/derechos`                              | ✅                             |
+| Permisos backend: require_permiso() reemplazó require_admin()                      | ✅                             |
+| 3 nuevas tablas en RDS: consultas_invitado, validaciones_respuesta, urls_oficiales | ✅                             |
+| Despliegue frontend en producción EC2                                              | ✅ `http://32.192.124.14:3000` |
+| Feedback botón en chat                                                             | ⏳ Pendiente                   |
+| Dashboard con datos reales (hot topics, gráficos)                                  | ⏳ Pendiente                   |
 
 ---
 
 ### Sprint 5 ⏳ En curso — Producción
 
-| Tarea | Estado | Responsable |
-|---|---|---|
-| Frontend desplegado en EC2 | ✅ `http://32.192.124.14:3000` | P1 |
-| Feedback botón en chat + endpoint | ⏳ Pendiente | P1 + P2 |
-| Dashboard con datos reales (hot topics, gráficos) | ⏳ Pendiente | P1 + P2 |
-| Pruebas de integración Frontend ↔ Backend | ⏳ Pendiente | P1 + P2 |
-| Pruebas del pipeline RAG con documentos reales | ⏳ Pendiente | P3 |
-| Configurar CloudFront para el Frontend | ⏳ Pendiente | P2 |
-| Configurar dominio y certificado SSL | ⏳ Pendiente | P2 |
-| Revisión de seguridad (variables de entorno, permisos IAM) | ⏳ Pendiente | P2 |
-| Pruebas de usuario final con flujo completo | ⏳ Pendiente | Todos |
+| Tarea                                                      | Estado                         | Responsable |
+| ---------------------------------------------------------- | ------------------------------ | ----------- |
+| Frontend desplegado en EC2                                 | ✅ `http://32.192.124.14:3000` | P1          |
+| Feedback botón en chat + endpoint                          | ⏳ Pendiente                   | P1 + P2     |
+| Dashboard con datos reales (hot topics, gráficos)          | ⏳ Pendiente                   | P1 + P2     |
+| Pruebas de integración Frontend ↔ Backend                  | ⏳ Pendiente                   | P1 + P2     |
+| Pruebas del pipeline RAG con documentos reales             | ⏳ Pendiente                   | P3          |
+| Configurar CloudFront para el Frontend                     | ⏳ Pendiente                   | P2          |
+| Configurar dominio y certificado SSL                       | ⏳ Pendiente                   | P2          |
+| Revisión de seguridad (variables de entorno, permisos IAM) | ⏳ Pendiente                   | P2          |
+| Pruebas de usuario final con flujo completo                | ⏳ Pendiente                   | Todos       |
 
 **Entregable:** Sistema en producción en AWS. URL pública funcionando.
 
@@ -538,11 +545,11 @@ chore:    mantenimiento
 
 **Razón:** API Keys gratuitas de Gemini tienen límite de 15 RPM. Groq (`llama-3.3-70b-versatile`) activa automáticamente cuando Gemini devuelve 429.
 
-| Aspecto | Gemini | Groq (fallback) |
-|---|---|---|
-| Modelo | gemini-2.0-flash-lite | llama-3.3-70b-versatile |
-| Límite gratuito | 15 RPM | 30 RPM |
-| Activación | Principal | Automático en 429 |
+| Aspecto         | Gemini                | Groq (fallback)         |
+| --------------- | --------------------- | ----------------------- |
+| Modelo          | gemini-2.0-flash-lite | llama-3.3-70b-versatile |
+| Límite gratuito | 15 RPM                | 30 RPM                  |
+| Activación      | Principal             | Automático en 429       |
 
 ---
 
@@ -560,5 +567,5 @@ chore:    mantenimiento
 
 ---
 
-*INFODETS — Sistema de Gestión de Conocimiento Dinámico*
-*Plan de Desarrollo v4.1 — Sprint Testeo — Mayo 2026*
+_INFODETS — Sistema de Gestión de Conocimiento Dinámico_
+_Plan de Desarrollo v4.1 — Sprint Testeo — Mayo 2026_
