@@ -4,32 +4,35 @@ Sistema de Gestión de Conocimiento Dinámico para entidades públicas. Utiliza 
 
 ## Stack
 
-| Capa | Tecnología |
-|---|---|
-| Frontend | Next.js 16 + React 19 + TypeScript |
-| Backend | FastAPI (Python 3.13) |
-| Base de datos | AWS RDS PostgreSQL 17 |
-| Base vectorial | Qdrant (self-hosted en EC2) |
-| IA | Google Gemini + Groq (fallback) |
-| Autenticación | AWS Cognito + JWT HS256 |
-| Orquestación | n8n (Docker) |
-| Infraestructura | AWS EC2 + RDS + Cognito |
+| Capa            | Tecnología                         |
+| --------------- | ---------------------------------- |
+| Frontend        | Next.js 16 + React 19 + TypeScript |
+| Backend         | FastAPI (Python 3.13)              |
+| Base de datos   | AWS RDS PostgreSQL 17              |
+| Base vectorial  | Qdrant (self-hosted en EC2)        |
+| IA              | Google Gemini + Groq (fallback)    |
+| Autenticación   | AWS Cognito + JWT HS256            |
+| Orquestación    | n8n (Docker)                       |
+| Infraestructura | AWS EC2 + RDS + Cognito            |
 
 ## Inicio rápido
 
 ### Local (un solo comando)
 
 **Windows:**
+
 ```bat
 start-local.bat
 ```
 
 **Git Bash / Linux / Mac:**
+
 ```bash
 ./start-local.sh
 ```
 
 ### Docker
+
 ```bash
 # Desarrollo (hot-reload)
 docker-compose -f docker-compose.dev.yml up --build
@@ -40,11 +43,11 @@ docker-compose up --build
 
 ## URLs
 
-| Servicio | Local | Producción |
-|---|---|---|
-| Frontend | http://localhost:3000 | http://32.192.124.14:3000 |
-| Backend API | http://localhost:8000 | http://32.192.124.14:8000 |
-| Docs API | http://localhost:8000/docs | http://32.192.124.14:8000/docs |
+| Servicio    | Local                      | Producción                     |
+| ----------- | -------------------------- | ------------------------------ |
+| Frontend    | http://localhost:3000      | http://32.192.124.14:3000      |
+| Backend API | http://localhost:8000      | http://32.192.124.14:8000      |
+| Docs API    | http://localhost:8000/docs | http://32.192.124.14:8000/docs |
 
 ## Estructura
 
@@ -75,11 +78,16 @@ infodets/
 
 ## Ramas
 
-| Rama | Propósito |
-|---|---|
-| `main` | Producción — deploy automático al EC2 |
-| `Testeo` | Rama activa de desarrollo |
-| `Frontend` | Desarrollo Frontend |
-| `Backend` | Desarrollo Backend |
-| `Configuracion` | Infraestructura |
-| `Data` | Datos y modelos IA |
+| Rama            | Propósito                             |
+| --------------- | ------------------------------------- |
+| `main`          | Producción — deploy automático al EC2 |
+| `Testeo`        | Rama activa de desarrollo             |
+| `Frontend`      | Desarrollo Frontend                   |
+| `Backend`       | Desarrollo Backend                    |
+| `Configuracion` | Infraestructura                       |
+| `Data`          | Datos y modelos IA                    |
+
+ejecuta inicio
+
+cd /e/VSC/infodets
+./start-local.sh
