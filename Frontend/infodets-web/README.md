@@ -1,36 +1,87 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# INFODETS — Frontend
 
-## Getting Started
+Aplicación web construida con Next.js 16 (App Router) + TypeScript + Mantine UI.
 
-First, run the development server:
+## Stack
+
+- **Next.js** 16 + React 19 + TypeScript
+- **Mantine UI** v9 (componentes, formularios, fechas, gráficos)
+- **Zustand** (estado global con persist)
+- **Axios** (HTTP con interceptores JWT)
+- **Framer Motion** (animaciones)
+- **TanStack Query** v5
+
+## Inicio local
 
 ```bash
+cd Frontend/infodets-web
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Disponible en `http://localhost:3000`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+> Requiere el backend corriendo en `http://localhost:8000`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Variables de entorno
 
-## Learn More
+Crear `Frontend/infodets-web/.env.local`:
 
-To learn more about Next.js, take a look at the following resources:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000/v1
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+En producción el Dockerfile usa:
+```
+NEXT_PUBLIC_API_URL=http://32.192.124.14:8000/v1
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Páginas principales
 
-## Deploy on Vercel
+| Ruta | Descripción | Acceso |
+|---|---|---|
+| `/` | Login | Público |
+| `/invitado` | Consulta sin registro | Público |
+| `/consulta` | Chat con IA (SSE) | Autenticado |
+| `/perfil` | Perfil del usuario | Autenticado |
+| `/documentacion` | Carga de documentos | Con permiso |
+| `/noticias` | Noticias institucionales | Autenticado |
+| `/dashboard` | Panel administrativo | Admin |
+| `/dashboard/usuarios` | CRUD usuarios | Admin |
+| `/dashboard/derechos` | Perfiles y permisos | Admin |
+| `/dashboard/notificaciones` | Tickets y validaciones IA | Admin |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Scripts
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run dev      # Desarrollo con hot-reload
+npm run build    # Build de producción
+npm run start    # Servidor de producción
+npm run lint     # Linting
+```
+
+## Estructura
+
+```
+src/
+├── app/              → Páginas (App Router)
+├── components/       → Componentes reutilizables
+├── hooks/            → Hooks personalizados
+├── services/api/     → Llamadas al backend
+├── store/            → Zustand (session, ui)
+├── lib/              → axios, queryClient, constants
+└── types/            → Tipos TypeScript
+```
+
+## Docker (producción)
+
+```bash
+# Build
+docker build -t infodets-frontend .
+
+# Run
+docker run -d --name infodets-web --restart unless-stopped -p 3000:3000 infodets-frontend
+
+# Logs
+docker logs infodets-web --tail 50
+```
