@@ -302,7 +302,7 @@ export default function NotificacionesPage() {
                             {(t.usuario_nombre || t.usuario_email) && (
                               <Group gap={4}>
                                 <Avatar size={16} radius="xl" color="blue" variant="filled">
-                                  <Text size="xs">{(t.usuario_nombre ?? t.usuario_email ?? '?')[0].toUpperCase()}</Text>
+                                  <Text size="xs">{((t.usuario_nombre || t.usuario_email || '?')[0] ?? '?').toUpperCase()}</Text>
                                 </Avatar>
                                 <Text size="xs" c="dimmed" fw={500}>
                                   {t.usuario_nombre ?? ''}
