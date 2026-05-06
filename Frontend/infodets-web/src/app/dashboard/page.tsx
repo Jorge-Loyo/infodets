@@ -3,7 +3,7 @@
 import { Box, Grid, Paper, Text, ThemeIcon, Stack, Title } from '@mantine/core'
 import {
   IconUsers, IconShieldCheck,
-  IconBellRinging, IconBell, IconFiles, IconNews, IconTable,
+  IconFiles, IconNews, IconTable,
 } from '@tabler/icons-react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
@@ -15,8 +15,6 @@ const CARDS = [
   { label: 'Administración de documentación', icon: IconFiles, href: '/dashboard/documentacion', color: 'green', desc: 'CRUD completo de documentos del sistema', permiso: 'gestionar_documentos' },
   { label: 'Administrador de Noticias', icon: IconNews, href: '/dashboard/noticias', color: 'pink', desc: 'Crea y gestiona publicaciones institucionales', permiso: 'gestionar_noticias' },
   { label: 'Administrar tablas', icon: IconTable, href: '/dashboard/tablas', color: 'indigo', desc: 'Gestiona los valores de los desplegables del sistema', permiso: 'gestionar_tablas' },
-  { label: 'Panel de notificaciones', icon: IconBellRinging, href: '/dashboard/panel-notificaciones', color: 'orange', desc: 'Configura y gestiona notificaciones', permiso: 'dashboard' },
-  { label: 'Notificaciones', icon: IconBell, href: '/dashboard/notificaciones', color: 'yellow', desc: 'Visualiza las notificaciones activas', permiso: 'dashboard' },
 ]
 
 export default function DashboardPage() {

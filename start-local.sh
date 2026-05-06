@@ -1,16 +1,14 @@
 #!/bin/bash
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PYTHON="/c/Users/jorge/AppData/Local/Programs/Python/Python313/python.exe"
-VENV="$SCRIPT_DIR/Backend/.venv"
+VENV="$SCRIPT_DIR/Backend/venv"
 
 echo "Iniciando Backend..."
 cd "$SCRIPT_DIR/Backend"
 
-# Crear venv si no existe
 if [ ! -f "$VENV/Scripts/activate" ]; then
   echo "Creando entorno virtual..."
-  "$PYTHON" -m venv "$VENV"
+  python -m venv "$VENV"
 fi
 
 source "$VENV/Scripts/activate"
