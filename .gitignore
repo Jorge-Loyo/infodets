@@ -1,3 +1,7 @@
+# Scripts locales
+start-local.sh
+start-local.bat
+
 # Archivos personales de seguimiento
 ESTADO_SPRINT*.md
 *.personal.md

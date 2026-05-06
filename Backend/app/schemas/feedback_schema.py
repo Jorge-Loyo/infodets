@@ -21,4 +21,7 @@ class FeedbackResponse(BaseModel):
     usuario_id: str
     tipo: FeedbackTipo
     comentario: Optional[str] = None
-    created_at: str
+    created_at: Optional[str] = None
+
+    class Config:
+        from_attributes = True

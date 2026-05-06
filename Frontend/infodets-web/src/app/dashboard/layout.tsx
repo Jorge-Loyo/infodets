@@ -3,7 +3,7 @@
 import { Box, NavLink, Stack, Text, ThemeIcon, Divider } from '@mantine/core'
 import {
   IconUsers, IconShieldCheck,
-  IconBellRinging, IconBell, IconFiles, IconNews, IconTable,
+  IconFiles, IconNews, IconTable,
 } from '@tabler/icons-react'
 import { motion } from 'framer-motion'
 import { usePathname, useRouter } from 'next/navigation'
@@ -16,8 +16,6 @@ import { PageLoader } from '@/components/layout/PageLoader'
 const ADMIN_MENU = [
   { label: 'Administrar usuarios', icon: IconUsers, href: '/dashboard/usuarios' },
   { label: 'Derechos y perfiles', icon: IconShieldCheck, href: '/dashboard/derechos' },
-  { label: 'Panel de notificaciones', icon: IconBellRinging, href: '/dashboard/panel-notificaciones' },
-  { label: 'Notificaciones', icon: IconBell, href: '/dashboard/notificaciones' },
   { label: 'Administración de documentación', icon: IconFiles, href: '/dashboard/documentacion' },
   { label: 'Administrador de Noticias', icon: IconNews, href: '/dashboard/noticias' },
   { label: 'Administrar tablas', icon: IconTable, href: '/dashboard/tablas' },
