@@ -266,3 +266,14 @@ class BotIdentidad(Base):
     restricciones: Mapped[str | None] = mapped_column(Text, nullable=True)
     imagen_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     actualizado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class MemoriaUsuario(Base):
+    __tablename__ = "memoria_usuario"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    usuario_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, unique=True)
+    nombre: Mapped[str | None] = mapped_column(String, nullable=True)
+    resumen: Mapped[str | None] = mapped_column(Text, nullable=True)
+    total_consultas: Mapped[int] = mapped_column(Integer, default=0)
+    actualizado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

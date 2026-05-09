@@ -26,6 +26,7 @@ from app.services.notificacion_service import notificar_admin_sync
 from app.middleware.auth_middleware import get_current_user
 from app.core.database import get_db, SessionLocal
 from app.models.models import HistorialChat, ConsultaInvitado, Conversacion
+from app.services.memoria_service import obtener_memoria, actualizar_memoria
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -58,8 +59,27 @@ async def chat_stream(
 
     def generate():
         try:
-            resultados, max_score = buscar_contexto(request.mensaje)
+            try:
+                resultados, max_score = buscar_contexto(request.mensaje)
+            except Exception as e:
+                logger.warning(f"[CHAT] Error Qdrant: {type(e).__name__}: {e}")
+                resultados, max_score = [], 0.0
             resultado = ejecutar_loop_retroalimentacion(request.mensaje, max_score, resultados)
+
+            # Cargar memoria e historial del usuario
+            db_mem = SessionLocal()
+            try:
+                memoria = obtener_memoria(db_mem, usuario_id)
+                historial = [
+                    {"pregunta": m.pregunta, "respuesta": m.respuesta}
+                    for m in db_mem.query(HistorialChat)
+                    .filter(HistorialChat.usuario_id == usuario_id)
+                    .order_by(HistorialChat.creado_en.desc())
+                    .limit(5)
+                    .all()
+                ][::-1]  # orden cronológico
+            finally:
+                db_mem.close()
 
             logger.info(
                 f"[CHAT] consulta_id={consulta_id} | score={max_score:.3f} "
@@ -93,18 +113,26 @@ async def chat_stream(
                 })
 
             respuesta_completa = []
-            for texto in generar_respuesta_stream(request.mensaje, resultado.contexto, is_fallback=(resultado.nivel > 0)):
+            for texto in generar_respuesta_stream(request.mensaje, resultado.contexto, tipo=resultado.tipo_respuesta, memoria=memoria, historial=historial):
                 respuesta_completa.append(texto)
                 yield f"data: {json.dumps({'tipo': 'chunk', 'texto': texto})}\n\n"
 
+            respuesta_texto = "".join(respuesta_completa)
             guardar_historial(
                 usuario_id=usuario_id,
                 query=request.mensaje,
-                answer="".join(respuesta_completa),
+                answer=respuesta_texto,
                 confidence_score=max_score,
                 is_fallback=resultado.nivel > 0,
                 conversacion_id=conversacion_id,
             )
+
+            # Actualizar memoria persistente del usuario
+            db_mem2 = SessionLocal()
+            try:
+                actualizar_memoria(db_mem2, usuario_id, request.mensaje, respuesta_texto)
+            finally:
+                db_mem2.close()
 
             if max_score < UMBRAL_TICKET:
                 db_t = SessionLocal()
@@ -115,7 +143,7 @@ async def chat_stream(
 
             db_val = SessionLocal()
             try:
-                val = crear_validacion(db_val, pregunta=request.mensaje, respuesta="".join(respuesta_completa), puntaje=max_score, fuente="usuario")
+                val = crear_validacion(db_val, pregunta=request.mensaje, respuesta=respuesta_texto, puntaje=max_score, fuente="usuario")
                 if val and val.estado == "pendiente":
                     notificar_admin_sync("validacion_pendiente", {
                         "pregunta": request.mensaje,
@@ -129,17 +157,52 @@ async def chat_stream(
             fuentes = []
             if resultado.nivel == 0:
                 vistos = set()
-                for r in resultados:
-                    if r.get("source_url", "").startswith("/v1/"):
-                        nombre = r.get("titulo") or r.get("source_url", "").split("/")[-1] or "Documento oficial"
+                docs_reales = [r for r in resultados if r.get("source_url", "")]
+                if not docs_reales:
+                    from app.models.models import Documento
+                    import uuid as _uuid
+                    db_f = SessionLocal()
+                    try:
+                        for r in resultados:
+                            doc_id = r.get("document_id", "")
+                            # Saltar validaciones indexadas (document_id no es UUID)
+                            try:
+                                _uuid.UUID(doc_id)
+                            except (ValueError, AttributeError):
+                                continue
+                            nombre = r.get("titulo", "") or "Documento oficial"
+                            if nombre not in vistos:
+                                doc = db_f.query(Documento).filter(Documento.id == doc_id).first()
+                                url = doc.url_fuente if doc else f"/v1/admin/ingesta/ver/{doc_id}"
+                                titulo = doc.titulo if doc else nombre
+                                vistos.add(titulo)
+                                fuentes.append({"nombre": titulo, "url": url, "pagina": r.get("page_number", 0)})
+                    finally:
+                        db_f.close()
+                else:
+                    for r in docs_reales:
+                        url = r.get("source_url", "")
+                        nombre = r.get("titulo") or url.split("/")[-1] or "Documento oficial"
                         if nombre not in vistos:
                             vistos.add(nombre)
-                            fuentes.append({"nombre": nombre, "url": r.get("source_url", ""), "pagina": r.get("page_number", 0)})
+                            fuentes.append({"nombre": nombre, "url": url, "pagina": r.get("page_number", 0)})
+            elif resultado.nivel in (1, 2) and resultado.contexto:
+                import re
+                urls = re.findall(r'\[Fuente(?:[^:]*): ([^\]]+)\]', resultado.contexto)
+                vistos = set()
+                for url in urls:
+                    url = url.strip()
+                    if url not in vistos:
+                        vistos.add(url)
+                        fuentes.append({"nombre": url, "url": url, "pagina": None})
 
-            yield f"data: {json.dumps({'tipo': 'final', 'consulta_id': consulta_id, 'fuentes': fuentes, 'confianza': round(max_score, 3), 'tipo_respuesta': resultado.tipo_respuesta})}\n\n"
+            yield f"data: {json.dumps({'tipo': 'final', 'consulta_id': consulta_id, 'fuentes': fuentes, 'confianza': round(max_score, 3), 'tipo_respuesta': resultado.tipo_respuesta, 'nivel': resultado.nivel})}\n\n"
 
         except (ValueError, RuntimeError, ConnectionError) as e:
             logger.error(f"[CHAT] Error: {e}")
+            yield f"data: {json.dumps({'tipo': 'error', 'mensaje': str(e)})}\n\n"
+        except Exception as e:
+            logger.error(f"[CHAT] Error inesperado: {type(e).__name__}: {e}")
             yield f"data: {json.dumps({'tipo': 'error', 'mensaje': str(e)})}\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")
@@ -192,7 +255,7 @@ async def chat_invitado(request: ChatInvitadoRequest):
                 })
 
             respuesta_completa = []
-            for texto in generar_respuesta_stream(request.mensaje, resultado.contexto, is_fallback=(resultado.nivel > 0)):
+            for texto in generar_respuesta_stream(request.mensaje, resultado.contexto, tipo=resultado.tipo_respuesta):
                 respuesta_completa.append(texto)
                 yield f"data: {json.dumps({'tipo': 'chunk', 'texto': texto})}\n\n"
 

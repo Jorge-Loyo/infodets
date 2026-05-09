@@ -19,6 +19,7 @@ interface Mensaje {
   fuentes?: FuenteDocumento[]
   confianza?: number
   tipo_respuesta?: string
+  nivel?: number
   cargando?: boolean
 }
 
@@ -164,7 +165,7 @@ export function ChatPanel() {
             } else if (evento.tipo === 'final') {
               setMensajes((prev) => prev.map((m) =>
                 m.id === msgAsistente.id
-                  ? { ...m, fuentes: evento.fuentes, confianza: evento.confianza, tipo_respuesta: evento.tipo_respuesta, cargando: false }
+                  ? { ...m, fuentes: evento.fuentes, confianza: evento.confianza, tipo_respuesta: evento.tipo_respuesta, nivel: evento.nivel, cargando: false }
                   : m
               ))
             } else if (evento.tipo === 'error') {
@@ -248,32 +249,54 @@ export function ChatPanel() {
                       ) : (
                         <>
                           <Text size="sm" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{msg.texto}</Text>
-                          {msg.tipo_respuesta === 'externo' && (
+                          {msg.tipo_respuesta === 'externo' && msg.nivel === 2 && (
                             <Text size="xs" c="dimmed" mt={8} style={{ borderTop: '1px solid var(--mantine-color-default-border)', paddingTop: 6, lineHeight: 1.4 }}>
-                              ⚠️ He encontrado esta información en fuentes externas (no oficiales de esta oficina aún). Esta respuesta no representa documentación oficial verificada de la entidad.
+                              ⚠️ Esta información proviene de una búsqueda web y no representa documentación oficial verificada de la entidad.
+                            </Text>
+                          )}
+                          {msg.tipo_respuesta === 'externo' && msg.nivel === 1 && (
+                            <Text size="xs" c="dimmed" mt={8} style={{ borderTop: '1px solid var(--mantine-color-default-border)', paddingTop: 6, lineHeight: 1.4 }}>
+                              ℹ️ Esta información proviene de una fuente oficial externa. Considerá agregar documentación interna sobre este tema.
                             </Text>
                           )}
                         </>
                       )}
                     </Paper>
-                    {msg.fuentes && msg.fuentes.length > 0 && (
+                    {!msg.cargando && (msg.fuentes !== undefined || msg.confianza !== undefined) && (
                       <Stack gap={4}>
                         <Group gap="xs">
-                          <Text size="xs" c="dimmed" fw={600}>Fuentes:</Text>
                           {msg.confianza !== undefined && (
-                            <Badge size="xs" variant="light" color={msg.confianza >= 0.7 ? 'green' : 'orange'}>
+                            <Badge size="xs" variant="light"
+                              color={msg.confianza >= 0.75 ? 'green' : msg.confianza >= 0.4 ? 'orange' : 'red'}>
                               {Math.round(msg.confianza * 100)}% confianza
                             </Badge>
                           )}
+                          {msg.tipo_respuesta === 'local' && <Badge size="xs" variant="dot" color="green">Documentación oficial</Badge>}
+                          {msg.tipo_respuesta === 'externo' && <Badge size="xs" variant="dot" color="orange">Fuente externa</Badge>}
+                          {msg.tipo_respuesta === 'escalamiento' && <Badge size="xs" variant="dot" color="red">Escalado</Badge>}
                         </Group>
-                        {msg.fuentes.map((f, i) => (
-                          <Group key={i} gap={4}>
-                            <IconExternalLink size={12} opacity={0.5} />
-                            <Anchor href={f.url ? (f.url.startsWith('http') ? f.url : `http://localhost:8000${f.url}`) : '#'} target="_blank" size="xs" c="blue">
-                              {f.nombre}{f.pagina ? ` (p. ${f.pagina})` : ''}
-                            </Anchor>
-                          </Group>
-                        ))}
+                        {msg.fuentes && msg.fuentes.length > 0 && (
+                          <Stack gap={2}>
+                            <Text size="xs" c="dimmed" fw={600}>Fuentes:</Text>
+                            {msg.fuentes.map((f, i) => (
+                              <Group key={i} gap={4}>
+                                <IconExternalLink size={12} opacity={0.5} />
+                                {f.url?.startsWith('/v1/') ? (
+                                  <Anchor
+                                    href={`${process.env.NEXT_PUBLIC_DOCS_URL ?? 'http://localhost:8000'}${f.url}`}
+                                    target="_blank" size="xs" c="blue"
+                                  >
+                                    {f.nombre}{f.pagina ? ` (p. ${f.pagina})` : ''} — Ver documento 📄
+                                  </Anchor>
+                                ) : (
+                                  <Anchor href={f.url ?? '#'} target="_blank" size="xs" c="blue">
+                                    {f.url}
+                                  </Anchor>
+                                )}
+                              </Group>
+                            ))}
+                          </Stack>
+                        )}
                       </Stack>
                     )}
                   </Stack>
