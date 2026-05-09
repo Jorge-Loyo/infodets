@@ -16,25 +16,39 @@ import { perfilService, type Perfil, type PerfilCrear } from '@/services/api/per
 import { usuarioService, type Usuario } from '@/services/api/usuarioService'
 
 const SECCIONES_FRONTEND = [
-  { key: 'consulta',      label: 'Consultas',            grupo: 'Menú' },
-  { key: 'perfil',        label: 'Mi Perfil',            grupo: 'Menú' },
-  { key: 'documentacion', label: 'Documentación',        grupo: 'Menú' },
-  { key: 'noticias',      label: 'Noticias',             grupo: 'Menú' },
-  { key: 'dashboard',     label: 'Panel Admin',          grupo: 'Menú' },
+  { key: 'consulta',          label: 'ChatBot',              desc: 'Acceso al chat con IA',                        grupo: 'Menú' },
+  { key: 'mis_consultas',     label: 'Mis consultas',        desc: 'Historial de conversaciones del usuario',       grupo: 'Menú' },
+  { key: 'documentacion',     label: 'Documentación',        desc: 'Carga y visualización de documentos PDF',        grupo: 'Menú' },
+  { key: 'noticias',          label: 'Noticias',             desc: 'Acceso a noticias institucionales',             grupo: 'Menú' },
+  { key: 'configuracion',     label: 'Configuración',        desc: 'Perfil personal y soporte',                    grupo: 'Menú' },
+  { key: 'configuracion_chat',label: 'Config. de Chat',      desc: 'Documentos, notificaciones e identidad del bot',grupo: 'Menú' },
+  { key: 'dashboard',         label: 'Administrador',        desc: 'Panel administrativo del sistema',              grupo: 'Menú' },
 ]
 
 const SECCIONES_BACKEND = [
-  { key: 'gestionar_usuarios',   label: 'Gestionar usuarios',   grupo: 'Acciones' },
-  { key: 'blanquear_password',   label: 'Blanquear contraseña', grupo: 'Acciones' },
-  { key: 'gestionar_documentos', label: 'Gestionar documentos', grupo: 'Acciones' },
-  { key: 'gestionar_noticias',   label: 'Gestionar noticias',   grupo: 'Acciones' },
-  { key: 'gestionar_tablas',     label: 'Gestionar tablas',     grupo: 'Acciones' },
-  { key: 'ver_validaciones',     label: 'Ver validaciones IA',  grupo: 'Acciones' },
+  { key: 'gestionar_usuarios',   label: 'Gestionar usuarios',   desc: 'Crear, editar y eliminar usuarios',             grupo: 'Acciones' },
+  { key: 'blanquear_password',   label: 'Blanquear contraseña', desc: 'Resetear contraseñas de usuarios en Cognito',    grupo: 'Acciones' },
+  { key: 'gestionar_documentos', label: 'Gestionar documentos', desc: 'Subir, editar y eliminar documentos de la IA',  grupo: 'Acciones' },
+  { key: 'gestionar_noticias',   label: 'Gestionar noticias',   desc: 'Crear, editar y publicar noticias',             grupo: 'Acciones' },
+  { key: 'gestionar_tablas',     label: 'Gestionar tablas',     desc: 'Administrar valores de desplegables del sistema',grupo: 'Acciones' },
+  { key: 'ver_validaciones',     label: 'Ver validaciones IA',  desc: 'Revisar y aprobar respuestas para entrenar la IA',grupo: 'Acciones' },
 ]
 
 const TODAS_SECCIONES = [...SECCIONES_FRONTEND, ...SECCIONES_BACKEND]
 const COLORES = ['blue', 'teal', 'green', 'violet', 'orange', 'red', 'gray']
 const PERMISOS_VACIOS = Object.fromEntries(TODAS_SECCIONES.map(s => [s.key, false]))
+
+import { useSessionStore } from '@/store/sessionStore'
+
+const SUPER_ADMIN = 'Super Admin'
+const ADMIN = 'Admin'
+
+// Nivel jerárquico: mayor número = mayor nivel
+function nivelPerfil(nombre: string): number {
+  if (nombre === SUPER_ADMIN) return 3
+  if (nombre === ADMIN) return 2
+  return 1
+}
 
 export default function DerechosPage() {
   const [perfiles, setPerfiles] = useState<Perfil[]>([])
@@ -45,11 +59,35 @@ export default function DerechosPage() {
   const [editando, setEditando] = useState<Perfil | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [form, setForm] = useState<PerfilCrear>({ nombre: '', descripcion: '', color: 'blue', permisos: PERMISOS_VACIOS })
+  const { usuario } = useSessionStore()
+
+  // Perfil del usuario logueado
+  const miPerfil = perfiles.find(p => usuarios.find(u => u.id === usuario?.id)?.perfil_id === p.id)
+  const miNivel = nivelPerfil(miPerfil?.nombre ?? '')
+
+  const puedeEditar = (perfil: Perfil) => {
+    if (perfil.nombre === SUPER_ADMIN) return false
+    return nivelPerfil(perfil.nombre) < miNivel
+  }
 
   const cargar = async () => {
     setCargando(true)
     try {
       const [p, u] = await Promise.all([perfilService.listar(), usuarioService.listar()])
+      // Crear Super Admin si no existe
+      if (!p.find(x => x.nombre === SUPER_ADMIN)) {
+        const todoTrue = Object.fromEntries(TODAS_SECCIONES.map(s => [s.key, true]))
+        try {
+          const nuevo = await perfilService.crear({ nombre: SUPER_ADMIN, descripcion: 'Acceso total al sistema', color: 'violet', permisos: todoTrue })
+          p.push(nuevo)
+        } catch {
+          // Ya existe (race condition), recargar lista
+          const recargados = await perfilService.listar()
+          setPerfiles(recargados)
+          setUsuarios(u)
+          return
+        }
+      }
       setPerfiles(p)
       setUsuarios(u)
     } catch {
@@ -173,12 +211,12 @@ export default function DerechosPage() {
                               <IconUsers size={14} />
                             </ActionIcon>
                           </Tooltip>
-                          <Tooltip label="Editar permisos" withArrow>
-                            <ActionIcon variant="subtle" color="gray" onClick={() => abrirEdicion(perfil)}>
+                          <Tooltip label={!puedeEditar(perfil) ? 'Sin permiso para editar este perfil' : 'Editar permisos'} withArrow>
+                            <ActionIcon variant="subtle" color="gray" onClick={() => abrirEdicion(perfil)} disabled={!puedeEditar(perfil)}>
                               <IconEdit size={14} />
                             </ActionIcon>
                           </Tooltip>
-                          <ActionIcon variant="subtle" color="red" onClick={() => eliminarPerfil(perfil.id)}>
+                          <ActionIcon variant="subtle" color="red" onClick={() => eliminarPerfil(perfil.id)} disabled={!puedeEditar(perfil)}>
                             <IconTrash size={14} />
                           </ActionIcon>
                         </Group>
@@ -200,11 +238,9 @@ export default function DerechosPage() {
                       <Grid>
                         {SECCIONES_FRONTEND.map(s => (
                           <Grid.Col key={s.key} span={6}>
-                            <Group gap={4}>
-                              <Badge size="xs" variant="dot" color={perfil.permisos?.[s.key] ? 'green' : 'red'}>
-                                {s.label}
-                              </Badge>
-                            </Group>
+                            <Badge size="xs" variant="dot" color={perfil.permisos?.[s.key] ? 'green' : 'red'}>
+                              {s.label}
+                            </Badge>
                           </Grid.Col>
                         ))}
                       </Grid>
@@ -277,8 +313,11 @@ export default function DerechosPage() {
               </Group>
               <Stack gap="xs">
                 {SECCIONES_FRONTEND.map(s => (
-                  <Group key={s.key} justify="space-between" p="xs" style={{ borderRadius: 8, background: 'var(--mantine-color-gray-0)' }}>
-                    <Text size="sm">{s.label}</Text>
+                  <Group key={s.key} justify="space-between" p="sm" style={{ borderRadius: 8, background: form.permisos[s.key] ? 'var(--mantine-color-blue-0)' : 'var(--mantine-color-default-hover)', border: `1px solid ${form.permisos[s.key] ? 'var(--mantine-color-blue-2)' : 'transparent'}` }}>
+                    <Stack gap={0}>
+                      <Text size="sm" fw={500}>{s.label}</Text>
+                      <Text size="xs" c="dimmed">{s.desc}</Text>
+                    </Stack>
                     <Switch checked={form.permisos[s.key] ?? false} onChange={() => togglePermiso(s.key)} size="sm" color="blue" />
                   </Group>
                 ))}
@@ -292,8 +331,11 @@ export default function DerechosPage() {
               </Group>
               <Stack gap="xs">
                 {SECCIONES_BACKEND.map(s => (
-                  <Group key={s.key} justify="space-between" p="xs" style={{ borderRadius: 8, background: 'var(--mantine-color-gray-0)' }}>
-                    <Text size="sm">{s.label}</Text>
+                  <Group key={s.key} justify="space-between" p="sm" style={{ borderRadius: 8, background: form.permisos[s.key] ? 'var(--mantine-color-teal-0)' : 'var(--mantine-color-default-hover)', border: `1px solid ${form.permisos[s.key] ? 'var(--mantine-color-teal-2)' : 'transparent'}` }}>
+                    <Stack gap={0}>
+                      <Text size="sm" fw={500}>{s.label}</Text>
+                      <Text size="xs" c="dimmed">{s.desc}</Text>
+                    </Stack>
                     <Switch checked={form.permisos[s.key] ?? false} onChange={() => togglePermiso(s.key)} size="sm" color="teal" />
                   </Group>
                 ))}
@@ -322,7 +364,7 @@ export default function DerechosPage() {
                 const tieneEstePerfil = u.perfil_id === modalAsignar?.id
                 const perfilActual = perfiles.find(p => p.id === u.perfil_id)
                 return (
-                  <Group key={u.id} justify="space-between" p="sm" style={{ borderRadius: 8, background: tieneEstePerfil ? 'var(--mantine-color-blue-0)' : 'var(--mantine-color-gray-0)' }}>
+                  <Group key={u.id} justify="space-between" p="sm" style={{ borderRadius: 8, background: tieneEstePerfil ? 'var(--mantine-color-blue-0)' : 'var(--mantine-color-default-hover)' }}>
                     <Group gap="sm">
                       <Avatar size="sm" radius="xl" color={tieneEstePerfil ? modalAsignar?.color : 'gray'}>
                         <IconUser size={12} />

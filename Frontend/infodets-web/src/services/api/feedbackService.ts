@@ -3,7 +3,7 @@ import type { FeedbackRequest, FeedbackResponse } from '@/types/feedback.types'
 
 export const feedbackService = {
   enviar: async (data: FeedbackRequest): Promise<FeedbackResponse> => {
-    const res = await axiosInstance.post<FeedbackResponse>('/feedback', data)
+    const res = await axiosInstance.post<FeedbackResponse>('/feedback/report', data)
     return res.data
   },
 

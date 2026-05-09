@@ -38,7 +38,7 @@ export default function Home() {
         permisos = resPermisos.data
       } catch {}
       setSession(data.usuario, data.access_token, permisos)
-      router.replace(ROUTES.CONSULTA)
+      router.replace(permisos['consulta'] ? ROUTES.CONSULTA : '/noticias')
     } catch (err: unknown) {
       const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } }
       const detail = axiosErr?.response?.data?.detail

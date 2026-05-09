@@ -58,6 +58,7 @@ class Documento(Base):
     jerarquia: Mapped[int] = mapped_column(Integer, default=1)
     estado: Mapped[EstadoDocumentoEnum] = mapped_column(Enum(EstadoDocumentoEnum), default=EstadoDocumentoEnum.pendiente_aprobacion)
     subido_por: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True)
+    tipo: Mapped[str] = mapped_column(String, default="publico")  # publico | entrenamiento
     creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     subidor: Mapped["Usuario | None"] = relationship(back_populates="documentos")
@@ -235,3 +236,33 @@ class ReporteFeedback(Base):
     creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     historial: Mapped["HistorialChat"] = relationship(back_populates="feedback")
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_log"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    accion: Mapped[str] = mapped_column(String, nullable=False)  # crear | modificar | eliminar | deshabilitar | cambiar_perfil | cambiar_derechos | blanquear_password
+    entidad: Mapped[str] = mapped_column(String, nullable=False)  # usuario | perfil
+    entidad_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    entidad_nombre: Mapped[str | None] = mapped_column(String, nullable=True)  # email o nombre del afectado
+    detalle: Mapped[str | None] = mapped_column(Text, nullable=True)  # descripcion del cambio
+    realizado_por_id: Mapped[str | None] = mapped_column(String, nullable=True)  # id del admin que lo hizo
+    realizado_por_email: Mapped[str | None] = mapped_column(String, nullable=True)
+    creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class BotIdentidad(Base):
+    __tablename__ = "bot_identidad"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    nombre: Mapped[str] = mapped_column(String, default="Infobot")
+    sexo: Mapped[str] = mapped_column(String, default="neutro")        # masculino | femenino | neutro
+    personalidad: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tono: Mapped[str] = mapped_column(String, default="formal")        # formal | amigable | tecnico | empatico
+    idioma: Mapped[str] = mapped_column(String, default="español")
+    institucion: Mapped[str | None] = mapped_column(String, nullable=True)
+    descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
+    restricciones: Mapped[str | None] = mapped_column(Text, nullable=True)
+    imagen_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    actualizado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

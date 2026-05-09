@@ -28,6 +28,30 @@ interface UiStore {
   setNoticiasNoLeidas: (n: number) => void
   ultimaVisitaNoticias: string
   marcarNoticiasVistas: () => void
+  // Tema visual
+  headerColor: string
+  paletaColor: string
+  tipografia: string
+  logoUrl: string
+  logoSize: number
+  colorScheme: 'light' | 'dark'
+  // Colores personalizados
+  colorSidebar: string
+  colorTexto: string
+  colorBoton: string
+  colorFondo: string
+  colorTarjeta: string
+  fotoPerfil: string
+  setHeaderColor: (c: string) => void
+  setPaletaColor: (c: string) => void
+  setTipografia: (t: string) => void
+  setLogoUrl: (url: string) => void
+  setLogoSize: (s: number) => void
+  setColorScheme: (s: 'light' | 'dark') => void
+  setColoresPersonalizados: (c: { colorSidebar?: string, colorTexto?: string, colorBoton?: string, colorFondo?: string, colorTarjeta?: string }) => void
+  setFotoPerfil: (url: string) => void
+  temaActivo: string
+  setTemaActivo: (t: string) => void
 }
 
 export const useUiStore = create<UiStore>()(
@@ -47,11 +71,48 @@ export const useUiStore = create<UiStore>()(
       setNoticiasNoLeidas: (n) => set({ noticiasNoLeidas: n }),
       ultimaVisitaNoticias: new Date(0).toISOString(),
       marcarNoticiasVistas: () => set({ noticiasNoLeidas: 0, ultimaVisitaNoticias: new Date().toISOString() }),
+      // Tema visual
+      headerColor: '#ffffff',
+      paletaColor: 'blue',
+      tipografia: 'Plus Jakarta Sans',
+      logoUrl: '',
+      logoSize: 32,
+      colorScheme: 'light' as const,
+      // Colores personalizados
+      colorSidebar: '',
+      colorTexto: '',
+      colorBoton: '',
+      colorFondo: '',
+      colorTarjeta: '',
+      fotoPerfil: '',
+      setHeaderColor: (c) => set({ headerColor: c }),
+      setPaletaColor: (c) => set({ paletaColor: c }),
+      setTipografia: (t) => set({ tipografia: t }),
+      setLogoUrl: (url) => set({ logoUrl: url }),
+      setLogoSize: (s) => set({ logoSize: s }),
+      setColorScheme: (s) => set({ colorScheme: s }),
+      setColoresPersonalizados: (c) => set(c),
+      setFotoPerfil: (url) => set({ fotoPerfil: url }),
+      temaActivo: 'Estándar',
+      setTemaActivo: (t) => set({ temaActivo: t }),
     }),
     {
       name: 'infodets-ui',
       partialize: (state) => ({
         ultimaVisitaNoticias: state.ultimaVisitaNoticias,
+        headerColor: state.headerColor,
+        paletaColor: state.paletaColor,
+        tipografia: state.tipografia,
+        logoUrl: state.logoUrl,
+        logoSize: state.logoSize,
+        colorScheme: state.colorScheme,
+        colorSidebar: state.colorSidebar,
+        colorTexto: state.colorTexto,
+        colorBoton: state.colorBoton,
+        colorFondo: state.colorFondo,
+        colorTarjeta: state.colorTarjeta,
+        temaActivo: state.temaActivo,
+        fotoPerfil: state.fotoPerfil,
       }),
     }
   )

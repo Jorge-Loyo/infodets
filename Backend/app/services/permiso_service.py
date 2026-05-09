@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.models.models import PermisoUsuario
 
 # Secciones frontend (visibilidad de menú)
-SECCIONES_FRONTEND = ['consulta', 'perfil', 'documentacion', 'noticias', 'dashboard']
+SECCIONES_FRONTEND = ['consulta', 'mis_consultas', 'documentacion', 'noticias', 'configuracion', 'configuracion_chat', 'dashboard']
 
 # Secciones backend (acciones en el sistema)
 SECCIONES_BACKEND = [
@@ -23,8 +23,8 @@ PERMISOS_ADMIN = {s: True for s in TODAS_LAS_SECCIONES}
 
 # Permisos por defecto para perfil operador
 PERMISOS_OPERADOR = {
-    'consulta': True, 'perfil': True, 'documentacion': True,
-    'noticias': True, 'dashboard': False,
+    'consulta': True, 'mis_consultas': True, 'documentacion': True,
+    'noticias': True, 'configuracion': False, 'configuracion_chat': False, 'dashboard': False,
     'gestionar_usuarios': False, 'blanquear_password': False,
     'gestionar_documentos': True, 'gestionar_noticias': False,
     'gestionar_tablas': False, 'ver_validaciones': False,
@@ -32,7 +32,7 @@ PERMISOS_OPERADOR = {
 
 # Permisos por defecto para perfil visor
 PERMISOS_VISOR = {s: False for s in TODAS_LAS_SECCIONES}
-PERMISOS_VISOR.update({'consulta': True, 'perfil': True})
+PERMISOS_VISOR.update({'consulta': True, 'mis_consultas': True})
 
 
 def obtener_permisos(db: Session, usuario_id: str) -> dict[str, bool]:

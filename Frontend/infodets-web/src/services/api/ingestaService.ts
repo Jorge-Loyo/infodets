@@ -11,6 +11,7 @@ export const ingestaService = {
     dependencia: string
     descripcion?: string
     anio?: number
+    tipo?: string
   }): Promise<IngestaResponse> => {
     const form = new FormData()
     form.append('archivo', archivo)
@@ -19,6 +20,7 @@ export const ingestaService = {
     form.append('dependencia', metadata.dependencia)
     if (metadata.descripcion) form.append('descripcion', metadata.descripcion)
     if (metadata.anio) form.append('anio', String(metadata.anio))
+    form.append('tipo', metadata.tipo ?? 'publico')
 
     const res = await axiosInstance.post<IngestaResponse>('/admin/ingesta', form, {
       headers: { 'Content-Type': 'multipart/form-data' },

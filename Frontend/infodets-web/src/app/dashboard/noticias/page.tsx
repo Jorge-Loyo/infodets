@@ -34,7 +34,7 @@ function FormularioNoticia({ form, setForm, opcionesCategorias }: FormProps) {
     <Stack gap="md">
       <TextInput label="Título" placeholder="Título de la publicación" value={form.titulo} onChange={(e) => setForm((f) => ({ ...f, titulo: e.target.value }))} radius="md" required />
       <Select label="Categoría" placeholder="Selecciona una categoría" data={opcionesCategorias} value={form.categoria} onChange={(v) => setForm((f) => ({ ...f, categoria: v ?? '' }))} radius="md" />
-      <Group grow>
+      <Group grow wrap="wrap">
         <TextInput label="Autor" placeholder="Nombre del autor" value={form.autor_nombre} onChange={(e) => setForm((f) => ({ ...f, autor_nombre: e.target.value }))} radius="md" />
         <TextInput label="Cargo" placeholder="Cargo del autor" value={form.autor_cargo} onChange={(e) => setForm((f) => ({ ...f, autor_cargo: e.target.value }))} radius="md" />
       </Group>
@@ -153,7 +153,7 @@ export default function AdminNoticiasPage() {
       <LoadingOverlay visible={cargando} />
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
 
-        <Group justify="space-between" mb="xl">
+        <Group justify="space-between" mb="xl" wrap="wrap" gap="sm">
           <div>
             <Title order={3}>Administrador de Noticias</Title>
             <Text c="dimmed" size="sm">Crea, edita y gestiona las publicaciones institucionales.</Text>
