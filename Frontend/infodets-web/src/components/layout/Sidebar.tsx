@@ -1,6 +1,6 @@
 'use client'
 
-import { Box, NavLink, Stack, Text, Divider, Badge, Drawer } from '@mantine/core'
+import { Box, NavLink, Stack, Text, Badge, Drawer } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
 import { IconHome, IconFilePlus, IconShieldHalf, IconNews, IconMessageCircle, IconSettings, IconMessageCog } from '@tabler/icons-react'
 import { usePathname, useRouter } from 'next/navigation'
@@ -52,9 +52,6 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           style={{ cursor: 'pointer', borderRadius: 8 }}
         />
       ))}
-
-      <Divider my="sm" />
-      <Text size="xs" fw={600} c="dimmed" px="sm" py="xs" tt="uppercase">Historial</Text>
     </Stack>
   )
 }

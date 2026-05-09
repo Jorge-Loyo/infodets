@@ -246,7 +246,14 @@ export function ChatPanel() {
                       {msg.cargando ? (
                         <Group gap="xs"><Loader size="xs" color="gray" /><Text size="sm" c="dimmed">Pensando...</Text></Group>
                       ) : (
-                        <Text size="sm" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{msg.texto}</Text>
+                        <>
+                          <Text size="sm" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{msg.texto}</Text>
+                          {msg.tipo_respuesta === 'externo' && (
+                            <Text size="xs" c="dimmed" mt={8} style={{ borderTop: '1px solid var(--mantine-color-default-border)', paddingTop: 6, lineHeight: 1.4 }}>
+                              ⚠️ He encontrado esta información en fuentes externas (no oficiales de esta oficina aún). Esta respuesta no representa documentación oficial verificada de la entidad.
+                            </Text>
+                          )}
+                        </>
                       )}
                     </Paper>
                     {msg.fuentes && msg.fuentes.length > 0 && (

@@ -85,7 +85,6 @@ async def chat_stream(
 
             # Niveles 1 y 2 — respuesta de fuente externa
             if resultado.nivel in (1, 2):
-                yield f"data: {json.dumps({'tipo': 'chunk', 'texto': AVISO_FUENTE_EXTERNA})}\n\n"
                 notificar_admin_sync(f"nivel{resultado.nivel}_externo", {
                     "pregunta": request.mensaje,
                     "usuario_id": usuario_id,

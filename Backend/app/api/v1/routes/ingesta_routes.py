@@ -67,6 +67,7 @@ async def cargar_documento(
     dependencia: str = Form(...),
     descripcion: Optional[str] = Form(None),
     anio: Optional[int] = Form(None),
+    tipo: str = Form("publico"),
     archivo: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_permiso("gestionar_documentos")),
@@ -95,7 +96,7 @@ async def cargar_documento(
     url_fuente = f"/v1/admin/ingesta/ver/{document_id}"
     documento_service.crear_documento(
         db, id=document_id, titulo=titulo,
-        url_fuente=url_fuente, categoria=categoria, dependencia=dependencia,
+        url_fuente=url_fuente, categoria=categoria, dependencia=dependencia, tipo=tipo,
     )
 
     _notificar_n8n({

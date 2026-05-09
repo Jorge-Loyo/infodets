@@ -16,23 +16,22 @@ import { perfilService, type Perfil, type PerfilCrear } from '@/services/api/per
 import { usuarioService, type Usuario } from '@/services/api/usuarioService'
 
 const SECCIONES_FRONTEND = [
-  { key: 'consulta',      label: 'ChatBot',              grupo: 'Menú' },
-  { key: 'mis_consultas', label: 'Mis consultas',        grupo: 'Menú' },
-  { key: 'perfil',        label: 'Mi Perfil',            grupo: 'Menú' },
-  { key: 'documentacion', label: 'Documentación',        grupo: 'Menú' },
-  { key: 'noticias',      label: 'Noticias',             grupo: 'Menú' },
-  { key: 'configuracion',      label: 'Configuración',         grupo: 'Menú' },
-  { key: 'configuracion_chat', label: 'Config. de Chat',      grupo: 'Menú' },
-  { key: 'dashboard',          label: 'Panel Admin',          grupo: 'Menú' },
+  { key: 'consulta',          label: 'ChatBot',              desc: 'Acceso al chat con IA',                        grupo: 'Menú' },
+  { key: 'mis_consultas',     label: 'Mis consultas',        desc: 'Historial de conversaciones del usuario',       grupo: 'Menú' },
+  { key: 'documentacion',     label: 'Documentación',        desc: 'Carga y visualización de documentos PDF',        grupo: 'Menú' },
+  { key: 'noticias',          label: 'Noticias',             desc: 'Acceso a noticias institucionales',             grupo: 'Menú' },
+  { key: 'configuracion',     label: 'Configuración',        desc: 'Perfil personal y soporte',                    grupo: 'Menú' },
+  { key: 'configuracion_chat',label: 'Config. de Chat',      desc: 'Documentos, notificaciones e identidad del bot',grupo: 'Menú' },
+  { key: 'dashboard',         label: 'Administrador',        desc: 'Panel administrativo del sistema',              grupo: 'Menú' },
 ]
 
 const SECCIONES_BACKEND = [
-  { key: 'gestionar_usuarios',   label: 'Gestionar usuarios',   grupo: 'Acciones' },
-  { key: 'blanquear_password',   label: 'Blanquear contraseña', grupo: 'Acciones' },
-  { key: 'gestionar_documentos', label: 'Gestionar documentos', grupo: 'Acciones' },
-  { key: 'gestionar_noticias',   label: 'Gestionar noticias',   grupo: 'Acciones' },
-  { key: 'gestionar_tablas',     label: 'Gestionar tablas',     grupo: 'Acciones' },
-  { key: 'ver_validaciones',     label: 'Ver validaciones IA',  grupo: 'Acciones' },
+  { key: 'gestionar_usuarios',   label: 'Gestionar usuarios',   desc: 'Crear, editar y eliminar usuarios',             grupo: 'Acciones' },
+  { key: 'blanquear_password',   label: 'Blanquear contraseña', desc: 'Resetear contraseñas de usuarios en Cognito',    grupo: 'Acciones' },
+  { key: 'gestionar_documentos', label: 'Gestionar documentos', desc: 'Subir, editar y eliminar documentos de la IA',  grupo: 'Acciones' },
+  { key: 'gestionar_noticias',   label: 'Gestionar noticias',   desc: 'Crear, editar y publicar noticias',             grupo: 'Acciones' },
+  { key: 'gestionar_tablas',     label: 'Gestionar tablas',     desc: 'Administrar valores de desplegables del sistema',grupo: 'Acciones' },
+  { key: 'ver_validaciones',     label: 'Ver validaciones IA',  desc: 'Revisar y aprobar respuestas para entrenar la IA',grupo: 'Acciones' },
 ]
 
 const TODAS_SECCIONES = [...SECCIONES_FRONTEND, ...SECCIONES_BACKEND]
@@ -239,11 +238,9 @@ export default function DerechosPage() {
                       <Grid>
                         {SECCIONES_FRONTEND.map(s => (
                           <Grid.Col key={s.key} span={6}>
-                            <Group gap={4}>
-                              <Badge size="xs" variant="dot" color={perfil.permisos?.[s.key] ? 'green' : 'red'}>
-                                {s.label}
-                              </Badge>
-                            </Group>
+                            <Badge size="xs" variant="dot" color={perfil.permisos?.[s.key] ? 'green' : 'red'}>
+                              {s.label}
+                            </Badge>
                           </Grid.Col>
                         ))}
                       </Grid>
@@ -316,8 +313,11 @@ export default function DerechosPage() {
               </Group>
               <Stack gap="xs">
                 {SECCIONES_FRONTEND.map(s => (
-                  <Group key={s.key} justify="space-between" p="xs" style={{ borderRadius: 8, background: 'var(--mantine-color-default-hover)' }}>
-                    <Text size="sm">{s.label}</Text>
+                  <Group key={s.key} justify="space-between" p="sm" style={{ borderRadius: 8, background: form.permisos[s.key] ? 'var(--mantine-color-blue-0)' : 'var(--mantine-color-default-hover)', border: `1px solid ${form.permisos[s.key] ? 'var(--mantine-color-blue-2)' : 'transparent'}` }}>
+                    <Stack gap={0}>
+                      <Text size="sm" fw={500}>{s.label}</Text>
+                      <Text size="xs" c="dimmed">{s.desc}</Text>
+                    </Stack>
                     <Switch checked={form.permisos[s.key] ?? false} onChange={() => togglePermiso(s.key)} size="sm" color="blue" />
                   </Group>
                 ))}
@@ -331,8 +331,11 @@ export default function DerechosPage() {
               </Group>
               <Stack gap="xs">
                 {SECCIONES_BACKEND.map(s => (
-                  <Group key={s.key} justify="space-between" p="xs" style={{ borderRadius: 8, background: 'var(--mantine-color-default-hover)' }}>
-                    <Text size="sm">{s.label}</Text>
+                  <Group key={s.key} justify="space-between" p="sm" style={{ borderRadius: 8, background: form.permisos[s.key] ? 'var(--mantine-color-teal-0)' : 'var(--mantine-color-default-hover)', border: `1px solid ${form.permisos[s.key] ? 'var(--mantine-color-teal-2)' : 'transparent'}` }}>
+                    <Stack gap={0}>
+                      <Text size="sm" fw={500}>{s.label}</Text>
+                      <Text size="xs" c="dimmed">{s.desc}</Text>
+                    </Stack>
                     <Switch checked={form.permisos[s.key] ?? false} onChange={() => togglePermiso(s.key)} size="sm" color="teal" />
                   </Group>
                 ))}

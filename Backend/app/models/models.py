@@ -58,6 +58,7 @@ class Documento(Base):
     jerarquia: Mapped[int] = mapped_column(Integer, default=1)
     estado: Mapped[EstadoDocumentoEnum] = mapped_column(Enum(EstadoDocumentoEnum), default=EstadoDocumentoEnum.pendiente_aprobacion)
     subido_por: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True)
+    tipo: Mapped[str] = mapped_column(String, default="publico")  # publico | entrenamiento
     creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     subidor: Mapped["Usuario | None"] = relationship(back_populates="documentos")
