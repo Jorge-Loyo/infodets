@@ -14,13 +14,13 @@ if [ ! -f "$VENV/Scripts/activate" ]; then
 fi
 
 source "$VENV/Scripts/activate"
-pip install -r requirements.txt -q
+pip install -r requirements.txt -q --disable-pip-version-check
 uvicorn main:app --reload --host 0.0.0.0 --port 8000 &
 BACKEND_PID=$!
 
 echo "Iniciando Frontend..."
 cd "$SCRIPT_DIR/Frontend/infodets-web"
-npm install -q
+npm install --quiet --no-audit --no-fund 2>/dev/null
 npm run dev &
 FRONTEND_PID=$!
 
