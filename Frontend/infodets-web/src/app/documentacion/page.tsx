@@ -7,7 +7,7 @@ import {
 } from '@mantine/core'
 import {
   IconUpload, IconFileTypePdf, IconSearch,
-  IconFolderOpen, IconBrain, IconExternalLink, IconRefresh,
+  IconFolderOpen, IconBrain, IconEye, IconRefresh,
 } from '@tabler/icons-react'
 import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
@@ -24,6 +24,7 @@ const ESTADO_COLOR: Record<string, string> = {
 }
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/v1', '') ?? 'http://localhost:8000'
+const DOCS_URL = 'http://32.192.124.14:8000'
 
 export default function DocumentacionPage() {
   const [documentos, setDocumentos] = useState<DocumentoListItem[]>([])
@@ -102,7 +103,7 @@ export default function DocumentacionPage() {
       <Header />
       <Box style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar />
-        <Box style={{ flex: 1, overflowY: 'auto', padding: 32, backgroundColor: 'var(--mantine-color-gray-0)' }}>
+        <Box style={{ flex: 1, overflowY: 'auto', padding: '16px', backgroundColor: 'var(--mantine-color-default-hover)' }}>
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
 
             <Title order={3} mb="xs">Nueva Documentación</Title>
@@ -200,19 +201,33 @@ export default function DocumentacionPage() {
                     />
                     <Divider />
 
-                    <Table highlightOnHover verticalSpacing="sm">
+                    <Box style={{ overflowX: 'auto' }}>
+                    <Table highlightOnHover verticalSpacing="sm" style={{ minWidth: 480 }}>
                       <Table.Thead>
                         <Table.Tr>
+                          <Table.Th w={40} />
                           <Table.Th>Título</Table.Th>
                           <Table.Th>Categoría</Table.Th>
                           <Table.Th>Dependencia</Table.Th>
                           <Table.Th>Estado</Table.Th>
-                          <Table.Th />
                         </Table.Tr>
                       </Table.Thead>
                       <Table.Tbody>
                         {filtrados.map((doc, i) => (
                           <motion.tr key={doc.id} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} style={{ display: 'table-row' }}>
+                            <Table.Td>
+                              {doc.id && (
+                                <Anchor
+                                  href={`${DOCS_URL}/v1/admin/ingesta/ver/${doc.id}`}
+                                  target="_blank"
+                                  size="xs"
+                                >
+                                  <ActionIcon variant="subtle" color="blue" size="sm">
+                                    <IconEye size={14} />
+                                  </ActionIcon>
+                                </Anchor>
+                              )}
+                            </Table.Td>
                             <Table.Td>
                               <Group gap="xs">
                                 <ThemeIcon size="sm" variant="light" color="red" radius="sm">
@@ -228,19 +243,11 @@ export default function DocumentacionPage() {
                                 {doc.estado}
                               </Badge>
                             </Table.Td>
-                            <Table.Td>
-                              {doc.id && (
-                                <Anchor href={`${BACKEND_URL}/v1/admin/ingesta/ver/${doc.id}`} target="_blank" size="xs">
-                                  <ActionIcon variant="subtle" color="blue" size="sm">
-                                    <IconExternalLink size={14} />
-                                  </ActionIcon>
-                                </Anchor>
-                              )}
-                            </Table.Td>
                           </motion.tr>
                         ))}
                       </Table.Tbody>
                     </Table>
+                    </Box>
 
                     {!cargando && filtrados.length === 0 && (
                       <Stack align="center" py="xl" gap="xs">

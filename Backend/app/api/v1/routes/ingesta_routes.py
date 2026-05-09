@@ -15,6 +15,7 @@ from app.services import documento_service
 from app.core.settings import settings
 from app.core.database import get_db
 from app.middleware.auth_middleware import require_permiso
+from app.services import audit_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin/ingesta", tags=["Ingesta"])
@@ -66,6 +67,7 @@ async def cargar_documento(
     dependencia: str = Form(...),
     descripcion: Optional[str] = Form(None),
     anio: Optional[int] = Form(None),
+    tipo: str = Form("publico"),
     archivo: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_permiso("gestionar_documentos")),
@@ -94,7 +96,7 @@ async def cargar_documento(
     url_fuente = f"/v1/admin/ingesta/ver/{document_id}"
     documento_service.crear_documento(
         db, id=document_id, titulo=titulo,
-        url_fuente=url_fuente, categoria=categoria, dependencia=dependencia,
+        url_fuente=url_fuente, categoria=categoria, dependencia=dependencia, tipo=tipo,
     )
 
     _notificar_n8n({
@@ -105,6 +107,14 @@ async def cargar_documento(
         "estado": "procesado",
         "chunks": chunks_procesados,
     })
+
+    audit_service.registrar(
+        db, accion="cargar", entidad="documento",
+        entidad_id=document_id, entidad_nombre=titulo,
+        detalle=f"Categoría: {categoria} | Dependencia: {dependencia} | Chunks: {chunks_procesados}",
+        realizado_por_id=current_user.get("_usuario_id"),
+        realizado_por_email=current_user.get("email"),
+    )
 
     return IngestaResponse(
         id=document_id,
@@ -160,6 +170,45 @@ async def listar_documentos(
     ]
 
 
+@router.put(
+    "/{documento_id}",
+    status_code=200,
+    summary="Actualizar metadatos de documento",
+    responses={**R_401, **R_403, **R_404},
+)
+async def actualizar_documento(
+    documento_id: str,
+    titulo: Optional[str] = Form(None),
+    categoria: Optional[str] = Form(None),
+    dependencia: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permiso("gestionar_documentos")),
+):
+    _validar_documento_id(documento_id)
+    doc = db.query(__import__('app.models.models', fromlist=['Documento']).Documento).filter_by(id=documento_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Documento no encontrado")
+    titulo_original = doc.titulo
+    categoria_original = doc.categoria
+    dependencia_original = doc.dependencia
+    if titulo: doc.titulo = titulo
+    if categoria: doc.categoria = categoria
+    if dependencia is not None: doc.dependencia = dependencia
+    db.commit()
+    cambios = []
+    if titulo and titulo != titulo_original: cambios.append(f"Título: '{titulo_original}' → '{titulo}'")
+    if categoria and categoria != categoria_original: cambios.append(f"Categoría: '{categoria_original or 'sin categoría'}' → '{categoria}'")
+    if dependencia is not None and dependencia != dependencia_original: cambios.append(f"Dependencia: '{dependencia_original or 'sin dependencia'}' → '{dependencia or 'sin dependencia'}'")
+    audit_service.registrar(
+        db, accion="modificar", entidad="documento",
+        entidad_id=documento_id, entidad_nombre=titulo_original,
+        detalle=" | ".join(cambios) if cambios else "Sin cambios",
+        realizado_por_id=current_user.get("_usuario_id"),
+        realizado_por_email=current_user.get("email"),
+    )
+    return {"ok": True}
+
+
 @router.delete(
     "/{documento_id}",
     status_code=204,
@@ -187,6 +236,14 @@ async def eliminar_documento(
 
     if not documento_service.eliminar_documento(db, documento_id):
         raise HTTPException(status_code=404, detail="Documento no encontrado")
+
+    audit_service.registrar(
+        db, accion="eliminar", entidad="documento",
+        entidad_id=documento_id,
+        detalle="Documento eliminado de Qdrant y RDS",
+        realizado_por_id=current_user.get("_usuario_id"),
+        realizado_por_email=current_user.get("email"),
+    )
 
 
 # ── Router público ────────────────────────────────────────────────────────────

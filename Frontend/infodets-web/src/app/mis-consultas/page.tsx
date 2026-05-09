@@ -172,7 +172,7 @@ export default function MisConsultasPage() {
       <Header />
       <Box style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar />
-        <Box style={{ flex: 1, overflowY: 'auto', padding: 32, backgroundColor: 'var(--mantine-color-gray-0)' }}>
+        <Box style={{ flex: 1, overflowY: 'auto', padding: 32, backgroundColor: 'var(--mantine-color-default-hover)' }}>
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
             <Group justify="space-between" mb="xl">
               <div>

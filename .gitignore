@@ -9,3 +9,7 @@ Popurri/Key/*.pem
 **/.env.local
 **/.env.production
 **/.env.staging
+
+# Archivos de configuración local
+**/start-local.sh
+**/start-local.bat

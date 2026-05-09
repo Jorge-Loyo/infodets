@@ -5,12 +5,15 @@ import {
   Group, ThemeIcon, ScrollArea, Avatar, Loader,
   Badge, Anchor,
 } from '@mantine/core'
-import { IconSend, IconRobot, IconUser, IconExternalLink } from '@tabler/icons-react'
+import { IconSend, IconRobot, IconUser, IconExternalLink, IconThumbUp, IconThumbDown } from '@tabler/icons-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useRef, useEffect } from 'react'
+import { notifications } from '@mantine/notifications'
 import { useSessionStore } from '@/store/sessionStore'
 import { useUiStore } from '@/store/uiStore'
 import type { FuenteDocumento } from '@/types/consulta.types'
+import { feedbackService } from '@/services/api/feedbackService'
+import type { FeedbackTipo } from '@/types/feedback.types'
 
 interface Mensaje {
   id: string
@@ -20,6 +23,7 @@ interface Mensaje {
   confianza?: number
   tipo_respuesta?: string
   cargando?: boolean
+  historialId?: string
 }
 
 const SUGERENCIAS = [
@@ -65,14 +69,25 @@ function RobotAnimado() {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/v1'
 
+interface BotConfig { nombre: string, imagen_url: string }
+
 export function ChatPanel() {
   const [pregunta, setPregunta] = useState('')
   const [mensajes, setMensajes] = useState<Mensaje[]>([])
   const [enviando, setEnviando] = useState(false)
   const [conversacionId, setConversacionId] = useState<string | null>(null)
+  const [feedbackEnviado, setFeedbackEnviado] = useState<Set<string>>(new Set())
+  const [botConfig, setBotConfig] = useState<BotConfig>({ nombre: 'Infobot', imagen_url: '' })
   const scrollRef = useRef<HTMLDivElement>(null)
   const { usuario, token } = useSessionStore()
   const { incrementarConsultas, conversacionCargada, limpiarConversacion } = useUiStore()
+
+  useEffect(() => {
+    fetch(`${API_URL}/bot`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => setBotConfig({ nombre: d.nombre || 'Infobot', imagen_url: d.imagen_url || '' }))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -154,7 +169,7 @@ export function ChatPanel() {
             } else if (evento.tipo === 'final') {
               setMensajes((prev) => prev.map((m) =>
                 m.id === msgAsistente.id
-                  ? { ...m, fuentes: evento.fuentes, confianza: evento.confianza, tipo_respuesta: evento.tipo_respuesta, cargando: false }
+                  ? { ...m, fuentes: evento.fuentes, confianza: evento.confianza, tipo_respuesta: evento.tipo_respuesta, cargando: false, historialId: evento.historial_id }
                   : m
               ))
             } else if (evento.tipo === 'error') {
@@ -179,6 +194,29 @@ export function ChatPanel() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(pregunta) }
   }
 
+  const enviarFeedback = async (mensajeId: string | undefined, tipo: FeedbackTipo) => {
+    if (!mensajeId || feedbackEnviado.has(mensajeId)) return
+    try {
+      await feedbackService.enviar({
+        consulta_id: mensajeId,
+        usuario_id: usuario?.rdsId ?? usuario?.id ?? '',
+        tipo,
+      })
+      setFeedbackEnviado((prev) => new Set(prev).add(mensajeId))
+      notifications.show({
+        title: 'Feedback enviado',
+        message: `Gracias por tu ${tipo === 'correcto' ? 'feedback positivo' : 'reporte negativo'}.`,
+        color: 'green',
+      })
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        message: 'No se pudo enviar el feedback.',
+        color: 'red',
+      })
+    }
+  }
+
   return (
     <Box style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <ScrollArea style={{ flex: 1 }} viewportRef={scrollRef}>
@@ -194,7 +232,7 @@ export function ChatPanel() {
                   <Text fw={700} size="xl" ta="center">
                     Hola, soy{' '}
                     <Text component="span" fw={700} size="xl" variant="gradient" gradient={{ from: 'blue', to: 'cyan' }}>
-                      Infobot
+                      {botConfig.nombre}
                     </Text>
                     {' '}🤖
                   </Text>
@@ -224,19 +262,44 @@ export function ChatPanel() {
               <motion.div key={msg.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} style={{ marginBottom: 16 }}>
                 <Group align="flex-start" gap="sm" justify={msg.rol === 'usuario' ? 'flex-end' : 'flex-start'}>
                   {msg.rol === 'asistente' && (
-                    <Avatar size="sm" radius="xl" color="blue" variant="filled"><IconRobot size={14} /></Avatar>
+                    <Avatar size="sm" radius="xl" color="blue" variant="filled" src={botConfig.imagen_url || undefined}>
+                      {!botConfig.imagen_url && <IconRobot size={14} />}
+                    </Avatar>
                   )}
                   <Stack gap={6} style={{ maxWidth: '75%' }}>
                     <Paper p="sm" radius="md" style={{
-                      backgroundColor: msg.rol === 'usuario' ? 'var(--mantine-color-blue-6)' : 'var(--mantine-color-gray-1)',
+                      backgroundColor: msg.rol === 'usuario' ? 'var(--mantine-color-blue-6)' : 'var(--mantine-color-default-hover)',
                       color: msg.rol === 'usuario' ? 'white' : 'inherit',
                     }}>
                       {msg.cargando ? (
                         <Group gap="xs"><Loader size="xs" color="gray" /><Text size="sm" c="dimmed">Pensando...</Text></Group>
                       ) : (
-                        <Text size="sm" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{msg.texto}</Text>
+                        <>
+                          <Text size="sm" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{msg.texto}</Text>
+                          {msg.tipo_respuesta === 'externo' && (
+                            <Text size="xs" c="dimmed" mt={8} style={{ borderTop: '1px solid var(--mantine-color-default-border)', paddingTop: 6, lineHeight: 1.4 }}>
+                              ⚠️ He encontrado esta información en fuentes externas (no oficiales de esta oficina aún). Esta respuesta no representa documentación oficial verificada de la entidad.
+                            </Text>
+                          )}
+                        </>
                       )}
                     </Paper>
+                    {!msg.cargando && msg.rol === 'asistente' && (
+                      <Group gap="xs" mt={4}>
+                        <ActionIcon size="sm" variant="subtle" color="green"
+                          onClick={() => enviarFeedback(msg.historialId, 'correcto')}
+                          disabled={!msg.historialId || feedbackEnviado.has(msg.historialId)}
+                        >
+                          <IconThumbUp size={14} />
+                        </ActionIcon>
+                        <ActionIcon size="sm" variant="subtle" color="red"
+                          onClick={() => enviarFeedback(msg.historialId, 'incorrecto')}
+                          disabled={!msg.historialId || feedbackEnviado.has(msg.historialId)}
+                        >
+                          <IconThumbDown size={14} />
+                        </ActionIcon>
+                      </Group>
+                    )}
                     {msg.fuentes && msg.fuentes.length > 0 && (
                       <Stack gap={4}>
                         <Group gap="xs">
@@ -268,7 +331,7 @@ export function ChatPanel() {
         </Box>
       </ScrollArea>
 
-      <Box style={{ borderTop: '1px solid var(--mantine-color-gray-2)', padding: 16, backgroundColor: 'var(--mantine-color-white)' }}>
+      <Box style={{ borderTop: '1px solid var(--mantine-color-default-border)', padding: 16, backgroundColor: 'var(--mantine-color-body)' }}>
         <Group align="flex-end" gap="xs">
           <Textarea
             placeholder="Escribe tu consulta aquí... (Enter para enviar)"

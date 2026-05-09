@@ -3,20 +3,20 @@
 import { Box, Grid, Paper, Text, ThemeIcon, Stack, Title } from '@mantine/core'
 import {
   IconUsers, IconShieldCheck,
-  IconBellRinging, IconBell, IconFiles, IconNews, IconTable,
+  IconNews, IconTable, IconPalette, IconActivity, IconFileText, IconRobot,
 } from '@tabler/icons-react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { useSessionStore } from '@/store/sessionStore'
 
 const CARDS = [
-  { label: 'Administrar usuarios', icon: IconUsers, href: '/dashboard/usuarios', color: 'blue', desc: 'Gestiona los usuarios del sistema', permiso: 'gestionar_usuarios' },
-  { label: 'Derechos de usuarios', icon: IconShieldCheck, href: '/dashboard/derechos', color: 'violet', desc: 'Configura perfiles y permisos de acceso', permiso: 'gestionar_usuarios' },
-  { label: 'Administración de documentación', icon: IconFiles, href: '/dashboard/documentacion', color: 'green', desc: 'CRUD completo de documentos del sistema', permiso: 'gestionar_documentos' },
-  { label: 'Administrador de Noticias', icon: IconNews, href: '/dashboard/noticias', color: 'pink', desc: 'Crea y gestiona publicaciones institucionales', permiso: 'gestionar_noticias' },
-  { label: 'Administrar tablas', icon: IconTable, href: '/dashboard/tablas', color: 'indigo', desc: 'Gestiona los valores de los desplegables del sistema', permiso: 'gestionar_tablas' },
-  { label: 'Panel de notificaciones', icon: IconBellRinging, href: '/dashboard/panel-notificaciones', color: 'orange', desc: 'Configura y gestiona notificaciones', permiso: 'dashboard' },
-  { label: 'Notificaciones', icon: IconBell, href: '/dashboard/notificaciones', color: 'yellow', desc: 'Visualiza las notificaciones activas', permiso: 'dashboard' },
+  { label: 'Administrar usuarios',   icon: IconUsers,       href: '/dashboard/usuarios',  color: 'blue',   desc: 'Gestiona los usuarios del sistema',                    permiso: 'gestionar_usuarios' },
+  { label: 'Derechos de usuarios',    icon: IconShieldCheck, href: '/dashboard/derechos',   color: 'violet', desc: 'Configura perfiles y permisos de acceso',              permiso: 'gestionar_usuarios' },
+  { label: 'Administrador de Noticias', icon: IconNews,      href: '/dashboard/noticias',   color: 'pink',   desc: 'Crea y gestiona publicaciones institucionales',        permiso: 'gestionar_noticias' },
+  { label: 'Administrar tablas',      icon: IconTable,       href: '/dashboard/tablas',     color: 'indigo', desc: 'Gestiona los valores de los desplegables del sistema', permiso: 'gestionar_tablas' },
+  { label: 'Temas y Visualización',   icon: IconPalette,   href: '/dashboard/temas',         color: 'pink',   desc: 'Logo, tipografía, colores y paleta de la plataforma', permiso: 'gestionar_tablas' },
+  { label: 'Log de Usuarios',          icon: IconActivity,  href: '/dashboard/log-usuarios',   color: 'cyan',   desc: 'Historial de creaciones, modificaciones y eliminaciones', permiso: 'gestionar_usuarios' },
+  { label: 'Log de Documentos',         icon: IconFileText,  href: '/dashboard/log-documentos',  color: 'teal',   desc: 'Historial de cargas y eliminaciones de documentos en la IA', permiso: 'gestionar_documentos' },
 ]
 
 export default function DashboardPage() {

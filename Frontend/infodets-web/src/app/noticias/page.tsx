@@ -58,7 +58,7 @@ export default function NoticiasPage() {
       <Header />
       <Box style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar />
-        <Box style={{ flex: 1, overflowY: 'auto', backgroundColor: 'var(--mantine-color-gray-0)' }}>
+        <Box style={{ flex: 1, overflowY: 'auto', backgroundColor: 'var(--mantine-color-default-hover)' }}>
           <Box maw={680} mx="auto" py={32} px={16}>
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
 

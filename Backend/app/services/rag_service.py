@@ -1,5 +1,6 @@
 import httpx
 import logging
+from datetime import datetime
 from groq import Groq
 from app.core.settings import settings
 from app.services.embedding_service import generate_query_embedding
@@ -109,18 +110,75 @@ def buscar_en_web(pregunta: str) -> str:
 # ─── Generación de respuesta ─────────────────────────────────────────────────
 
 def _prompt(pregunta: str, contexto: str, tipo: str) -> str:
+    # Cargar identidad del bot desde DB
+    system = SYSTEM_PROMPT
+    try:
+        from app.core.database import SessionLocal
+        from app.models.models import BotIdentidad
+        from datetime import timezone, timedelta
+        db = SessionLocal()
+        bot = db.query(BotIdentidad).first()
+        db.close()
+        # Fecha y hora actual en Argentina (UTC-3)
+        ar_tz = timezone(timedelta(hours=-3))
+        ahora = datetime.now(ar_tz)
+        fecha_hora = ahora.strftime('%A %d de %B de %Y, %H:%M hs (hora Argentina)')
+        # Feriados del año actual desde API pública
+        feriados_info = ""
+        try:
+            anio = ahora.year
+            resp = httpx.get(f"https://nolaborables.com.ar/api/v2/feriados/{anio}", timeout=5)
+            if resp.status_code == 200:
+                feriados = resp.json()
+                proximos = [
+                    f for f in feriados
+                    if f.get('mes', 0) > ahora.month or
+                    (f.get('mes', 0) == ahora.month and f.get('dia', 0) >= ahora.day)
+                ][:5]
+                if proximos:
+                    lista = ', '.join(
+                        f"{f.get('dia'):02d}/{f.get('mes'):02d} — {f.get('motivo', '')}"
+                        for f in proximos
+                    )
+                    feriados_info = f"\nPróximos feriados en Argentina: {lista}"
+        except Exception:
+            pass
+        if bot:
+            system = f"""Sos {bot.nombre}, asistente virtual{f' de {bot.institucion}' if bot.institucion else ''}.
+{'Descripción: ' + bot.descripcion if bot.descripcion else ''}
+Personalidad: {bot.personalidad or 'profesional y servicial'}.
+Tono: {bot.tono}. Idioma: {bot.idioma}.
+{'Restricciones: ' + bot.restricciones if bot.restricciones else ''}
+País: Argentina | Zona horaria: America/Argentina/Buenos_Aires (UTC-3)
+Fecha y hora actual: {fecha_hora}{feriados_info}
+Tu función es responder consultas basándote EXCLUSIVAMENTE en la documentación oficial proporcionada.
+Reglas:
+1. Si la respuesta está en el contexto, respondé con precisión citando la fuente.
+2. Si la información no está en el contexto, indicá claramente que no tenés documentación oficial sobre ese tema.
+3. Nunca inventes información. La precisión legal es crítica.
+4. Respondé siempre en {bot.idioma}.
+5. EXCEPCIÓN: Para preguntas sobre fecha, hora, día, feriados, calendario o información general de Argentina, respondé usando los datos de contexto del sistema (fecha/hora/feriados) sin necesidad de documentación oficial."""
+        else:
+            system = f"""{SYSTEM_PROMPT}
+País: Argentina | Zona horaria: America/Argentina/Buenos_Aires (UTC-3)
+Fecha y hora actual: {fecha_hora}{feriados_info}
+EXCEPCIÓN: Para preguntas sobre fecha, hora, día, feriados o calendario, respondé usando los datos de contexto del sistema sin necesidad de documentación oficial."""
+    except Exception:
+        pass
+    except Exception:
+        pass
     if tipo == "local":
-        return f"""{SYSTEM_PROMPT}
+        return f"""{system}
 
 DOCUMENTACIÓN OFICIAL DISPONIBLE:
 {contexto}
 
 Pregunta del usuario: {pregunta}
 
-Responde basándote únicamente en la documentación oficial proporcionada arriba."""
+Respondé basándote únicamente en la documentación oficial proporcionada arriba."""
 
     if tipo == "externo":
-        return f"""{SYSTEM_PROMPT}
+        return f"""{system}
 
 INFORMACIÓN DE FUENTES EXTERNAS (no documentación oficial de la entidad):
 {contexto}
@@ -129,8 +187,7 @@ Pregunta del usuario: {pregunta}
 
 IMPORTANTE: Esta información proviene de fuentes externas. Indicá claramente que no es documentación oficial de la entidad."""
 
-    # fallback general
-    return f"""{SYSTEM_PROMPT}
+    return f"""{system}
 
 ADVERTENCIA: No se encontró documentación oficial sobre este tema.
 La siguiente respuesta proviene de conocimiento general y NO es una fuente oficial verificada.

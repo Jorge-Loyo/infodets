@@ -1,7 +1,7 @@
 'use client'
 
 import { Group, Text, Avatar, ActionIcon, Burger, Box, Indicator, Tooltip, Badge } from '@mantine/core'
-import { IconLogout, IconUser, IconMessageCircle, IconBell } from '@tabler/icons-react'
+import { IconLogout, IconUser, IconMessageCircle, IconBell, IconSun, IconMoon } from '@tabler/icons-react'
 import { useAuth } from '@/hooks/auth/useAuth'
 import { useSidebar } from '@/hooks/ui/useSidebar'
 import { APP_NAME } from '@/lib/constants'
@@ -16,7 +16,7 @@ export function Header() {
   const { toggleSidebar } = useSidebar()
   const { isAuthenticated } = useSessionStore()
   const [mounted, setMounted] = useState(false)
-  const { noLeidos, setNoLeidos, noticiasNoLeidas, setNoticiasNoLeidas, ultimaVisitaNoticias } = useUiStore()
+  const { noLeidos, setNoLeidos, noticiasNoLeidas, setNoticiasNoLeidas, ultimaVisitaNoticias, headerColor, paletaColor, tipografia, logoUrl, logoSize, colorScheme, temaActivo, setColorScheme, fotoPerfil } = useUiStore()
   const router = useRouter()
 
   useEffect(() => { setMounted(true) }, [])
@@ -48,8 +48,8 @@ export function Header() {
     <Box
       style={{
         height: 60,
-        borderBottom: '1px solid var(--mantine-color-gray-2)',
-        backgroundColor: 'var(--mantine-color-white)',
+        borderBottom: '1px solid var(--mantine-color-default-border)',
+        backgroundColor: headerColor === '#ffffff' ? 'var(--mantine-color-body)' : headerColor,
         padding: '0 20px',
         display: 'flex',
         alignItems: 'center',
@@ -57,11 +57,16 @@ export function Header() {
         position: 'sticky',
         top: 0,
         zIndex: 100,
+        fontFamily: tipografia,
       }}
     >
       <Group gap="sm">
         {mounted && <Burger size="sm" onClick={toggleSidebar} aria-label="Toggle sidebar" />}
-        <Text fw={700} size="lg" c="blue">{APP_NAME}</Text>
+        {mounted && logoUrl ? (
+          <img src={logoUrl} alt="Logo" style={{ height: logoSize, objectFit: 'contain' }} />
+        ) : (
+          <Text fw={700} size="lg" c={paletaColor}>{APP_NAME}</Text>
+        )}
       </Group>
 
       <Group gap="sm">
@@ -83,9 +88,29 @@ export function Header() {
             </Indicator>
           </Tooltip>
         )}
-        <Avatar radius="xl" size="sm" color="blue">
-          <IconUser size={14} />
-        </Avatar>
+        {/* Botón modo oscuro/claro — solo para temas Claro y Moderno */}
+        {mounted && temaActivo !== 'Personalizado' && (
+          <Tooltip label={colorScheme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'} withArrow>
+            <ActionIcon
+              variant="light"
+              color={colorScheme === 'dark' ? 'yellow' : 'blue'}
+              radius="xl"
+              onClick={() => setColorScheme(colorScheme === 'dark' ? 'light' : 'dark')}
+            >
+              {colorScheme === 'dark' ? <IconSun size={16} /> : <IconMoon size={16} />}
+            </ActionIcon>
+          </Tooltip>
+        )}
+        <Tooltip label="Mi perfil" withArrow>
+          <Avatar
+            radius="xl" size="sm" color="blue"
+            src={mounted && fotoPerfil ? fotoPerfil : undefined}
+            style={{ cursor: 'pointer' }}
+            onClick={() => router.push('/configuracion/perfil')}
+          >
+            {(!mounted || !fotoPerfil) && <IconUser size={14} />}
+          </Avatar>
+        </Tooltip>
         {mounted && (
           <Box visibleFrom="sm">
             <Text size="sm" fw={500} lh={1.2}>{usuario?.nombre ?? 'Usuario'}</Text>
