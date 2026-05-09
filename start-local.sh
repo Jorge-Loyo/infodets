@@ -1,8 +1,14 @@
 #!/bin/bash
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PYTHON="/c/Users/jorge/AppData/Local/Programs/Python/Python313/python.exe"
-VENV="$SCRIPT_DIR/Backend/.venv"
+PYTHON="$(which python3 2>/dev/null || which python)"
+
+# Detectar venv (con o sin punto)
+if [ -f "$SCRIPT_DIR/Backend/venv/Scripts/activate" ]; then
+  VENV="$SCRIPT_DIR/Backend/venv"
+else
+  VENV="$SCRIPT_DIR/Backend/.venv"
+fi
 
 echo "Iniciando Backend..."
 cd "$SCRIPT_DIR/Backend"
@@ -15,7 +21,7 @@ fi
 
 source "$VENV/Scripts/activate"
 pip install -r requirements.txt -q
-uvicorn main:app --reload --host 0.0.0.0 --port 8000 &
+"$VENV/Scripts/uvicorn" main:app --reload --host 0.0.0.0 --port 8000 &
 BACKEND_PID=$!
 
 echo "Iniciando Frontend..."
