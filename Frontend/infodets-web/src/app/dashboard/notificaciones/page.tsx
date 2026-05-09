@@ -46,7 +46,7 @@ interface Mensaje {
 }
 
 const formatFecha = (iso: string) => {
-  const diff = Date.now() - new Date(iso).getTime()
+  const diff = Date.now() - new Date(iso.endsWith('Z') ? iso : iso + 'Z').getTime()
   const h = Math.floor(diff / 3600000)
   if (h < 1) return 'Hace unos minutos'
   if (h < 24) return `Hace ${h} hora${h > 1 ? 's' : ''}`

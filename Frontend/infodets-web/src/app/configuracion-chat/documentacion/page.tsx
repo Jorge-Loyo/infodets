@@ -4,13 +4,17 @@ import {
   Box, Grid, Text, Stack, Paper, Group, Title,
   TextInput, Select, Button, Badge, FileInput,
   Table, ActionIcon, ThemeIcon, Divider, LoadingOverlay,
-  Progress, Tabs, Switch, Tooltip,
+  Progress, Tabs, Switch, Tooltip, Modal,
 } from '@mantine/core'
 import {
   IconUpload, IconFileTypePdf, IconTrash,
   IconSearch, IconFolderOpen, IconRefresh, IconBrain,
-  IconLink, IconPlus, IconWorld,
+  IconLink, IconPlus, IconWorld, IconEye, IconEdit,
+  IconCloudUpload, IconHistory,
 } from '@tabler/icons-react'
+
+const DOCS_URL = 'http://32.192.124.14:8000'
+
 import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import { notifications } from '@mantine/notifications'
@@ -20,9 +24,7 @@ import axiosInstance from '@/lib/axiosInstance'
 import type { DocumentoListItem } from '@/types/ingesta.types'
 
 const ESTADO_COLOR: Record<string, string> = {
-  procesado: 'green',
-  pendiente: 'yellow',
-  error: 'red',
+  procesado: 'green', pendiente: 'yellow', error: 'red',
 }
 
 interface UrlOficial {
@@ -34,7 +36,10 @@ interface UrlOficial {
 }
 
 export default function DocumentacionPage() {
-  const [tab, setTab] = useState('documentos')
+  // Pestañas principales
+  const [pestana, setPestana] = useState('carga')
+  // Sub-pestañas de historial
+  const [tabHistorial, setTabHistorial] = useState('documentos')
 
   // ── Documentos ──
   const [documentos, setDocumentos] = useState<DocumentoListItem[]>([])
@@ -57,15 +62,47 @@ export default function DocumentacionPage() {
   const [nuevaDesc, setNuevaDesc] = useState('')
   const [agregandoUrl, setAgregandoUrl] = useState(false)
 
+  // ── Edición ──
+  const [editando, setEditando] = useState<DocumentoListItem | null>(null)
+  const [editTitulo, setEditTitulo] = useState('')
+  const [editCategoria, setEditCategoria] = useState('')
+  const [editDependencia, setEditDependencia] = useState('')
+  const [guardandoEdit, setGuardandoEdit] = useState(false)
+
+  const abrirEdicion = (doc: DocumentoListItem) => {
+    setEditando(doc)
+    setEditTitulo(doc.titulo)
+    setEditCategoria(doc.categoria ?? '')
+    setEditDependencia(doc.dependencia ?? '')
+  }
+
+  const guardarEdicion = async () => {
+    if (!editando || !editTitulo.trim()) return
+    setGuardandoEdit(true)
+    try {
+      const fd = new FormData()
+      fd.append('titulo', editTitulo.trim())
+      if (editCategoria) fd.append('categoria', editCategoria)
+      fd.append('dependencia', editDependencia)
+      await axiosInstance.put(`/admin/ingesta/${editando.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      setDocumentos(prev => prev.map(d => d.id === editando.id
+        ? { ...d, titulo: editTitulo, categoria: editCategoria, dependencia: editDependencia }
+        : d
+      ))
+      notifications.show({ color: 'green', message: 'Documento actualizado' })
+      setEditando(null)
+    } catch {
+      notifications.show({ color: 'red', message: 'Error al actualizar documento' })
+    } finally {
+      setGuardandoEdit(false)
+    }
+  }
+
   const cargarDocumentos = async () => {
     setCargando(true)
-    try {
-      setDocumentos(await ingestaService.listar())
-    } catch {
-      notifications.show({ color: 'red', message: 'Error al cargar documentos' })
-    } finally {
-      setCargando(false)
-    }
+    try { setDocumentos(await ingestaService.listar()) }
+    catch { notifications.show({ color: 'red', message: 'Error al cargar documentos' }) }
+    finally { setCargando(false) }
   }
 
   const cargarUrls = async () => {
@@ -73,25 +110,20 @@ export default function DocumentacionPage() {
     try {
       const res = await axiosInstance.get<UrlOficial[]>('/urls')
       setUrls(res.data)
-    } catch {
-      notifications.show({ color: 'red', message: 'Error al cargar URLs' })
-    } finally {
-      setCargandoUrls(false)
-    }
+    } catch { notifications.show({ color: 'red', message: 'Error al cargar URLs' }) }
+    finally { setCargandoUrls(false) }
   }
 
   useEffect(() => { cargarDocumentos() }, [])
-  useEffect(() => { if (tab === 'urls') cargarUrls() }, [tab])
+  useEffect(() => { if (pestana === 'historial' && tabHistorial === 'urls') cargarUrls() }, [pestana, tabHistorial])
 
-  const eliminarDocumento = async (id: string, titulo: string) => {
-    if (!confirm(`¿Eliminar "${titulo}" de Qdrant y RDS?`)) return
+  const eliminarDocumento = async (id: string, tit: string) => {
+    if (!confirm(`¿Eliminar "${tit}" de Qdrant y RDS?`)) return
     try {
       await axiosInstance.delete(`/admin/ingesta/${id}`)
       setDocumentos(prev => prev.filter(d => d.id !== id))
       notifications.show({ color: 'green', message: 'Documento eliminado de la IA' })
-    } catch {
-      notifications.show({ color: 'red', message: 'Error al eliminar documento' })
-    }
+    } catch { notifications.show({ color: 'red', message: 'Error al eliminar documento' }) }
   }
 
   const filtrados = documentos.filter(d =>
@@ -119,9 +151,7 @@ export default function DocumentacionPage() {
     } catch (e: unknown) {
       notifications.show({ color: 'red', title: 'Error al procesar', message: (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'No se pudo procesar el documento' })
       setProgreso(0)
-    } finally {
-      setSubiendo(false)
-    }
+    } finally { setSubiendo(false) }
   }
 
   const agregarUrl = async () => {
@@ -135,20 +165,15 @@ export default function DocumentacionPage() {
       setUrls(prev => [res.data, ...prev])
       setNuevaUrl(''); setNuevaDesc('')
       notifications.show({ color: 'green', message: 'URL agregada correctamente' })
-    } catch {
-      notifications.show({ color: 'red', message: 'Error al agregar URL (puede que ya exista)' })
-    } finally {
-      setAgregandoUrl(false)
-    }
+    } catch { notifications.show({ color: 'red', message: 'Error al agregar URL (puede que ya exista)' }) }
+    finally { setAgregandoUrl(false) }
   }
 
   const toggleUrl = async (id: string, activa: boolean) => {
     try {
       const res = await axiosInstance.put<UrlOficial>(`/urls/${id}`, { activa })
       setUrls(prev => prev.map(u => u.id === id ? res.data : u))
-    } catch {
-      notifications.show({ color: 'red', message: 'Error al actualizar URL' })
-    }
+    } catch { notifications.show({ color: 'red', message: 'Error al actualizar URL' }) }
   }
 
   const eliminarUrl = async (id: string) => {
@@ -156,38 +181,39 @@ export default function DocumentacionPage() {
       await axiosInstance.delete(`/urls/${id}`)
       setUrls(prev => prev.filter(u => u.id !== id))
       notifications.show({ color: 'green', message: 'URL eliminada' })
-    } catch {
-      notifications.show({ color: 'red', message: 'Error al eliminar URL' })
-    }
+    } catch { notifications.show({ color: 'red', message: 'Error al eliminar URL' }) }
   }
 
   return (
-    <Box p={32}>
+    <Box p={{ base: 16, sm: 32 }}>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
         <Title order={3} mb="xs">Documentación</Title>
         <Text c="dimmed" size="sm" mb="xl">
           Gestioná los documentos PDF y las URLs oficiales que usa la IA para responder consultas.
         </Text>
 
-        <Tabs value={tab} onChange={v => setTab(v ?? 'documentos')} mb="xl">
+        {/* ── Pestañas principales ── */}
+        <Tabs value={pestana} onChange={v => setPestana(v ?? 'carga')} mb="xl">
           <Tabs.List>
-            <Tabs.Tab value="documentos" leftSection={<IconFileTypePdf size={14} />}>Documentos PDF</Tabs.Tab>
-            <Tabs.Tab value="urls" leftSection={<IconWorld size={14} />}>
-              URLs Oficiales
-              {urls.filter(u => u.activa).length > 0 && <Badge size="xs" color="blue" ml={4}>{urls.filter(u => u.activa).length}</Badge>}
+            <Tabs.Tab value="carga" leftSection={<IconCloudUpload size={16} />}>
+              Carga
+            </Tabs.Tab>
+            <Tabs.Tab value="historial" leftSection={<IconHistory size={16} />}>
+              Historial
             </Tabs.Tab>
           </Tabs.List>
         </Tabs>
 
-        {/* ── TAB DOCUMENTOS ── */}
-        {tab === 'documentos' && (
+        {/* ══ PESTAÑA CARGA ══ */}
+        {pestana === 'carga' && (
           <Grid>
-            <Grid.Col span={{ base: 12, md: 5 }}>
-              <Paper withBorder radius="md" p="xl">
+            {/* Cargar PDF */}
+            <Grid.Col span={{ base: 12, md: 6 }}>
+              <Paper withBorder radius="md" p="xl" h="100%">
                 <Stack gap="md">
                   <Group gap="xs">
                     <ThemeIcon variant="light" color="blue" radius="md"><IconBrain size={16} /></ThemeIcon>
-                    <Text fw={600} size="sm">Cargar documento para entrenar IA</Text>
+                    <Text fw={600} size="sm">Cargar documento PDF</Text>
                   </Group>
                   <Divider />
                   <FileInput label="Archivo PDF" placeholder="Selecciona un PDF" accept=".pdf" leftSection={<IconFolderOpen size={16} />} value={archivo} onChange={setArchivo} radius="md" clearable />
@@ -203,13 +229,13 @@ export default function DocumentacionPage() {
                     </Paper>
                   )}
                   <Divider label="Metadatos" labelPosition="left" />
-                  <TextInput label="Título del documento *" placeholder="Ej: Resolución 001-2024" value={titulo} onChange={e => setTitulo(e.target.value)} radius="md" required />
-                  <Select label="Categoría *" placeholder="Selecciona una categoría" data={opcionesCategorias} value={categoria} onChange={v => setCategoria(v ?? '')} radius="md" required />
-                  <Select label="Dependencia" placeholder="Selecciona la dependencia" data={opcionesDependencias} value={dependencia} onChange={v => setDependencia(v ?? '')} radius="md" clearable />
+                  <TextInput label="Título *" placeholder="Ej: Resolución 001-2024" value={titulo} onChange={e => setTitulo(e.target.value)} radius="md" required />
+                  <Select label="Categoría *" placeholder="Selecciona" data={opcionesCategorias} value={categoria} onChange={v => setCategoria(v ?? '')} radius="md" required />
+                  <Select label="Dependencia" placeholder="Selecciona" data={opcionesDependencias} value={dependencia} onChange={v => setDependencia(v ?? '')} radius="md" clearable />
                   <TextInput label="Año" placeholder="Ej: 2024" value={anio} onChange={e => setAnio(e.target.value)} radius="md" maxLength={4} />
                   {subiendo && progreso > 0 && (
                     <Stack gap={4}>
-                      <Text size="xs" c="dimmed">Procesando documento...</Text>
+                      <Text size="xs" c="dimmed">Procesando e indexando...</Text>
                       <Progress value={progreso} animated radius="md" />
                     </Stack>
                   )}
@@ -219,63 +245,10 @@ export default function DocumentacionPage() {
                 </Stack>
               </Paper>
             </Grid.Col>
-            <Grid.Col span={{ base: 12, md: 7 }}>
-              <Paper withBorder radius="md" p="xl" pos="relative">
-                <LoadingOverlay visible={cargando} />
-                <Stack gap="md">
-                  <Group justify="space-between">
-                    <Group gap="xs">
-                      <ThemeIcon variant="light" color="blue" radius="md"><IconFileTypePdf size={16} /></ThemeIcon>
-                      <Text fw={600} size="sm">Documentos indexados</Text>
-                    </Group>
-                    <Group gap="sm">
-                      <Badge variant="light" color="blue">{documentos.length} documentos</Badge>
-                      <ActionIcon variant="light" radius="md" onClick={cargarDocumentos}><IconRefresh size={16} /></ActionIcon>
-                    </Group>
-                  </Group>
-                  <TextInput placeholder="Buscar documento..." leftSection={<IconSearch size={16} />} value={busqueda} onChange={e => setBusqueda(e.currentTarget.value)} radius="md" />
-                  <Divider />
-                  <Box style={{ overflowX: 'auto' }}>
-                  <Table highlightOnHover verticalSpacing="sm" style={{ minWidth: 500 }}>
-                    <Table.Thead>
-                      <Table.Tr>
-                        <Table.Th>Título</Table.Th>
-                        <Table.Th>Categoría</Table.Th>
-                        <Table.Th>Estado</Table.Th>
-                        <Table.Th />
-                      </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
-                      {filtrados.map((doc, i) => (
-                        <motion.tr key={doc.id} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} style={{ display: 'table-row' }}>
-                          <Table.Td><Text size="sm" lineClamp={1} maw={200}>{doc.titulo}</Text></Table.Td>
-                          <Table.Td><Text size="sm" c="dimmed">{doc.categoria || '—'}</Text></Table.Td>
-                          <Table.Td><Badge size="sm" variant="light" color={ESTADO_COLOR[doc.estado] ?? 'gray'}>{doc.estado}</Badge></Table.Td>
-                          <Table.Td>
-                            <ActionIcon variant="subtle" color="red" size="sm" onClick={() => eliminarDocumento(doc.id, doc.titulo)}><IconTrash size={14} /></ActionIcon>
-                          </Table.Td>
-                        </motion.tr>
-                      ))}
-                    </Table.Tbody>
-                  </Table>
-                  </Box>
-                  {!cargando && filtrados.length === 0 && (
-                    <Stack align="center" py="xl" gap="xs">
-                      <ThemeIcon size={40} variant="light" color="gray" radius="xl"><IconSearch size={20} /></ThemeIcon>
-                      <Text size="sm" c="dimmed">{documentos.length === 0 ? 'No hay documentos indexados. Sube el primero.' : 'No se encontraron documentos'}</Text>
-                    </Stack>
-                  )}
-                </Stack>
-              </Paper>
-            </Grid.Col>
-          </Grid>
-        )}
 
-        {/* ── TAB URLs ── */}
-        {tab === 'urls' && (
-          <Grid>
-            <Grid.Col span={{ base: 12, md: 5 }}>
-              <Paper withBorder radius="md" p="xl">
+            {/* Agregar URL */}
+            <Grid.Col span={{ base: 12, md: 6 }}>
+              <Paper withBorder radius="md" p="xl" h="100%">
                 <Stack gap="md">
                   <Group gap="xs">
                     <ThemeIcon variant="light" color="teal" radius="md"><IconLink size={16} /></ThemeIcon>
@@ -285,37 +258,91 @@ export default function DocumentacionPage() {
                   <Text size="xs" c="dimmed">
                     Las URLs activas se consultan como Nivel 1 del loop de retroalimentación cuando la IA no encuentra documentación local con confianza ≥ 70%.
                   </Text>
-                  <TextInput
-                    label="URL"
-                    placeholder="https://www.ejemplo.gob.ar"
-                    leftSection={<IconWorld size={16} />}
-                    value={nuevaUrl}
-                    onChange={e => setNuevaUrl(e.target.value)}
-                    radius="md"
-                  />
-                  <TextInput
-                    label="Descripción (opcional)"
-                    placeholder="Ej: Portal oficial de la entidad"
-                    value={nuevaDesc}
-                    onChange={e => setNuevaDesc(e.target.value)}
-                    radius="md"
-                  />
-                  <Button
-                    leftSection={<IconPlus size={16} />}
-                    radius="md"
-                    fullWidth
-                    loading={agregandoUrl}
-                    disabled={!nuevaUrl.trim().startsWith('http')}
-                    onClick={agregarUrl}
-                    color="teal"
-                  >
+                  <TextInput label="URL" placeholder="https://www.ejemplo.gob.ar" leftSection={<IconWorld size={16} />} value={nuevaUrl} onChange={e => setNuevaUrl(e.target.value)} radius="md" />
+                  <TextInput label="Descripción (opcional)" placeholder="Ej: Portal oficial de la entidad" value={nuevaDesc} onChange={e => setNuevaDesc(e.target.value)} radius="md" />
+                  <Button leftSection={<IconPlus size={16} />} radius="md" fullWidth loading={agregandoUrl} disabled={!nuevaUrl.trim().startsWith('http')} onClick={agregarUrl} color="teal">
                     Agregar URL
                   </Button>
                 </Stack>
               </Paper>
             </Grid.Col>
+          </Grid>
+        )}
 
-            <Grid.Col span={{ base: 12, md: 7 }}>
+        {/* ══ PESTAÑA HISTORIAL ══ */}
+        {pestana === 'historial' && (
+          <>
+            <Tabs value={tabHistorial} onChange={v => setTabHistorial(v ?? 'documentos')} mb="md">
+              <Tabs.List>
+                <Tabs.Tab value="documentos" leftSection={<IconFileTypePdf size={14} />}>
+                  Documentos PDF
+                </Tabs.Tab>
+                <Tabs.Tab value="urls" leftSection={<IconWorld size={14} />}>
+                  URLs Oficiales
+                </Tabs.Tab>
+              </Tabs.List>
+            </Tabs>
+
+            {/* Documentos */}
+            {tabHistorial === 'documentos' && (
+              <Paper withBorder radius="md" p="xl" pos="relative">
+                <LoadingOverlay visible={cargando} />
+                <Stack gap="md">
+                  <Group justify="space-between" wrap="wrap" gap="sm">
+                    <TextInput placeholder="Buscar documento..." leftSection={<IconSearch size={16} />} value={busqueda} onChange={e => setBusqueda(e.currentTarget.value)} radius="md" style={{ flex: 1, minWidth: 200 }} />
+                    <Group gap="sm">
+                      <Badge variant="light" color="blue">{documentos.length} documentos</Badge>
+                      <ActionIcon variant="light" radius="md" onClick={cargarDocumentos}><IconRefresh size={16} /></ActionIcon>
+                    </Group>
+                  </Group>
+                  <Divider />
+                  <Box style={{ overflowX: 'auto' }}>
+                    <Table highlightOnHover verticalSpacing="sm" style={{ minWidth: 500 }}>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th w={40} />
+                          <Table.Th>Título</Table.Th>
+                          <Table.Th>Categoría</Table.Th>
+                          <Table.Th>Dependencia</Table.Th>
+                          <Table.Th>Estado</Table.Th>
+                          <Table.Th />
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {filtrados.map((doc, i) => (
+                          <motion.tr key={doc.id} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} style={{ display: 'table-row' }}>
+                            <Table.Td>
+                              <ActionIcon variant="subtle" color="blue" size="sm" component="a" href={`${DOCS_URL}/v1/admin/ingesta/ver/${doc.id}`} target="_blank">
+                                <IconEye size={14} />
+                              </ActionIcon>
+                            </Table.Td>
+                            <Table.Td><Text size="sm" lineClamp={1} maw={200}>{doc.titulo}</Text></Table.Td>
+                            <Table.Td><Text size="sm" c="dimmed">{doc.categoria || '—'}</Text></Table.Td>
+                            <Table.Td><Text size="sm" c="dimmed">{doc.dependencia || '—'}</Text></Table.Td>
+                            <Table.Td><Badge size="sm" variant="light" color={ESTADO_COLOR[doc.estado] ?? 'gray'}>{doc.estado}</Badge></Table.Td>
+                            <Table.Td>
+                              <Group gap={4} wrap="nowrap">
+                                <ActionIcon variant="subtle" color="blue" size="sm" onClick={() => abrirEdicion(doc)}><IconEdit size={14} /></ActionIcon>
+                                <ActionIcon variant="subtle" color="red" size="sm" onClick={() => eliminarDocumento(doc.id, doc.titulo)}><IconTrash size={14} /></ActionIcon>
+                              </Group>
+                            </Table.Td>
+                          </motion.tr>
+                        ))}
+                      </Table.Tbody>
+                    </Table>
+                  </Box>
+                  {!cargando && filtrados.length === 0 && (
+                    <Stack align="center" py="xl" gap="xs">
+                      <ThemeIcon size={40} variant="light" color="gray" radius="xl"><IconSearch size={20} /></ThemeIcon>
+                      <Text size="sm" c="dimmed">{documentos.length === 0 ? 'No hay documentos indexados. Sube el primero.' : 'No se encontraron documentos'}</Text>
+                    </Stack>
+                  )}
+                </Stack>
+              </Paper>
+            )}
+
+            {/* URLs */}
+            {tabHistorial === 'urls' && (
               <Paper withBorder radius="md" p="xl" pos="relative">
                 <LoadingOverlay visible={cargandoUrls} />
                 <Stack gap="md">
@@ -333,13 +360,13 @@ export default function DocumentacionPage() {
                   {urls.length === 0 && !cargandoUrls && (
                     <Stack align="center" py="xl" gap="xs">
                       <ThemeIcon size={40} variant="light" color="gray" radius="xl"><IconLink size={20} /></ThemeIcon>
-                      <Text size="sm" c="dimmed">No hay URLs registradas. Agrega la primera.</Text>
+                      <Text size="sm" c="dimmed">No hay URLs registradas.</Text>
                     </Stack>
                   )}
                   <Stack gap="sm">
                     {urls.map((u, i) => (
                       <motion.div key={u.id} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}>
-                        <Paper withBorder p="sm" radius="md" bg={u.activa ? 'teal.0' : 'gray.0'}>
+                        <Paper withBorder p="sm" radius="md" bg={u.activa ? 'teal.0' : 'var(--mantine-color-default-hover)'}>
                           <Group justify="space-between">
                             <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
                               <Text size="sm" fw={500} lineClamp={1}>{u.url}</Text>
@@ -360,10 +387,23 @@ export default function DocumentacionPage() {
                   </Stack>
                 </Stack>
               </Paper>
-            </Grid.Col>
-          </Grid>
+            )}
+          </>
         )}
       </motion.div>
+
+      {/* Modal edición */}
+      <Modal opened={!!editando} onClose={() => setEditando(null)} title="Editar metadatos del documento" radius="md" size="md">
+        <Stack gap="md">
+          <TextInput label="Título *" value={editTitulo} onChange={e => setEditTitulo(e.target.value)} radius="md" required />
+          <Select label="Categoría" data={opcionesCategorias} value={editCategoria} onChange={v => setEditCategoria(v ?? '')} radius="md" clearable />
+          <Select label="Dependencia" data={opcionesDependencias} value={editDependencia} onChange={v => setEditDependencia(v ?? '')} radius="md" clearable />
+          <Group justify="flex-end" gap="sm">
+            <Button variant="subtle" color="gray" onClick={() => setEditando(null)}>Cancelar</Button>
+            <Button loading={guardandoEdit} disabled={!editTitulo.trim()} leftSection={<IconEdit size={14} />} onClick={guardarEdicion}>Guardar cambios</Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Box>
   )
 }

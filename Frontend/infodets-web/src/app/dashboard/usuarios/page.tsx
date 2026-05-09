@@ -5,6 +5,7 @@ import {
   Table, Badge, ActionIcon, Stack, ThemeIcon, Avatar,
   Modal, Select, LoadingOverlay, Divider, Grid, PasswordInput, Tooltip,
 } from '@mantine/core'
+import { useMediaQuery } from '@mantine/hooks'
 import {
   IconSearch, IconEdit, IconTrash, IconUser, IconRefresh, IconPlus,
   IconMail, IconId, IconBriefcase, IconBuilding, IconSitemap, IconCalendar,
@@ -194,6 +195,8 @@ export default function UsuariosPage() {
   const setNuevo = (field: keyof UsuarioNuevo) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setNuevoUsuario(d => ({ ...d, [field]: e.target.value }))
 
+  const isMobile = useMediaQuery('(max-width: 62em)')
+
   return (
     <Box p={32}>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
@@ -227,6 +230,47 @@ export default function UsuariosPage() {
             </Group>
           </Group>
 
+          {/* Mobile — Cards */}
+          {isMobile && (
+            <Stack gap="sm">
+              {filtrados.map((u, i) => {
+                const perfil = perfiles.find(p => p.id === u.perfil_id)
+                return (
+                  <motion.div key={u.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                    <Paper withBorder p="md" radius="md">
+                      <Group justify="space-between" align="flex-start" wrap="nowrap">
+                        <Group gap="sm" style={{ flex: 1, minWidth: 0 }}>
+                          <Avatar size={40} radius="xl" color={perfil?.color ?? 'gray'}><IconUser size={18} /></Avatar>
+                          <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
+                            <Text size="sm" fw={600} lineClamp={1}>{u.nombre ?? '—'} {u.apellido ?? ''}</Text>
+                            <Text size="xs" c="dimmed" lineClamp={1}>{u.email}</Text>
+                            <Group gap="xs" wrap="wrap">
+                              {perfil
+                                ? <Badge variant="light" color={perfil.color} size="xs">{perfil.nombre}</Badge>
+                                : <Badge variant="light" color="gray" size="xs">Sin perfil</Badge>
+                              }
+                              {u.cargo && <Badge variant="light" color="gray" size="xs">{u.cargo}</Badge>}
+                              {u.institucion && <Badge variant="light" color="gray" size="xs">{u.institucion}</Badge>}
+                            </Group>
+                          </Stack>
+                        </Group>
+                        <Group gap={4} wrap="nowrap">
+                          <Tooltip label="Blanquear contraseña">
+                            <ActionIcon variant="subtle" color="orange" size="sm" loading={blanqueando === u.id} onClick={() => setModalBlanqueo(u)}><IconLock size={14} /></ActionIcon>
+                          </Tooltip>
+                          <ActionIcon variant="subtle" color="blue" size="sm" onClick={() => abrirEdicion(u)}><IconEdit size={14} /></ActionIcon>
+                          <ActionIcon variant="subtle" color="red" size="sm" onClick={() => eliminarUsuario(u.id)}><IconTrash size={14} /></ActionIcon>
+                        </Group>
+                      </Group>
+                    </Paper>
+                  </motion.div>
+                )
+              })}
+            </Stack>
+          )}
+
+          {/* Desktop — Tabla */}
+          {!isMobile && (
           <Box style={{ overflowX: 'auto' }}>
           <Table highlightOnHover verticalSpacing="sm" style={{ minWidth: 700 }}>
             <Table.Thead>
@@ -284,6 +328,7 @@ export default function UsuariosPage() {
             </Table.Tbody>
           </Table>
           </Box>
+          )}
 
           {!cargando && filtrados.length === 0 && (
             <Stack align="center" py="xl">
