@@ -10,6 +10,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_PUBLIC_API_URL=http://32.192.124.14:8000/v1
+ENV NEXT_PUBLIC_DOCS_URL=http://32.192.124.14:8000
 RUN npm run build
 
 # Etapa 3 — Produccion
