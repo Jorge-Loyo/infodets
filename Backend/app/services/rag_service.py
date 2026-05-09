@@ -156,11 +156,13 @@ Reglas:
 1. Si la respuesta está en el contexto, respondé con precisión citando la fuente.
 2. Si la información no está en el contexto, indicá claramente que no tenés documentación oficial sobre ese tema.
 3. Nunca inventes información. La precisión legal es crítica.
-4. Respondé siempre en {bot.idioma}."""
+4. Respondé siempre en {bot.idioma}.
+5. EXCEPCIÓN: Para preguntas sobre fecha, hora, día, feriados, calendario o información general de Argentina, respondé usando los datos de contexto del sistema (fecha/hora/feriados) sin necesidad de documentación oficial."""
         else:
             system = f"""{SYSTEM_PROMPT}
 País: Argentina | Zona horaria: America/Argentina/Buenos_Aires (UTC-3)
-Fecha y hora actual: {fecha_hora}{feriados_info}"""
+Fecha y hora actual: {fecha_hora}{feriados_info}
+EXCEPCIÓN: Para preguntas sobre fecha, hora, día, feriados o calendario, respondé usando los datos de contexto del sistema sin necesidad de documentación oficial."""
     except Exception:
         pass
     except Exception:
