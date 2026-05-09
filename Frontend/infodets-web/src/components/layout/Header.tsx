@@ -16,7 +16,7 @@ export function Header() {
   const { toggleSidebar } = useSidebar()
   const { isAuthenticated } = useSessionStore()
   const [mounted, setMounted] = useState(false)
-  const { noLeidos, setNoLeidos, noticiasNoLeidas, setNoticiasNoLeidas, ultimaVisitaNoticias } = useUiStore()
+  const { noLeidos, setNoLeidos, noticiasNoLeidas, setNoticiasNoLeidas, ultimaVisitaNoticias, headerColor, paletaColor, tipografia, logoUrl, logoSize } = useUiStore()
   const router = useRouter()
 
   useEffect(() => { setMounted(true) }, [])
@@ -48,8 +48,8 @@ export function Header() {
     <Box
       style={{
         height: 60,
-        borderBottom: '1px solid var(--mantine-color-gray-2)',
-        backgroundColor: 'var(--mantine-color-white)',
+        borderBottom: '1px solid var(--mantine-color-default-border)',
+        backgroundColor: headerColor === '#ffffff' ? 'var(--mantine-color-body)' : headerColor,
         padding: '0 20px',
         display: 'flex',
         alignItems: 'center',
@@ -57,11 +57,16 @@ export function Header() {
         position: 'sticky',
         top: 0,
         zIndex: 100,
+        fontFamily: tipografia,
       }}
     >
       <Group gap="sm">
         {mounted && <Burger size="sm" onClick={toggleSidebar} aria-label="Toggle sidebar" />}
-        <Text fw={700} size="lg" c="blue">{APP_NAME}</Text>
+        {mounted && logoUrl ? (
+          <img src={logoUrl} alt="Logo" style={{ height: logoSize, objectFit: 'contain' }} />
+        ) : (
+          <Text fw={700} size="lg" c={paletaColor}>{APP_NAME}</Text>
+        )}
       </Group>
 
       <Group gap="sm">

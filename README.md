@@ -19,12 +19,6 @@ Sistema de Gestión de Conocimiento Dinámico para entidades públicas. Utiliza 
 
 ### Local (un solo comando)
 
-**Windows:**
-
-```bat
-start-local.bat
-```
-
 **Git Bash / Linux / Mac:**
 
 ```bash

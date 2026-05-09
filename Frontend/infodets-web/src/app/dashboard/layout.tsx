@@ -3,7 +3,7 @@
 import { Box, NavLink, Stack, Text, ThemeIcon, Divider } from '@mantine/core'
 import {
   IconUsers, IconShieldCheck,
-  IconBellRinging, IconBell, IconFiles, IconNews, IconTable,
+  IconNews, IconTable, IconPalette,
 } from '@tabler/icons-react'
 import { motion } from 'framer-motion'
 import { usePathname, useRouter } from 'next/navigation'
@@ -14,13 +14,11 @@ import { useRequireAuth } from '@/hooks/auth/useRequireAuth'
 import { PageLoader } from '@/components/layout/PageLoader'
 
 const ADMIN_MENU = [
-  { label: 'Administrar usuarios', icon: IconUsers, href: '/dashboard/usuarios' },
-  { label: 'Derechos y perfiles', icon: IconShieldCheck, href: '/dashboard/derechos' },
-  { label: 'Panel de notificaciones', icon: IconBellRinging, href: '/dashboard/panel-notificaciones' },
-  { label: 'Notificaciones', icon: IconBell, href: '/dashboard/notificaciones' },
-  { label: 'Administración de documentación', icon: IconFiles, href: '/dashboard/documentacion' },
-  { label: 'Administrador de Noticias', icon: IconNews, href: '/dashboard/noticias' },
-  { label: 'Administrar tablas', icon: IconTable, href: '/dashboard/tablas' },
+  { label: 'Administrar usuarios',    icon: IconUsers,       href: '/dashboard/usuarios' },
+  { label: 'Derechos y perfiles',     icon: IconShieldCheck, href: '/dashboard/derechos' },
+  { label: 'Administrador de Noticias', icon: IconNews,      href: '/dashboard/noticias' },
+  { label: 'Administrar tablas',        icon: IconTable,       href: '/dashboard/tablas' },
+  { label: 'Temas y Visualización',     icon: IconPalette,     href: '/dashboard/temas' },
 ]
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -41,8 +39,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           style={{
             width: 260,
             flexShrink: 0,
-            borderRight: '1px solid var(--mantine-color-gray-2)',
-            backgroundColor: 'var(--mantine-color-white)',
+            borderRight: '1px solid var(--mantine-color-default-border)',
+            backgroundColor: 'var(--mantine-color-body)',
             overflowY: 'auto',
             padding: 12,
           }}
@@ -80,7 +78,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </Stack>
         </Box>
 
-        <Box style={{ flex: 1, overflowY: 'auto', backgroundColor: 'var(--mantine-color-gray-0)' }}>
+        <Box style={{ flex: 1, overflowY: 'auto', backgroundColor: 'var(--mantine-color-default-hover)' }}>
           {children}
         </Box>
       </Box>

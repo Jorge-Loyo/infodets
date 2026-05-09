@@ -142,8 +142,8 @@ export function HistorialPanel() {
   return (
     <Box style={{
       width: 260, flexShrink: 0,
-      borderLeft: '1px solid var(--mantine-color-gray-2)',
-      backgroundColor: 'var(--mantine-color-gray-0)',
+      borderLeft: '1px solid var(--mantine-color-default-border)',
+      backgroundColor: 'var(--mantine-color-body)',
       height: '100%', overflowY: 'auto', padding: 16,
     }}>
       <Group justify="space-between" mb="xs">

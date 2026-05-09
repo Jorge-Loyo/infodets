@@ -83,6 +83,9 @@ def crear_perfil(
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_permiso("gestionar_usuarios")),
 ):
+    existente = db.query(__import__('app.models.models', fromlist=['Perfil']).Perfil).filter_by(nombre=body.nombre).first()
+    if existente:
+        raise HTTPException(status_code=409, detail="Ya existe un perfil con ese nombre")
     perfil = perfil_service.crear_perfil(db, body.nombre, body.descripcion, body.color, body.permisos)
     return _serializar(perfil, db)
 
@@ -99,9 +102,12 @@ def actualizar_perfil(
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_permiso("gestionar_usuarios")),
 ):
-    perfil = perfil_service.actualizar_perfil(db, perfil_id, body.nombre, body.descripcion, body.color, body.permisos)
+    perfil = perfil_service.obtener_perfil(db, perfil_id)
     if not perfil:
         raise HTTPException(status_code=404, detail="Perfil no encontrado")
+    if perfil.nombre == "Super Admin":
+        raise HTTPException(status_code=403, detail="El perfil Super Admin no puede modificarse")
+    perfil = perfil_service.actualizar_perfil(db, perfil_id, body.nombre, body.descripcion, body.color, body.permisos)
     return _serializar(perfil, db)
 
 
@@ -116,6 +122,11 @@ def eliminar_perfil(
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_permiso("gestionar_usuarios")),
 ):
+    perfil = perfil_service.obtener_perfil(db, perfil_id)
+    if not perfil:
+        raise HTTPException(status_code=404, detail="Perfil no encontrado")
+    if perfil.nombre == "Super Admin":
+        raise HTTPException(status_code=403, detail="El perfil Super Admin no puede eliminarse")
     if not perfil_service.eliminar_perfil(db, perfil_id):
         raise HTTPException(status_code=404, detail="Perfil no encontrado")
 

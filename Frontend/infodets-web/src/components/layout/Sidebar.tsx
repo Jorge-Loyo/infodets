@@ -1,7 +1,7 @@
 'use client'
 
 import { Box, NavLink, Stack, Text, Divider, Badge } from '@mantine/core'
-import { IconHome, IconUser, IconFilePlus, IconShieldHalf, IconNews, IconMessageCircle } from '@tabler/icons-react'
+import { IconHome, IconFilePlus, IconShieldHalf, IconNews, IconMessageCircle, IconSettings, IconMessageCog } from '@tabler/icons-react'
 import { AnimatePresence } from 'framer-motion'
 import { usePathname, useRouter } from 'next/navigation'
 import { useSidebar } from '@/hooks/ui/useSidebar'
@@ -10,12 +10,13 @@ import { useUiStore } from '@/store/uiStore'
 import { ROUTES } from '@/lib/constants'
 
 const MENU_ITEMS = [
-  { label: 'Home',               icon: IconHome,          href: ROUTES.CONSULTA,  key: 'consulta' },
-  { label: 'Perfil',             icon: IconUser,          href: '/perfil',        key: 'perfil' },
-  { label: 'Nueva documentación',icon: IconFilePlus,      href: '/documentacion', key: 'documentacion' },
-  { label: 'Mis consultas',      icon: IconMessageCircle, href: '/mis-consultas', key: 'consulta' },
-  { label: 'Administrador',      icon: IconShieldHalf,    href: ROUTES.DASHBOARD, key: 'dashboard' },
-  { label: 'Noticias generales', icon: IconNews,          href: '/noticias',      key: 'noticias' },
+  { label: 'ChatBot',                icon: IconHome,          href: ROUTES.CONSULTA,       key: 'consulta' },
+  { label: 'Nueva documentación',    icon: IconFilePlus,      href: '/documentacion',      key: 'documentacion' },
+  { label: 'Mis consultas',          icon: IconMessageCircle, href: '/mis-consultas',      key: 'mis_consultas' },
+  { label: 'Noticias generales',     icon: IconNews,          href: '/noticias',           key: 'noticias' },
+  { label: 'Configuración de Chat',  icon: IconMessageCog,    href: '/configuracion-chat', key: 'configuracion_chat' },
+  { label: 'Administrador',          icon: IconShieldHalf,    href: ROUTES.DASHBOARD,      key: 'dashboard' },
+  { label: 'Configuración',          icon: IconSettings,      href: '/configuracion',      key: 'configuracion' },
 ]
 
 export function Sidebar() {
@@ -32,15 +33,15 @@ export function Sidebar() {
       {sidebarAbierto && (
         <Box
           style={{
-            borderRight: '1px solid var(--mantine-color-gray-2)',
-            backgroundColor: 'var(--mantine-color-white)',
+            borderRight: '1px solid var(--mantine-color-default-border)',
+            backgroundColor: 'var(--mantine-color-body)',
             height: '100%',
             overflow: 'hidden',
             flexShrink: 0,
             width: 240,
           }}
         >
-          <Stack gap={0} p="sm" style={{ minWidth: 240 }}>
+          <Stack gap={0} p="sm" style={{ minWidth: 240, height: '100%', display: 'flex', flexDirection: 'column' }}>
             <Text size="xs" fw={600} c="dimmed" px="sm" py="xs" tt="uppercase">Menú</Text>
 
             {itemsVisibles.map(item => (

@@ -1,23 +1,46 @@
 'use client'
 
-import { Box, Text, Group } from '@mantine/core'
-import { APP_NAME, APP_DESCRIPTION } from '@/lib/constants'
+import { Box, Text, Group, Divider, Anchor } from '@mantine/core'
+import { APP_NAME } from '@/lib/constants'
+
+const AÑO = new Date().getFullYear()
 
 export function Footer() {
   return (
     <Box
       style={{
-        height: 50,
-        borderTop: '1px solid var(--mantine-color-gray-2)',
-        backgroundColor: 'var(--mantine-color-white)',
-        padding: '0 20px',
-        display: 'flex',
-        alignItems: 'center',
+        borderTop: '1px solid var(--mantine-color-default-border)',
+        backgroundColor: 'var(--mantine-color-body)',
+        padding: '12px 24px',
+        flexShrink: 0,
       }}
     >
-      <Group justify="space-between" w="100%">
-        <Text size="xs" c="dimmed">{APP_NAME} — {APP_DESCRIPTION}</Text>
-        <Text size="xs" c="dimmed">v1.0.0</Text>
+      <Group justify="space-between" wrap="wrap" gap="xs">
+
+        {/* Izquierda — marca */}
+        <Group gap="xs">
+          <Text size="xs" fw={600} c="dimmed">{APP_NAME}</Text>
+          <Text size="xs" c="dimmed">©</Text>
+          <Text size="xs" c="dimmed">{AÑO}</Text>
+          <Divider orientation="vertical" />
+          <Text size="xs" c="dimmed">Sistema de Gestión de Conocimiento Dinámico</Text>
+        </Group>
+
+        {/* Centro — links */}
+        <Group gap="md" visibleFrom="sm">
+          <Anchor href="/noticias" size="xs" c="dimmed" underline="hover">Noticias</Anchor>
+          <Anchor href="/configuracion/soporte" size="xs" c="dimmed" underline="hover">Soporte</Anchor>
+          <Anchor href="/invitado" size="xs" c="dimmed" underline="hover">Consulta pública</Anchor>
+        </Group>
+
+        {/* Derecha — versión */}
+        <Group gap="xs">
+          <Text size="xs" c="dimmed">v1.0.0</Text>
+          <Divider orientation="vertical" />
+          <Text size="xs" c="dimmed">Desarrollado por</Text>
+          <Text size="xs" fw={500} c="dimmed">Umbrella</Text>
+        </Group>
+
       </Group>
     </Box>
   )

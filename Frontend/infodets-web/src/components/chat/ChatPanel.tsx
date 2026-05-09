@@ -228,7 +228,7 @@ export function ChatPanel() {
                   )}
                   <Stack gap={6} style={{ maxWidth: '75%' }}>
                     <Paper p="sm" radius="md" style={{
-                      backgroundColor: msg.rol === 'usuario' ? 'var(--mantine-color-blue-6)' : 'var(--mantine-color-gray-1)',
+                      backgroundColor: msg.rol === 'usuario' ? 'var(--mantine-color-blue-6)' : 'var(--mantine-color-default-hover)',
                       color: msg.rol === 'usuario' ? 'white' : 'inherit',
                     }}>
                       {msg.cargando ? (
@@ -268,7 +268,7 @@ export function ChatPanel() {
         </Box>
       </ScrollArea>
 
-      <Box style={{ borderTop: '1px solid var(--mantine-color-gray-2)', padding: 16, backgroundColor: 'var(--mantine-color-white)' }}>
+      <Box style={{ borderTop: '1px solid var(--mantine-color-default-border)', padding: 16, backgroundColor: 'var(--mantine-color-body)' }}>
         <Group align="flex-end" gap="xs">
           <Textarea
             placeholder="Escribe tu consulta aquí... (Enter para enviar)"
