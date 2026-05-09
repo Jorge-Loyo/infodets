@@ -26,7 +26,7 @@ export interface ChatFinalEvent {
   consulta_id: string
   fuentes: FuenteDocumento[]
   confianza: number
-  tipo_respuesta: 'local' | 'fallback' | 'sin_respuesta'
+  tipo_respuesta: 'local' | 'externo' | 'escalamiento'
 }
 
 // Espejo de ChatErrorEvent (Python)

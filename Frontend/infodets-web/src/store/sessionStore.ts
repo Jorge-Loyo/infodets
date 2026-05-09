@@ -22,9 +22,11 @@ interface SessionStore {
   usuario: Usuario | null
   token: string | null
   permisos: Record<string, boolean>
+  perfilNombre: string
   isReady: boolean
   setSession: (usuario: Usuario, token: string, permisos?: Record<string, boolean>) => void
   setPermisos: (permisos: Record<string, boolean>) => void
+  setPerfilNombre: (nombre: string) => void
   setReady: (ready: boolean) => void
   updatePerfil: (datos: Partial<Usuario>) => void
   clearSession: () => void
@@ -39,21 +41,23 @@ export const useSessionStore = create<SessionStore>()(
       usuario: null,
       token: null,
       permisos: {},
+      perfilNombre: '',
       isReady: false,
       setSession: (usuario, token, permisos = {}) => set({ usuario, token, permisos }),
       setPermisos: (permisos) => set({ permisos }),
+      setPerfilNombre: (nombre) => set({ perfilNombre: nombre }),
       setReady: (ready) => set({ isReady: ready }),
       updatePerfil: (datos) => set((state) => ({
         usuario: state.usuario ? { ...state.usuario, ...datos } : null,
       })),
-      clearSession: () => set({ usuario: null, token: null, permisos: {}, isReady: false }),
+      clearSession: () => set({ usuario: null, token: null, permisos: {}, perfilNombre: '', isReady: false }),
       isAuthenticated: () => !!get().token,
       isAdmin: () => get().usuario?.rol === ROLES.ADMIN,
       tienePermiso: (key: string) => get().permisos[key] !== false,
     }),
     {
       name: 'infodets-session',
-      partialize: (state) => ({ usuario: state.usuario, token: state.token, permisos: state.permisos }),
+      partialize: (state) => ({ usuario: state.usuario, token: state.token, permisos: state.permisos, perfilNombre: state.perfilNombre }),
     }
   )
 )

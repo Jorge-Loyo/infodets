@@ -1,9 +1,36 @@
 from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 from app.schemas.dashboard_schema import DashboardStats, HotTopic
 from app.schemas.common import R_401, R_403
 from app.middleware.auth_middleware import require_permiso
+from app.core.database import get_db
+from app.models.models import (
+    HistorialChat, Conversacion, TicketVacio, MensajeTicket,
+    ValidacionRespuesta, ConsultaInvitado, ReporteFeedback
+)
 
 router = APIRouter(prefix="/admin", tags=["Dashboard"])
+
+
+@router.delete(
+    "/reset-datos",
+    summary="Limpiar todos los datos de prueba",
+    description="Elimina historial de chat, conversaciones, tickets, validaciones, consultas de invitados y feedback.",
+    responses={**R_401, **R_403},
+)
+def reset_datos(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permiso("dashboard")),
+):
+    db.query(MensajeTicket).delete()
+    db.query(TicketVacio).delete()
+    db.query(ValidacionRespuesta).delete()
+    db.query(ConsultaInvitado).delete()
+    db.query(ReporteFeedback).delete()
+    db.query(HistorialChat).delete()
+    db.query(Conversacion).delete()
+    db.commit()
+    return {"ok": True, "mensaje": "Datos de prueba eliminados correctamente"}
 
 
 @router.get(

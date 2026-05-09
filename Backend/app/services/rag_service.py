@@ -13,7 +13,7 @@ GROQ_MODEL = "llama-3.3-70b-versatile"
 API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 
 # Umbrales del Loop de Retroalimentación
-CONFIDENCE_THRESHOLD = 0.70   # < 70% activa fallback escalonado
+CONFIDENCE_THRESHOLD = 0.75   # < 75% activa fallback escalonado
 UMBRAL_NIVEL2 = 0.0           # si nivel 1 también falla, activa búsqueda web
 
 SYSTEM_PROMPT = """Eres un asistente oficial del sistema INFODETS para una entidad pública.
@@ -41,27 +41,54 @@ MENSAJE_ESCALAMIENTO = (
 def buscar_contexto(pregunta: str, limit: int = 5) -> tuple[list[dict], float]:
     logger.info(f"[RAG] Buscando contexto para: {pregunta[:80]}...")
     vector = generate_query_embedding(pregunta)
-    resultados = search(vector, limit=limit)
-    max_score = max((r["score"] for r in resultados), default=0.0)
-    logger.info(f"[RAG] {len(resultados)} chunks — score máximo: {max_score:.3f}")
+    # Buscar más resultados para asegurar que haya docs reales entre los top
+    resultados_raw = search(vector, limit=10)
+    # Separar docs reales (con source_url) de validaciones indexadas
+    docs_reales = [r for r in resultados_raw if r.get("source_url", "")]
+    validaciones = [r for r in resultados_raw if not r.get("source_url", "")]
+    # Priorizar docs reales, completar con validaciones si hacen falta
+    resultados = (docs_reales + validaciones)[:limit]
+    max_score = max((r["score"] for r in (docs_reales or resultados)), default=0.0)
+    logger.info(f"[RAG] {len(resultados_raw)} chunks ({len(docs_reales)} docs reales) — score máximo: {max_score:.3f}")
     return resultados, max_score
 
 
 def construir_contexto(resultados: list[dict]) -> str:
     if not resultados:
         return ""
+    # Excluir validaciones indexadas (sin source_url) del contexto
+    docs = [r for r in resultados if r.get("source_url", "")]
+    if not docs:
+        docs = resultados  # fallback: usar todos si no hay docs con URL
     return "\n\n---\n\n".join(
         f"[Fuente {i+1}: {r.get('source_url', 'N/A')}]\n{r['text']}"
-        for i, r in enumerate(resultados)
+        for i, r in enumerate(docs)
     )
 
 
 # ─── Nivel 1: Búsqueda en URLs oficiales predefinidas ────────────────────────
 
+UMBRAL_RELEVANCIA_NIVEL1 = 0.40  # mínimo 40% de palabras clave de la pregunta deben aparecer en el texto
+STOPWORDS = {'cual', 'como', 'donde', 'quien', 'quién', 'cuál', 'cómo', 'dónde', 'para', 'este', 'esta', 'esto', 'esos', 'esas', 'tiene', 'sabe', 'sabes', 'sobre', 'del', 'los', 'las', 'una', 'uno', 'son', 'hay', 'fue', 'ser', 'sus', 'por', 'con', 'que', 'nombre'}
+
+
+def _es_relevante(pregunta: str, texto: str) -> bool:
+    """Verifica si el texto contiene suficientes palabras clave de la pregunta."""
+    import re
+    palabras = set(re.findall(r'\b\w{3,}\b', pregunta.lower())) - STOPWORDS
+    if not palabras:
+        return True
+    texto_lower = texto.lower()
+    coincidencias = sum(1 for p in palabras if p in texto_lower)
+    ratio = coincidencias / len(palabras)
+    return ratio >= UMBRAL_RELEVANCIA_NIVEL1
+
+
 def buscar_en_urls_oficiales(pregunta: str) -> str:
-    """Extrae texto de las URLs oficiales activas en la DB."""
+    """Extrae texto de las URLs oficiales activas en la DB, filtrando por relevancia."""
     from app.core.database import SessionLocal
     from app.services.url_service import get_urls_activas
+    import re
     db = SessionLocal()
     try:
         urls = get_urls_activas(db)
@@ -73,9 +100,20 @@ def buscar_en_urls_oficiales(pregunta: str) -> str:
     textos = []
     for url in urls:
         try:
-            resp = httpx.get(url, timeout=10, follow_redirects=True)
+            resp = httpx.get(
+                url, timeout=15, follow_redirects=True,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; InfodetsBot/1.0)"}
+            )
             if resp.status_code == 200:
-                textos.append(f"[Fuente oficial: {url}]\n{resp.text[:3000]}")
+                texto = resp.text
+                texto = re.sub(r'<script[^>]*>.*?</script>', '', texto, flags=re.DOTALL)
+                texto = re.sub(r'<style[^>]*>.*?</style>', '', texto, flags=re.DOTALL)
+                texto = re.sub(r'<[^>]+>', ' ', texto)
+                texto = re.sub(r'\s+', ' ', texto).strip()
+                if texto and _es_relevante(pregunta, texto):
+                    textos.append(f"[Fuente oficial: {url}]\n{texto[:5000]}")
+                elif texto:
+                    logger.debug(f"[NIVEL1] URL {url} descartada por baja relevancia")
         except Exception as e:
             logger.warning(f"[NIVEL1] Error al acceder {url}: {e}")
     return "\n\n---\n\n".join(textos)
@@ -109,7 +147,7 @@ def buscar_en_web(pregunta: str) -> str:
 
 # ─── Generación de respuesta ─────────────────────────────────────────────────
 
-def _prompt(pregunta: str, contexto: str, tipo: str) -> str:
+def _prompt(pregunta: str, contexto: str, tipo: str, memoria: dict | None = None, historial: list[dict] | None = None) -> str:
     # Cargar identidad del bot desde DB
     system = SYSTEM_PROMPT
     try:
@@ -165,57 +203,75 @@ Fecha y hora actual: {fecha_hora}{feriados_info}
 EXCEPCIÓN: Para preguntas sobre fecha, hora, día, feriados o calendario, respondé usando los datos de contexto del sistema sin necesidad de documentación oficial."""
     except Exception:
         pass
-    except Exception:
-        pass
+
+    # — Inyección de memoria del usuario —
+    nombre_usuario = (memoria or {}).get("nombre") or ""
+    es_primera = (memoria or {}).get("es_primera_consulta", False)
+    resumen_previo = (memoria or {}).get("resumen") or ""
+    if nombre_usuario:
+        saludo = f"El usuario se llama {nombre_usuario}. {'Es su primera consulta, saludálo por su nombre.' if es_primera else 'Ya ha consultado antes, podés usar su nombre naturalmente.'}"
+        system = f"{system}\n{saludo}"
+    if resumen_previo:
+        system = f"{system}\nConsultas previas del usuario (para contexto):\n{resumen_previo}"
+
+    # — Historial de la conversación activa —
+    historial_texto = ""
+    if historial:
+        entradas = [f"Usuario: {h['pregunta']}\nAsistente: {h['respuesta'][:300]}" for h in historial[-5:]]
+        historial_texto = "\nHISTORIAL DE ESTA CONVERSACIÓN:\n" + "\n---\n".join(entradas) + "\n"
+
     if tipo == "local":
         return f"""{system}
 
 DOCUMENTACIÓN OFICIAL DISPONIBLE:
-{contexto}
-
+{contexto}{historial_texto}
 Pregunta del usuario: {pregunta}
 
 Respondé basándote únicamente en la documentación oficial proporcionada arriba."""
 
     if tipo == "externo":
-        return f"""{system}
+        system_externo = system.replace(
+            "EXCLUSIVAMENTE en la documentación oficial proporcionada",
+            "el contexto provisto"
+        ).replace(
+            "EXCLUSIVAMENTE en la documentación oficial",
+            "el contexto provisto"
+        )
+        return f"""{system_externo}
 
-INFORMACIÓN DE FUENTES EXTERNAS (no documentación oficial de la entidad):
-{contexto}
-
+CONTEXTO ENCONTRADO EN FUENTES EXTERNAS:
+{contexto}{historial_texto}
 Pregunta del usuario: {pregunta}
 
-IMPORTANTE: Esta información proviene de fuentes externas. Indicá claramente que no es documentación oficial de la entidad."""
+INSTRUCCIÓN: Respondé usando el contexto provisto arriba. Si el contexto contiene información relacionada con la pregunta, usála para responder e indicá la fuente. Solo si el contexto no tiene absolutamente ninguna relación con la pregunta, indicá que no tenés información disponible. No uses tu conocimiento general."""
 
     return f"""{system}
 
-ADVERTENCIA: No se encontró documentación oficial sobre este tema.
-La siguiente respuesta proviene de conocimiento general y NO es una fuente oficial verificada.
-
+No se encontró documentación oficial interna sobre este tema.
+Responde con tu conocimiento general si es relevante, o indicá que no tenés información disponible.{historial_texto}
 Pregunta: {pregunta}"""
 
 
-def generar_respuesta_stream(pregunta: str, contexto: str, is_fallback: bool = False):
-    tipo = "fallback" if is_fallback or not contexto else "local"
+def generar_respuesta_stream(pregunta: str, contexto: str, tipo: str = "local", memoria: dict | None = None, historial: list[dict] | None = None):
     try:
         logger.info("[RAG] Intentando con Gemini...")
-        yield from _generar_gemini_stream(pregunta, contexto, tipo)
+        yield from _generar_gemini_stream(pregunta, contexto, tipo, memoria, historial)
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 429:
             logger.warning("[RAG] Gemini rate limit — usando Groq")
-            yield from _generar_groq_stream(pregunta, contexto, tipo)
+            yield from _generar_groq_stream(pregunta, contexto, tipo, memoria, historial)
         else:
             raise
     except Exception as e:
         if "429" in str(e):
             logger.warning("[RAG] Gemini rate limit (exc) — usando Groq")
-            yield from _generar_groq_stream(pregunta, contexto, tipo)
+            yield from _generar_groq_stream(pregunta, contexto, tipo, memoria, historial)
         else:
             raise
 
 
-def _generar_gemini_stream(pregunta: str, contexto: str, tipo: str):
-    prompt = _prompt(pregunta, contexto, tipo)
+def _generar_gemini_stream(pregunta: str, contexto: str, tipo: str, memoria: dict | None = None, historial: list[dict] | None = None):
+    prompt = _prompt(pregunta, contexto, tipo, memoria, historial)
     url = f"{API_BASE}/models/{GEMINI_MODEL}:generateContent"
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
@@ -232,8 +288,8 @@ def _generar_gemini_stream(pregunta: str, contexto: str, tipo: str):
         yield text
 
 
-def _generar_groq_stream(pregunta: str, contexto: str, tipo: str):
-    prompt = _prompt(pregunta, contexto, tipo)
+def _generar_groq_stream(pregunta: str, contexto: str, tipo: str, memoria: dict | None = None, historial: list[dict] | None = None):
+    prompt = _prompt(pregunta, contexto, tipo, memoria, historial)
     client = Groq(api_key=settings.groq_api_key)
     stream = client.chat.completions.create(
         model=GROQ_MODEL,
@@ -274,9 +330,11 @@ def ejecutar_loop_retroalimentacion(pregunta: str, max_score: float, resultados_
 
     # Nivel 2 — Búsqueda web
     contexto_nivel2 = buscar_en_web(pregunta)
-    if contexto_nivel2:
-        logger.info("[LOOP] Nivel 2: contexto encontrado en búsqueda web")
+    if contexto_nivel2 and _es_relevante(pregunta, contexto_nivel2):
+        logger.info("[LOOP] Nivel 2: contexto relevante encontrado en búsqueda web")
         return ResultadoBusqueda(2, contexto_nivel2, "externo")
+    if contexto_nivel2:
+        logger.debug("[LOOP] Nivel 2 descartado por baja relevancia")
 
     # Nivel 3 — Escalamiento humano
     logger.info("[LOOP] Nivel 3: escalamiento humano")
@@ -284,8 +342,7 @@ def ejecutar_loop_retroalimentacion(pregunta: str, max_score: float, resultados_
 
 
 # Mantener compatibilidad con código existente
-def generar_respuesta(pregunta: str, contexto: str, is_fallback: bool = False) -> str:
-    tipo = "fallback" if is_fallback or not contexto else "local"
+def generar_respuesta(pregunta: str, contexto: str, tipo: str = "local") -> str:
     prompt = _prompt(pregunta, contexto, tipo)
     url = f"{API_BASE}/models/{GEMINI_MODEL}:generateContent"
     payload = {

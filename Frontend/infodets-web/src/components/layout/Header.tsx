@@ -14,7 +14,7 @@ import { useUiStore } from '@/store/uiStore'
 export function Header() {
   const { usuario, logout } = useAuth()
   const { toggleSidebar } = useSidebar()
-  const { isAuthenticated } = useSessionStore()
+  const { isAuthenticated, perfilNombre } = useSessionStore()
   const [mounted, setMounted] = useState(false)
   const { noLeidos, setNoLeidos, noticiasNoLeidas, setNoticiasNoLeidas, ultimaVisitaNoticias, headerColor, paletaColor, tipografia, logoUrl, logoSize, colorScheme, temaActivo, setColorScheme, fotoPerfil } = useUiStore()
   const router = useRouter()
@@ -114,7 +114,7 @@ export function Header() {
         {mounted && (
           <Box visibleFrom="sm">
             <Text size="sm" fw={500} lh={1.2}>{usuario?.nombre ?? 'Usuario'}</Text>
-            <Text size="xs" c="dimmed">{usuario?.rol ?? ''}</Text>
+            <Text size="xs" c="dimmed">{perfilNombre || usuario?.rol || ''}</Text>
           </Box>
         )}
         <ActionIcon variant="light" color="red" radius="xl" onClick={logout} title="Cerrar sesión">
