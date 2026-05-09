@@ -2,7 +2,7 @@
 
 import {
   Box, Grid, TextInput, Button, Avatar, Text,
-  Stack, Paper, Group, Badge, Divider, Title, Select,
+  Stack, Paper, Group, Badge, Divider, Title, Select, FileButton, ActionIcon, Tooltip, PasswordInput, Modal,
 } from '@mantine/core'
 import { DatePickerInput } from '@mantine/dates'
 import { useForm } from '@mantine/form'
@@ -10,14 +10,16 @@ import { notifications } from '@mantine/notifications'
 import {
   IconUser, IconDeviceFloppy, IconMail, IconId,
   IconBriefcase, IconBuilding, IconSitemap, IconCalendar,
-  IconEdit, IconX,
+  IconEdit, IconX, IconCamera, IconTrash, IconLock,
 } from '@tabler/icons-react'
 import { motion } from 'framer-motion'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/hooks/auth/useAuth'
 import { useSessionStore } from '@/store/sessionStore'
 import { usuarioService } from '@/services/api/usuarioService'
 import { useTablaOpciones } from '@/hooks/useTablaOpciones'
+import { useUiStore } from '@/store/uiStore'
+import axiosInstance from '@/lib/axiosInstance'
 
 interface PerfilForm {
   nombre: string
@@ -49,9 +51,42 @@ function dateToStr(d: Date | string | null): string {
 export function PerfilPanel() {
   const { usuario } = useAuth()
   const { updatePerfil } = useSessionStore()
+  const { fotoPerfil, setFotoPerfil } = useUiStore()
+  const [mounted, setMounted] = useState(false)
   const [editando, setEditando] = useState(false)
   const [valoresOriginales, setValoresOriginales] = useState<PerfilForm | null>(null)
   const [guardando, setGuardando] = useState(false)
+  const resetRef = useRef<() => void>(null)
+  const [modalPassword, setModalPassword] = useState(false)
+  const [passActual, setPassActual] = useState('')
+  const [passNuevo, setPassNuevo] = useState('')
+  const [passConfirm, setPassConfirm] = useState('')
+  const [guardandoPass, setGuardandoPass] = useState(false)
+
+  const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/
+
+  const cambiarPassword = async () => {
+    if (passNuevo !== passConfirm) {
+      notifications.show({ color: 'red', message: 'Las contraseñas nuevas no coinciden' })
+      return
+    }
+    if (!PASSWORD_REGEX.test(passNuevo)) {
+      notifications.show({ color: 'orange', message: 'La contraseña debe tener 8+ caracteres, mayúscula, minúscula, número y símbolo' })
+      return
+    }
+    setGuardandoPass(true)
+    try {
+      await axiosInstance.post('/usuarios/me/cambiar-password', { password_actual: passActual, password_nuevo: passNuevo })
+      notifications.show({ color: 'green', message: 'Contraseña actualizada correctamente ✅' })
+      setModalPassword(false)
+      setPassActual(''); setPassNuevo(''); setPassConfirm('')
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { detail?: string } } }
+      notifications.show({ color: 'red', message: err?.response?.data?.detail ?? 'No se pudo cambiar la contraseña' })
+    } finally {
+      setGuardandoPass(false)
+    }
+  }
 
   const fromStore = (): PerfilForm => ({
     nombre: usuario?.nombre ?? '',
@@ -68,6 +103,8 @@ export function PerfilPanel() {
   const opcionesInstituciones = useTablaOpciones('instituciones')
   const opcionesCargos = useTablaOpciones('cargos')
   const opcionesDependencias = useTablaOpciones('dependencias')
+
+  useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
     const inicial = fromStore()
@@ -127,11 +164,52 @@ export function PerfilPanel() {
         <Grid.Col span={{ base: 12, md: 4 }}>
           <Paper withBorder p="xl" radius="md" h="100%">
             <Stack align="center" gap="sm">
-              <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.2 }}>
-                <Avatar size={80} radius="xl" color="blue">
-                  <IconUser size={36} />
-                </Avatar>
-              </motion.div>
+              <Box style={{ position: 'relative', display: 'inline-block' }}>
+                <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.2 }}>
+                  <Avatar
+                    size={90} radius="xl" color="blue"
+                    src={mounted && fotoPerfil ? fotoPerfil : undefined}
+                  >
+                    {(!mounted || !fotoPerfil) && <IconUser size={40} />}
+                  </Avatar>
+                </motion.div>
+                <FileButton
+                  resetRef={resetRef}
+                  onChange={(file) => {
+                    if (!file) return
+                    const reader = new FileReader()
+                    reader.onload = (e) => {
+                      setFotoPerfil(e.target?.result as string)
+                      notifications.show({ color: 'green', message: 'Foto actualizada ✅' })
+                    }
+                    reader.readAsDataURL(file)
+                  }}
+                  accept="image/*"
+                >
+                  {(props) => (
+                    <Tooltip label="Cambiar foto" withArrow>
+                      <ActionIcon
+                        {...props}
+                        size="sm" radius="xl" variant="filled" color="blue"
+                        style={{ position: 'absolute', bottom: 0, right: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}
+                      >
+                        <IconCamera size={12} />
+                      </ActionIcon>
+                    </Tooltip>
+                  )}
+                </FileButton>
+                {fotoPerfil && (
+                  <Tooltip label="Quitar foto" withArrow>
+                    <ActionIcon
+                      size="sm" radius="xl" variant="filled" color="red"
+                      style={{ position: 'absolute', top: 0, right: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}
+                      onClick={() => { setFotoPerfil(''); resetRef.current?.() }}
+                    >
+                      <IconTrash size={12} />
+                    </ActionIcon>
+                  </Tooltip>
+                )}
+              </Box>
               <Stack gap={2} align="center">
                 <Text fw={600} size="lg">
                   {form.values.nombre || 'Nombre'} {form.values.apellido || 'Apellido'}
@@ -139,6 +217,13 @@ export function PerfilPanel() {
                 <Text size="sm" c="dimmed">{usuario?.email}</Text>
               </Stack>
               <Badge variant="light" color="blue" radius="sm">{usuario?.rol ?? 'operador'}</Badge>
+              <Button
+                leftSection={<IconLock size={14} />}
+                variant="light" color="orange" radius="md" size="xs" fullWidth
+                onClick={() => setModalPassword(true)}
+              >
+                Cambiar contraseña
+              </Button>
               <Divider w="100%" />
               <Stack gap={6} w="100%">
                 {form.values.cargo && (
@@ -229,6 +314,28 @@ export function PerfilPanel() {
           </Paper>
         </Grid.Col>
       </Grid>
+
+      {/* Modal cambiar contraseña */}
+      <Modal opened={modalPassword} onClose={() => { setModalPassword(false); setPassActual(''); setPassNuevo(''); setPassConfirm('') }} title="Cambiar contraseña" radius="md" size="sm">
+        <Stack gap="md">
+          <PasswordInput label="Contraseña actual" placeholder="Tu contraseña actual" value={passActual} onChange={e => setPassActual(e.currentTarget.value)} radius="md" />
+          <Divider />
+          <PasswordInput label="Nueva contraseña" placeholder="Mín. 8 caracteres" value={passNuevo} onChange={e => setPassNuevo(e.currentTarget.value)} radius="md" />
+          <PasswordInput label="Confirmar nueva contraseña" placeholder="Repetí la nueva contraseña" value={passConfirm} onChange={e => setPassConfirm(e.currentTarget.value)} radius="md" />
+          <Text size="xs" c="dimmed">Debe tener al menos 8 caracteres, mayúscula, minúscula, número y símbolo. Ej: <strong>Infodets2024!</strong></Text>
+          <Group justify="flex-end" gap="sm">
+            <Button variant="subtle" color="gray" onClick={() => setModalPassword(false)}>Cancelar</Button>
+            <Button
+              leftSection={<IconLock size={14} />}
+              loading={guardandoPass}
+              disabled={!passActual || !passNuevo || !passConfirm}
+              onClick={cambiarPassword}
+            >
+              Actualizar contraseña
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Box>
   )
 }

@@ -41,6 +41,7 @@ interface UiStore {
   colorBoton: string
   colorFondo: string
   colorTarjeta: string
+  fotoPerfil: string
   setHeaderColor: (c: string) => void
   setPaletaColor: (c: string) => void
   setTipografia: (t: string) => void
@@ -48,6 +49,9 @@ interface UiStore {
   setLogoSize: (s: number) => void
   setColorScheme: (s: 'light' | 'dark') => void
   setColoresPersonalizados: (c: { colorSidebar?: string, colorTexto?: string, colorBoton?: string, colorFondo?: string, colorTarjeta?: string }) => void
+  setFotoPerfil: (url: string) => void
+  temaActivo: string
+  setTemaActivo: (t: string) => void
 }
 
 export const useUiStore = create<UiStore>()(
@@ -80,6 +84,7 @@ export const useUiStore = create<UiStore>()(
       colorBoton: '',
       colorFondo: '',
       colorTarjeta: '',
+      fotoPerfil: '',
       setHeaderColor: (c) => set({ headerColor: c }),
       setPaletaColor: (c) => set({ paletaColor: c }),
       setTipografia: (t) => set({ tipografia: t }),
@@ -87,6 +92,9 @@ export const useUiStore = create<UiStore>()(
       setLogoSize: (s) => set({ logoSize: s }),
       setColorScheme: (s) => set({ colorScheme: s }),
       setColoresPersonalizados: (c) => set(c),
+      setFotoPerfil: (url) => set({ fotoPerfil: url }),
+      temaActivo: 'Estándar',
+      setTemaActivo: (t) => set({ temaActivo: t }),
     }),
     {
       name: 'infodets-ui',
@@ -103,6 +111,8 @@ export const useUiStore = create<UiStore>()(
         colorBoton: state.colorBoton,
         colorFondo: state.colorFondo,
         colorTarjeta: state.colorTarjeta,
+        temaActivo: state.temaActivo,
+        fotoPerfil: state.fotoPerfil,
       }),
     }
   )

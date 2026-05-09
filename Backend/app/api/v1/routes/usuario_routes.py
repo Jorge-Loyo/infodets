@@ -40,6 +40,11 @@ class DefaultPasswordUpdate(BaseModel):
     password: str
 
 
+class CambiarPasswordRequest(BaseModel):
+    password_actual: str
+    password_nuevo: str
+
+
 # ── Perfil propio ─────────────────────────────────────────────────────────────
 
 @router.get(
@@ -220,6 +225,57 @@ def eliminar_usuario(
 ):
     if not usuario_service.eliminar_usuario(db, usuario_id):
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+
+@router.post(
+    "/me/cambiar-password",
+    response_model=MensajeOk,
+    status_code=200,
+    summary="Cambiar mi contraseña",
+    responses={**R_400, **R_401, **R_500},
+)
+def cambiar_mi_password(
+    body: CambiarPasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    usuario_id = current_user.get("_usuario_id")
+    usuario = usuario_service.obtener_usuario_por_id(db, usuario_id)
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if not usuario.cognito_sub or usuario.cognito_sub.startswith("pending_"):
+        raise HTTPException(status_code=400, detail="El usuario aún no activó su cuenta")
+    nueva = body.password_nuevo.strip()
+    if len(nueva) < 8 or not re.search(r"[A-Z]", nueva) or not re.search(r"[a-z]", nueva) or not re.search(r"\d", nueva) or not re.search(r"[^\w]", nueva):
+        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 8 caracteres, mayúscula, minúscula, número y símbolo")
+    try:
+        import hmac, hashlib, base64
+        def get_secret_hash(username: str) -> str:
+            msg = username + settings.cognito_client_id
+            dig = hmac.new(settings.cognito_client_secret.encode('utf-8'), msg=msg.encode('utf-8'), digestmod=hashlib.sha256).digest()
+            return base64.b64encode(dig).decode()
+        cognito = _get_cognito_client()
+        auth = cognito.initiate_auth(
+            AuthFlow="USER_PASSWORD_AUTH",
+            AuthParameters={
+                "USERNAME": usuario.email,
+                "PASSWORD": body.password_actual,
+                "SECRET_HASH": get_secret_hash(usuario.email),
+            },
+            ClientId=settings.cognito_client_id,
+        )
+        access_token = auth["AuthenticationResult"]["AccessToken"]
+        cognito.change_password(
+            PreviousPassword=body.password_actual,
+            ProposedPassword=nueva,
+            AccessToken=access_token,
+        )
+        return {"ok": True, "mensaje": "Contraseña actualizada correctamente"}
+    except cognito.exceptions.NotAuthorizedException:
+        raise HTTPException(status_code=400, detail="La contraseña actual es incorrecta")
+    except Exception as e:
+        logger.error(f"[CAMBIO_PASSWORD] Error: {e}")
+        raise HTTPException(status_code=500, detail="No se pudo cambiar la contraseña")
 
 
 # ── Gestión de contraseñas ────────────────────────────────────────────────────

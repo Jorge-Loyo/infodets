@@ -33,7 +33,7 @@ const PALETAS = [
 ]
 
 const TEMAS_PREDEFINIDOS = [
-  { label: 'Claro',         headerColor: '#ffffff', paletaColor: 'blue',   tipografia: 'Plus Jakarta Sans', colorScheme: 'light' as const, esPersonalizado: false },
+  { label: 'Estándar',       headerColor: '#ffffff', paletaColor: 'blue',   tipografia: 'Plus Jakarta Sans', colorScheme: 'light' as const, esPersonalizado: false },
   { label: 'Moderno',       headerColor: '#5c2d91', paletaColor: 'violet', tipografia: 'Inter, sans-serif',  colorScheme: 'dark'  as const, esPersonalizado: false },
   { label: 'Personalizado', headerColor: null,      paletaColor: null,     tipografia: null,                 colorScheme: null,             esPersonalizado: true  },
 ]
@@ -51,7 +51,7 @@ export default function TemasPage() {
     headerColor, paletaColor, tipografia, logoUrl, logoSize, colorScheme,
     colorSidebar, colorTexto, colorBoton, colorFondo, colorTarjeta,
     setHeaderColor, setPaletaColor, setTipografia, setLogoUrl, setLogoSize,
-    setColorScheme, setColoresPersonalizados,
+    setColorScheme, setColoresPersonalizados, setTemaActivo,
   } = useUiStore()
 
   const [localHeader, setLocalHeader]         = useState(headerColor)
@@ -61,10 +61,10 @@ export default function TemasPage() {
   const [localLogoSize, setLocalLogoSize]     = useState(logoSize)
   const [localColorScheme, setLocalColorScheme] = useState(colorScheme)
   const [archivoLogo, setArchivoLogo]         = useState<File | null>(null)
-  const [temaActivo, setTemaActivo]           = useState<string | null>(null)
+  const [temaActivoLocal, setTemaActivoLocal] = useState<string | null>(null)
   const [localColores, setLocalColores]       = useState({ colorFondo, colorSidebar, colorTarjeta, colorTexto, colorBoton })
 
-  const esPersonalizado = temaActivo === 'Personalizado'
+  const esPersonalizado = temaActivoLocal === 'Personalizado'
   const haycambios = localHeader !== headerColor || localPaleta !== paletaColor || localTipo !== tipografia || localLogo !== logoUrl || localLogoSize !== logoSize || localColorScheme !== colorScheme
 
   const aplicarTema = () => {
@@ -75,18 +75,19 @@ export default function TemasPage() {
     setLogoSize(localLogoSize)
     setColorScheme(localColorScheme)
     if (esPersonalizado) setColoresPersonalizados(localColores)
+    setTemaActivo(temaActivoLocal ?? 'Claro')
     notifications.show({ color: 'green', message: 'Tema aplicado correctamente ✅' })
   }
 
   const resetear = () => {
     setLocalHeader('#ffffff'); setLocalPaleta('blue'); setLocalTipo('Plus Jakarta Sans')
     setLocalLogo(''); setLocalLogoSize(32); setLocalColorScheme('light')
-    setArchivoLogo(null); setTemaActivo('Claro')
+    setArchivoLogo(null); setTemaActivoLocal('Estándar')
     setLocalColores({ colorFondo: '', colorSidebar: '', colorTarjeta: '', colorTexto: '', colorBoton: '' })
   }
 
   const seleccionarTema = (tema: typeof TEMAS_PREDEFINIDOS[0]) => {
-    setTemaActivo(tema.label)
+    setTemaActivoLocal(tema.label)
     if (tema.esPersonalizado) return
     setLocalHeader(tema.headerColor!)
     setLocalPaleta(tema.paletaColor!)
@@ -211,7 +212,7 @@ export default function TemasPage() {
                 <motion.div key={tema.label} whileHover={{ y: -3 }} style={{ flex: 1, minWidth: 100, maxWidth: 160 }}>
                   <Paper
                     withBorder radius="md" p="md"
-                    style={{ cursor: 'pointer', textAlign: 'center', outline: temaActivo === tema.label ? '2px solid var(--mantine-color-blue-6)' : 'none', outlineOffset: 3 }}
+                    style={{ cursor: 'pointer', textAlign: 'center', outline: temaActivoLocal === tema.label ? '2px solid var(--mantine-color-blue-6)' : 'none', outlineOffset: 3 }}
                     onClick={() => seleccionarTema(tema)}
                   >
                     {tema.esPersonalizado ? (
@@ -222,7 +223,7 @@ export default function TemasPage() {
                       <Box style={{ height: 40, borderRadius: 8, backgroundColor: tema.headerColor!, border: '1px solid var(--mantine-color-default-border)', marginBottom: 10 }} />
                     )}
                     <Text size="sm" fw={600}>{tema.label}</Text>
-                    {temaActivo === tema.label && <Badge size="xs" color="blue" mt={4}>Activo</Badge>}
+                    {temaActivoLocal === tema.label && <Badge size="xs" color="blue" mt={4}>Activo</Badge>}
                   </Paper>
                 </motion.div>
               ))}
