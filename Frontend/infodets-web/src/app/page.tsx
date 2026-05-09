@@ -13,7 +13,7 @@ const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]
 
 export default function Home() {
   const router = useRouter()
-  const { setSession } = useSessionStore()
+  const { setSession, setPerfilNombre } = useSessionStore()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -38,6 +38,16 @@ export default function Home() {
         permisos = resPermisos.data
       } catch {}
       setSession(data.usuario, data.access_token, permisos)
+      // Cargar nombre del perfil
+      try {
+        if (data.usuario.perfil_id) {
+          const resPerfiles = await axiosInstance.get('/perfiles', {
+            headers: { Authorization: `Bearer ${data.access_token}` },
+          })
+          const perfil = resPerfiles.data.find((p: { id: string; nombre: string }) => p.id === data.usuario.perfil_id)
+          if (perfil) setPerfilNombre(perfil.nombre)
+        }
+      } catch {}
       router.replace(permisos['consulta'] ? ROUTES.CONSULTA : '/noticias')
     } catch (err: unknown) {
       const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } }

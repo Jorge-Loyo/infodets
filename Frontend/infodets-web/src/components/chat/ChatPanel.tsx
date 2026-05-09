@@ -5,15 +5,12 @@ import {
   Group, ThemeIcon, ScrollArea, Avatar, Loader,
   Badge, Anchor,
 } from '@mantine/core'
-import { IconSend, IconRobot, IconUser, IconExternalLink, IconThumbUp, IconThumbDown } from '@tabler/icons-react'
+import { IconSend, IconRobot, IconUser, IconExternalLink } from '@tabler/icons-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useRef, useEffect } from 'react'
-import { notifications } from '@mantine/notifications'
 import { useSessionStore } from '@/store/sessionStore'
 import { useUiStore } from '@/store/uiStore'
 import type { FuenteDocumento } from '@/types/consulta.types'
-import { feedbackService } from '@/services/api/feedbackService'
-import type { FeedbackTipo } from '@/types/feedback.types'
 
 interface Mensaje {
   id: string
@@ -22,8 +19,8 @@ interface Mensaje {
   fuentes?: FuenteDocumento[]
   confianza?: number
   tipo_respuesta?: string
+  nivel?: number
   cargando?: boolean
-  historialId?: string
 }
 
 const SUGERENCIAS = [
@@ -76,7 +73,6 @@ export function ChatPanel() {
   const [mensajes, setMensajes] = useState<Mensaje[]>([])
   const [enviando, setEnviando] = useState(false)
   const [conversacionId, setConversacionId] = useState<string | null>(null)
-  const [feedbackEnviado, setFeedbackEnviado] = useState<Set<string>>(new Set())
   const [botConfig, setBotConfig] = useState<BotConfig>({ nombre: 'Infobot', imagen_url: '' })
   const scrollRef = useRef<HTMLDivElement>(null)
   const { usuario, token } = useSessionStore()
@@ -169,7 +165,7 @@ export function ChatPanel() {
             } else if (evento.tipo === 'final') {
               setMensajes((prev) => prev.map((m) =>
                 m.id === msgAsistente.id
-                  ? { ...m, fuentes: evento.fuentes, confianza: evento.confianza, tipo_respuesta: evento.tipo_respuesta, cargando: false, historialId: evento.historial_id }
+                  ? { ...m, fuentes: evento.fuentes, confianza: evento.confianza, tipo_respuesta: evento.tipo_respuesta, nivel: evento.nivel, cargando: false }
                   : m
               ))
             } else if (evento.tipo === 'error') {
@@ -192,29 +188,6 @@ export function ChatPanel() {
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(pregunta) }
-  }
-
-  const enviarFeedback = async (mensajeId: string | undefined, tipo: FeedbackTipo) => {
-    if (!mensajeId || feedbackEnviado.has(mensajeId)) return
-    try {
-      await feedbackService.enviar({
-        consulta_id: mensajeId,
-        usuario_id: usuario?.rdsId ?? usuario?.id ?? '',
-        tipo,
-      })
-      setFeedbackEnviado((prev) => new Set(prev).add(mensajeId))
-      notifications.show({
-        title: 'Feedback enviado',
-        message: `Gracias por tu ${tipo === 'correcto' ? 'feedback positivo' : 'reporte negativo'}.`,
-        color: 'green',
-      })
-    } catch (error) {
-      notifications.show({
-        title: 'Error',
-        message: 'No se pudo enviar el feedback.',
-        color: 'red',
-      })
-    }
   }
 
   return (
@@ -276,48 +249,54 @@ export function ChatPanel() {
                       ) : (
                         <>
                           <Text size="sm" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{msg.texto}</Text>
-                          {msg.tipo_respuesta === 'externo' && (
+                          {msg.tipo_respuesta === 'externo' && msg.nivel === 2 && (
                             <Text size="xs" c="dimmed" mt={8} style={{ borderTop: '1px solid var(--mantine-color-default-border)', paddingTop: 6, lineHeight: 1.4 }}>
-                              ⚠️ He encontrado esta información en fuentes externas (no oficiales de esta oficina aún). Esta respuesta no representa documentación oficial verificada de la entidad.
+                              ⚠️ Esta información proviene de una búsqueda web y no representa documentación oficial verificada de la entidad.
+                            </Text>
+                          )}
+                          {msg.tipo_respuesta === 'externo' && msg.nivel === 1 && (
+                            <Text size="xs" c="dimmed" mt={8} style={{ borderTop: '1px solid var(--mantine-color-default-border)', paddingTop: 6, lineHeight: 1.4 }}>
+                              ℹ️ Esta información proviene de una fuente oficial externa. Considerá agregar documentación interna sobre este tema.
                             </Text>
                           )}
                         </>
                       )}
                     </Paper>
-                    {!msg.cargando && msg.rol === 'asistente' && (
-                      <Group gap="xs" mt={4}>
-                        <ActionIcon size="sm" variant="subtle" color="green"
-                          onClick={() => enviarFeedback(msg.historialId, 'correcto')}
-                          disabled={!msg.historialId || feedbackEnviado.has(msg.historialId)}
-                        >
-                          <IconThumbUp size={14} />
-                        </ActionIcon>
-                        <ActionIcon size="sm" variant="subtle" color="red"
-                          onClick={() => enviarFeedback(msg.historialId, 'incorrecto')}
-                          disabled={!msg.historialId || feedbackEnviado.has(msg.historialId)}
-                        >
-                          <IconThumbDown size={14} />
-                        </ActionIcon>
-                      </Group>
-                    )}
-                    {msg.fuentes && msg.fuentes.length > 0 && (
+                    {!msg.cargando && (msg.fuentes !== undefined || msg.confianza !== undefined) && (
                       <Stack gap={4}>
                         <Group gap="xs">
-                          <Text size="xs" c="dimmed" fw={600}>Fuentes:</Text>
                           {msg.confianza !== undefined && (
-                            <Badge size="xs" variant="light" color={msg.confianza >= 0.7 ? 'green' : 'orange'}>
+                            <Badge size="xs" variant="light"
+                              color={msg.confianza >= 0.75 ? 'green' : msg.confianza >= 0.4 ? 'orange' : 'red'}>
                               {Math.round(msg.confianza * 100)}% confianza
                             </Badge>
                           )}
+                          {msg.tipo_respuesta === 'local' && <Badge size="xs" variant="dot" color="green">Documentación oficial</Badge>}
+                          {msg.tipo_respuesta === 'externo' && <Badge size="xs" variant="dot" color="orange">Fuente externa</Badge>}
+                          {msg.tipo_respuesta === 'escalamiento' && <Badge size="xs" variant="dot" color="red">Escalado</Badge>}
                         </Group>
-                        {msg.fuentes.map((f, i) => (
-                          <Group key={i} gap={4}>
-                            <IconExternalLink size={12} opacity={0.5} />
-                            <Anchor href={f.url ? (f.url.startsWith('http') ? f.url : `http://localhost:8000${f.url}`) : '#'} target="_blank" size="xs" c="blue">
-                              {f.nombre}{f.pagina ? ` (p. ${f.pagina})` : ''}
-                            </Anchor>
-                          </Group>
-                        ))}
+                        {msg.fuentes && msg.fuentes.length > 0 && (
+                          <Stack gap={2}>
+                            <Text size="xs" c="dimmed" fw={600}>Fuentes:</Text>
+                            {msg.fuentes.map((f, i) => (
+                              <Group key={i} gap={4}>
+                                <IconExternalLink size={12} opacity={0.5} />
+                                {f.url?.startsWith('/v1/') ? (
+                                  <Anchor
+                                    href={`${process.env.NEXT_PUBLIC_DOCS_URL ?? 'http://localhost:8000'}${f.url}`}
+                                    target="_blank" size="xs" c="blue"
+                                  >
+                                    {f.nombre}{f.pagina ? ` (p. ${f.pagina})` : ''} — Ver documento 📄
+                                  </Anchor>
+                                ) : (
+                                  <Anchor href={f.url ?? '#'} target="_blank" size="xs" c="blue">
+                                    {f.url}
+                                  </Anchor>
+                                )}
+                              </Group>
+                            ))}
+                          </Stack>
+                        )}
                       </Stack>
                     )}
                   </Stack>
