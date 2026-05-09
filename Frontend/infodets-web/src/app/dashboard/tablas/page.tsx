@@ -210,7 +210,8 @@ export default function AdminTablasPage() {
 
                 <Divider />
 
-                <Table highlightOnHover verticalSpacing="sm">
+                <Box style={{ overflowX: 'auto' }}>
+                <Table highlightOnHover verticalSpacing="sm" style={{ minWidth: 400 }}>
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>#</Table.Th>
@@ -245,6 +246,7 @@ export default function AdminTablasPage() {
                     </AnimatePresence>
                   </Table.Tbody>
                 </Table>
+                </Box>
 
                 {!cargando && itemsFiltrados.length === 0 && (
                   <Stack align="center" py="xl" gap="xs">

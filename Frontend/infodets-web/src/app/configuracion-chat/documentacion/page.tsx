@@ -235,7 +235,8 @@ export default function DocumentacionPage() {
                   </Group>
                   <TextInput placeholder="Buscar documento..." leftSection={<IconSearch size={16} />} value={busqueda} onChange={e => setBusqueda(e.currentTarget.value)} radius="md" />
                   <Divider />
-                  <Table highlightOnHover verticalSpacing="sm">
+                  <Box style={{ overflowX: 'auto' }}>
+                  <Table highlightOnHover verticalSpacing="sm" style={{ minWidth: 500 }}>
                     <Table.Thead>
                       <Table.Tr>
                         <Table.Th>Título</Table.Th>
@@ -257,6 +258,7 @@ export default function DocumentacionPage() {
                       ))}
                     </Table.Tbody>
                   </Table>
+                  </Box>
                   {!cargando && filtrados.length === 0 && (
                     <Stack align="center" py="xl" gap="xs">
                       <ThemeIcon size={40} variant="light" color="gray" radius="xl"><IconSearch size={20} /></ThemeIcon>

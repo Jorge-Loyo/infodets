@@ -72,7 +72,7 @@ export default function LogUsuariosPage() {
   )
 
   return (
-    <Box p={32}>
+    <Box p={{ base: 16, sm: 32 }}>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
 
         <Group justify="space-between" mb="xs">
@@ -132,7 +132,8 @@ export default function LogUsuariosPage() {
           )}
 
           {filtrados.length > 0 && (
-            <Table highlightOnHover verticalSpacing="sm" striped>
+            <Box style={{ overflowX: 'auto' }}>
+            <Table highlightOnHover verticalSpacing="sm" striped style={{ minWidth: 600 }}>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>Fecha y hora</Table.Th>
@@ -181,6 +182,7 @@ export default function LogUsuariosPage() {
                 })}
               </Table.Tbody>
             </Table>
+            </Box>
           )}
         </Paper>
       </motion.div>

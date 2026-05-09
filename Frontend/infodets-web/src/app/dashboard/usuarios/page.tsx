@@ -202,7 +202,7 @@ export default function UsuariosPage() {
 
         {/* Contraseña por defecto */}
         <Paper withBorder radius="md" p="md" mb="md" bg="blue.0">
-          <Group justify="space-between" align="flex-end">
+          <Group justify="space-between" align="flex-end" wrap="wrap" gap="sm">
             <Stack gap={4}>
               <Group gap="xs">
                 <ThemeIcon size="sm" variant="light" color="blue"><IconKey size={14} /></ThemeIcon>
@@ -219,15 +219,16 @@ export default function UsuariosPage() {
 
         <Paper withBorder radius="md" p="xl" pos="relative">
           <LoadingOverlay visible={cargando} />
-          <Group justify="space-between" mb="md">
-            <TextInput placeholder="Buscar por nombre, apellido o email..." leftSection={<IconSearch size={16} />} value={busqueda} onChange={e => setBusqueda(e.currentTarget.value)} radius="md" w={320} />
+          <Group justify="space-between" mb="md" wrap="wrap" gap="sm">
+            <TextInput placeholder="Buscar por nombre, apellido o email..." leftSection={<IconSearch size={16} />} value={busqueda} onChange={e => setBusqueda(e.currentTarget.value)} radius="md" style={{ flex: 1, minWidth: 200 }} />
             <Group gap="sm">
               <Button leftSection={<IconRefresh size={16} />} variant="light" radius="md" onClick={cargar}>Actualizar</Button>
               <Button leftSection={<IconPlus size={16} />} radius="md" onClick={() => { setNuevoUsuario(NUEVO_VACIO); setModalNuevo(true) }}>Nuevo usuario</Button>
             </Group>
           </Group>
 
-          <Table highlightOnHover verticalSpacing="sm">
+          <Box style={{ overflowX: 'auto' }}>
+          <Table highlightOnHover verticalSpacing="sm" style={{ minWidth: 700 }}>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Usuario</Table.Th>
@@ -282,6 +283,7 @@ export default function UsuariosPage() {
               })}
             </Table.Tbody>
           </Table>
+          </Box>
 
           {!cargando && filtrados.length === 0 && (
             <Stack align="center" py="xl">
@@ -298,15 +300,15 @@ export default function UsuariosPage() {
           <TextInput label="Email" placeholder="correo@institución.gob" leftSection={<IconMail size={16} />} value={nuevoUsuario.email} onChange={setNuevo('email')} radius="md" required />
           <Divider label="Datos personales" labelPosition="left" />
           <Grid>
-            <Grid.Col span={6}><TextInput label="Nombre" leftSection={<IconUser size={16} />} value={nuevoUsuario.nombre} onChange={setNuevo('nombre')} radius="md" /></Grid.Col>
-            <Grid.Col span={6}><TextInput label="Apellido" leftSection={<IconUser size={16} />} value={nuevoUsuario.apellido} onChange={setNuevo('apellido')} radius="md" /></Grid.Col>
-            <Grid.Col span={6}><TextInput label="DNI" leftSection={<IconId size={16} />} value={nuevoUsuario.dni} onChange={setNuevo('dni')} radius="md" /></Grid.Col>
-            <Grid.Col span={6}><TextInput label="Fecha de nacimiento" placeholder="DD/MM/AAAA" leftSection={<IconCalendar size={16} />} value={nuevoUsuario.fecha_nacimiento} onChange={setNuevo('fecha_nacimiento')} radius="md" /></Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 6 }}><TextInput label="Nombre" leftSection={<IconUser size={16} />} value={nuevoUsuario.nombre} onChange={setNuevo('nombre')} radius="md" /></Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 6 }}><TextInput label="Apellido" leftSection={<IconUser size={16} />} value={nuevoUsuario.apellido} onChange={setNuevo('apellido')} radius="md" /></Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 6 }}><TextInput label="DNI" leftSection={<IconId size={16} />} value={nuevoUsuario.dni} onChange={setNuevo('dni')} radius="md" /></Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 6 }}><TextInput label="Fecha de nacimiento" placeholder="DD/MM/AAAA" leftSection={<IconCalendar size={16} />} value={nuevoUsuario.fecha_nacimiento} onChange={setNuevo('fecha_nacimiento')} radius="md" /></Grid.Col>
           </Grid>
           <Divider label="Datos institucionales" labelPosition="left" />
           <Grid>
-            <Grid.Col span={6}><Select label="Cargo" leftSection={<IconBriefcase size={16} />} data={opcionesCargos} value={nuevoUsuario.cargo} onChange={v => setNuevoUsuario(d => ({ ...d, cargo: v ?? '' }))} radius="md" clearable /></Grid.Col>
-            <Grid.Col span={6}><Select label="Institución" leftSection={<IconBuilding size={16} />} data={opcionesInstituciones} value={nuevoUsuario.institucion} onChange={v => setNuevoUsuario(d => ({ ...d, institucion: v ?? '' }))} radius="md" clearable /></Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 6 }}><Select label="Cargo" leftSection={<IconBriefcase size={16} />} data={opcionesCargos} value={nuevoUsuario.cargo} onChange={v => setNuevoUsuario(d => ({ ...d, cargo: v ?? '' }))} radius="md" clearable /></Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 6 }}><Select label="Institución" leftSection={<IconBuilding size={16} />} data={opcionesInstituciones} value={nuevoUsuario.institucion} onChange={v => setNuevoUsuario(d => ({ ...d, institucion: v ?? '' }))} radius="md" clearable /></Grid.Col>
             <Grid.Col span={12}><Select label="Dependencia" leftSection={<IconSitemap size={16} />} data={opcionesDependencias} value={nuevoUsuario.dependencia} onChange={v => setNuevoUsuario(d => ({ ...d, dependencia: v ?? '' }))} radius="md" clearable /></Grid.Col>
           </Grid>
           <Divider label="Acceso" labelPosition="left" />
@@ -335,15 +337,15 @@ export default function UsuariosPage() {
           <TextInput label="Email" leftSection={<IconMail size={16} />} value={datosEdicion.email ?? ''} onChange={setEdit('email')} radius="md" />
           <Divider label="Datos personales" labelPosition="left" />
           <Grid>
-            <Grid.Col span={6}><TextInput label="Nombre" leftSection={<IconUser size={16} />} value={datosEdicion.nombre ?? ''} onChange={setEdit('nombre')} radius="md" /></Grid.Col>
-            <Grid.Col span={6}><TextInput label="Apellido" leftSection={<IconUser size={16} />} value={datosEdicion.apellido ?? ''} onChange={setEdit('apellido')} radius="md" /></Grid.Col>
-            <Grid.Col span={6}><TextInput label="DNI" leftSection={<IconId size={16} />} value={datosEdicion.dni ?? ''} onChange={setEdit('dni')} radius="md" /></Grid.Col>
-            <Grid.Col span={6}><TextInput label="Fecha de nacimiento" leftSection={<IconCalendar size={16} />} value={datosEdicion.fecha_nacimiento ?? ''} onChange={setEdit('fecha_nacimiento')} radius="md" /></Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 6 }}><TextInput label="Nombre" leftSection={<IconUser size={16} />} value={datosEdicion.nombre ?? ''} onChange={setEdit('nombre')} radius="md" /></Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 6 }}><TextInput label="Apellido" leftSection={<IconUser size={16} />} value={datosEdicion.apellido ?? ''} onChange={setEdit('apellido')} radius="md" /></Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 6 }}><TextInput label="DNI" leftSection={<IconId size={16} />} value={datosEdicion.dni ?? ''} onChange={setEdit('dni')} radius="md" /></Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 6 }}><TextInput label="Fecha de nacimiento" leftSection={<IconCalendar size={16} />} value={datosEdicion.fecha_nacimiento ?? ''} onChange={setEdit('fecha_nacimiento')} radius="md" /></Grid.Col>
           </Grid>
           <Divider label="Datos institucionales" labelPosition="left" />
           <Grid>
-            <Grid.Col span={6}><Select label="Cargo" leftSection={<IconBriefcase size={16} />} data={opcionesCargos} value={datosEdicion.cargo ?? ''} onChange={v => setDatosEdicion(d => ({ ...d, cargo: v ?? '' }))} radius="md" /></Grid.Col>
-            <Grid.Col span={6}><Select label="Institución" leftSection={<IconBuilding size={16} />} data={opcionesInstituciones} value={datosEdicion.institucion ?? ''} onChange={v => setDatosEdicion(d => ({ ...d, institucion: v ?? '' }))} radius="md" /></Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 6 }}><Select label="Cargo" leftSection={<IconBriefcase size={16} />} data={opcionesCargos} value={datosEdicion.cargo ?? ''} onChange={v => setDatosEdicion(d => ({ ...d, cargo: v ?? '' }))} radius="md" /></Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 6 }}><Select label="Institución" leftSection={<IconBuilding size={16} />} data={opcionesInstituciones} value={datosEdicion.institucion ?? ''} onChange={v => setDatosEdicion(d => ({ ...d, institucion: v ?? '' }))} radius="md" /></Grid.Col>
             <Grid.Col span={12}><Select label="Dependencia" leftSection={<IconSitemap size={16} />} data={opcionesDependencias} value={datosEdicion.dependencia ?? ''} onChange={v => setDatosEdicion(d => ({ ...d, dependencia: v ?? '' }))} radius="md" /></Grid.Col>
           </Grid>
           <Divider label="Acceso" labelPosition="left" />
