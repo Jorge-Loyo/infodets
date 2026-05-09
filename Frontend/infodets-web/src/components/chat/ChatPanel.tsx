@@ -65,14 +65,24 @@ function RobotAnimado() {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/v1'
 
+interface BotConfig { nombre: string, imagen_url: string }
+
 export function ChatPanel() {
   const [pregunta, setPregunta] = useState('')
   const [mensajes, setMensajes] = useState<Mensaje[]>([])
   const [enviando, setEnviando] = useState(false)
   const [conversacionId, setConversacionId] = useState<string | null>(null)
+  const [botConfig, setBotConfig] = useState<BotConfig>({ nombre: 'Infobot', imagen_url: '' })
   const scrollRef = useRef<HTMLDivElement>(null)
   const { usuario, token } = useSessionStore()
   const { incrementarConsultas, conversacionCargada, limpiarConversacion } = useUiStore()
+
+  useEffect(() => {
+    fetch(`${API_URL}/bot`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => setBotConfig({ nombre: d.nombre || 'Infobot', imagen_url: d.imagen_url || '' }))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -194,7 +204,7 @@ export function ChatPanel() {
                   <Text fw={700} size="xl" ta="center">
                     Hola, soy{' '}
                     <Text component="span" fw={700} size="xl" variant="gradient" gradient={{ from: 'blue', to: 'cyan' }}>
-                      Infobot
+                      {botConfig.nombre}
                     </Text>
                     {' '}🤖
                   </Text>
@@ -224,7 +234,9 @@ export function ChatPanel() {
               <motion.div key={msg.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} style={{ marginBottom: 16 }}>
                 <Group align="flex-start" gap="sm" justify={msg.rol === 'usuario' ? 'flex-end' : 'flex-start'}>
                   {msg.rol === 'asistente' && (
-                    <Avatar size="sm" radius="xl" color="blue" variant="filled"><IconRobot size={14} /></Avatar>
+                    <Avatar size="sm" radius="xl" color="blue" variant="filled" src={botConfig.imagen_url || undefined}>
+                      {!botConfig.imagen_url && <IconRobot size={14} />}
+                    </Avatar>
                   )}
                   <Stack gap={6} style={{ maxWidth: '75%' }}>
                     <Paper p="sm" radius="md" style={{

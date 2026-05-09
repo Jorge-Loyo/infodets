@@ -14,6 +14,7 @@ from app.services import usuario_service, perfil_service as ps
 from app.models.models import RolEnum
 from app.middleware.auth_middleware import require_permiso, get_current_user
 from pydantic import BaseModel, EmailStr
+from app.services import audit_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
@@ -158,6 +159,13 @@ async def invitar_usuario(
         except Exception as e:
             logger.warning(f"[INVITAR] n8n no disponible, email no enviado: {e}")
 
+        audit_service.registrar(
+            db, accion="crear", entidad="usuario",
+            entidad_id=str(usuario.id), entidad_nombre=datos.email,
+            detalle=f"Usuario invitado con perfil_id={datos.perfil_id}",
+            realizado_por_id=current_user.get("_usuario_id"),
+            realizado_por_email=current_user.get("email"),
+        )
         return usuario
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -209,6 +217,13 @@ def actualizar_usuario(
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     if datos.rol:
         ps.sincronizar_por_rol(db, usuario_id, datos.rol)
+    audit_service.registrar(
+        db, accion="modificar", entidad="usuario",
+        entidad_id=usuario_id, entidad_nombre=usuario.email,
+        detalle=f"Campos actualizados: {', '.join(k for k, v in datos.model_dump(exclude_none=True).items())}",
+        realizado_por_id=current_user.get("_usuario_id"),
+        realizado_por_email=current_user.get("email"),
+    )
     return usuario
 
 
@@ -223,8 +238,19 @@ def eliminar_usuario(
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_permiso("gestionar_usuarios")),
 ):
+    usuario = usuario_service.obtener_usuario_por_id(db, usuario_id)
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    email = usuario.email
     if not usuario_service.eliminar_usuario(db, usuario_id):
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    audit_service.registrar(
+        db, accion="eliminar", entidad="usuario",
+        entidad_id=usuario_id, entidad_nombre=email,
+        detalle="Usuario eliminado del sistema",
+        realizado_por_id=current_user.get("_usuario_id"),
+        realizado_por_email=current_user.get("email"),
+    )
 
 
 @router.post(
@@ -315,6 +341,13 @@ def blanquear_password(
             Username=usuario.email,
             Password=settings.default_password,
             Permanent=True,
+        )
+        audit_service.registrar(
+            db, accion="blanquear_password", entidad="usuario",
+            entidad_id=str(usuario.id), entidad_nombre=usuario.email,
+            detalle="Contraseña blanqueada a valor por defecto",
+            realizado_por_id=current_user.get("_usuario_id"),
+            realizado_por_email=current_user.get("email"),
         )
         return {"ok": True, "mensaje": f"Contraseña blanqueada para {usuario.email}"}
     except Exception as e:

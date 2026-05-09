@@ -15,6 +15,7 @@ from app.services import documento_service
 from app.core.settings import settings
 from app.core.database import get_db
 from app.middleware.auth_middleware import require_permiso
+from app.services import audit_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin/ingesta", tags=["Ingesta"])
@@ -106,6 +107,14 @@ async def cargar_documento(
         "chunks": chunks_procesados,
     })
 
+    audit_service.registrar(
+        db, accion="cargar", entidad="documento",
+        entidad_id=document_id, entidad_nombre=titulo,
+        detalle=f"Categoría: {categoria} | Dependencia: {dependencia} | Chunks: {chunks_procesados}",
+        realizado_por_id=current_user.get("_usuario_id"),
+        realizado_por_email=current_user.get("email"),
+    )
+
     return IngestaResponse(
         id=document_id,
         titulo=titulo,
@@ -187,6 +196,14 @@ async def eliminar_documento(
 
     if not documento_service.eliminar_documento(db, documento_id):
         raise HTTPException(status_code=404, detail="Documento no encontrado")
+
+    audit_service.registrar(
+        db, accion="eliminar", entidad="documento",
+        entidad_id=documento_id,
+        detalle="Documento eliminado de Qdrant y RDS",
+        realizado_por_id=current_user.get("_usuario_id"),
+        realizado_por_email=current_user.get("email"),
+    )
 
 
 # ── Router público ────────────────────────────────────────────────────────────

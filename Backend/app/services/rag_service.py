@@ -109,18 +109,41 @@ def buscar_en_web(pregunta: str) -> str:
 # ─── Generación de respuesta ─────────────────────────────────────────────────
 
 def _prompt(pregunta: str, contexto: str, tipo: str) -> str:
+    # Cargar identidad del bot desde DB
+    system = SYSTEM_PROMPT
+    try:
+        from app.core.database import SessionLocal
+        from app.models.models import BotIdentidad
+        db = SessionLocal()
+        bot = db.query(BotIdentidad).first()
+        db.close()
+        if bot:
+            pronombre = {"masculino": "el", "femenino": "la", "neutro": "el/la"}.get(bot.sexo, "el")
+            system = f"""Sos {bot.nombre}, asistente virtual{f' de {bot.institucion}' if bot.institucion else ''}.
+{'Descripción: ' + bot.descripcion if bot.descripcion else ''}
+Personalidad: {bot.personalidad or 'profesional y servicial'}.
+Tono: {bot.tono}. Idioma: {bot.idioma}.
+{'Restricciones: ' + bot.restricciones if bot.restricciones else ''}
+Tu función es responder consultas basándote EXCLUSIVAMENTE en la documentación oficial proporcionada.
+Reglas:
+1. Si la respuesta está en el contexto, respondé con precisión citando la fuente.
+2. Si la información no está en el contexto, indicá claramente que no tenés documentación oficial sobre ese tema.
+3. Nunca inventes información. La precisión legal es crítica.
+4. Respondé siempre en {bot.idioma}."""
+    except Exception:
+        pass
     if tipo == "local":
-        return f"""{SYSTEM_PROMPT}
+        return f"""{system}
 
 DOCUMENTACIÓN OFICIAL DISPONIBLE:
 {contexto}
 
 Pregunta del usuario: {pregunta}
 
-Responde basándote únicamente en la documentación oficial proporcionada arriba."""
+Respondé basándote únicamente en la documentación oficial proporcionada arriba."""
 
     if tipo == "externo":
-        return f"""{SYSTEM_PROMPT}
+        return f"""{system}
 
 INFORMACIÓN DE FUENTES EXTERNAS (no documentación oficial de la entidad):
 {contexto}
@@ -129,8 +152,7 @@ Pregunta del usuario: {pregunta}
 
 IMPORTANTE: Esta información proviene de fuentes externas. Indicá claramente que no es documentación oficial de la entidad."""
 
-    # fallback general
-    return f"""{SYSTEM_PROMPT}
+    return f"""{system}
 
 ADVERTENCIA: No se encontró documentación oficial sobre este tema.
 La siguiente respuesta proviene de conocimiento general y NO es una fuente oficial verificada.

@@ -1,6 +1,7 @@
 'use client'
 
 import { Box } from '@mantine/core'
+import { useMediaQuery } from '@mantine/hooks'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { Sidebar } from '@/components/layout/Sidebar'
@@ -11,30 +12,19 @@ import { PageLoader } from '@/components/layout/PageLoader'
 
 export default function HomePage() {
   const { checking } = useRequireAuth()
+  const isMobile = useMediaQuery('(max-width: 62em)')
+
   if (checking) return <PageLoader />
+
   return (
     <Box style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-
-      {/* Header */}
       <Header />
-
-      {/* Cuerpo principal: sidebar + chat + historial */}
       <Box style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-
-        {/* Sidebar izquierdo — menú de navegación */}
         <Sidebar />
-
-        {/* Centro — chat con IA */}
         <ChatPanel />
-
-        {/* Derecha — historial de consultas */}
-        <HistorialPanel />
-
+        {!isMobile && <HistorialPanel />}
       </Box>
-
-      {/* Footer */}
       <Footer />
-
     </Box>
   )
 }

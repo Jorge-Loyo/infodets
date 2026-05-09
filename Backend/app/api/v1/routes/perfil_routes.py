@@ -7,6 +7,7 @@ from app.core.database import get_db
 from app.schemas.common import MensajeOk, R_400, R_401, R_403, R_404, R_409
 from app.services import perfil_service
 from app.middleware.auth_middleware import require_permiso
+from app.services import audit_service
 
 router = APIRouter(prefix="/perfiles", tags=["Perfiles"])
 
@@ -147,4 +148,11 @@ def asignar_perfil(
 ):
     if not perfil_service.asignar_perfil_a_usuario(db, usuario_id, body.perfil_id):
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    audit_service.registrar(
+        db, accion="cambiar_perfil", entidad="usuario",
+        entidad_id=usuario_id,
+        detalle=f"Perfil asignado: {body.perfil_id or 'ninguno'}",
+        realizado_por_id=current_user.get("_usuario_id"),
+        realizado_por_email=current_user.get("email"),
+    )
     return {"ok": True}

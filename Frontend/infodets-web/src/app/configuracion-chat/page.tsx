@@ -1,13 +1,14 @@
 'use client'
 
 import { Box, Grid, Paper, Text, ThemeIcon, Stack, Title } from '@mantine/core'
-import { IconBell, IconFiles } from '@tabler/icons-react'
+import { IconBell, IconFiles, IconRobot } from '@tabler/icons-react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 
 const CARDS = [
-  { label: 'Notificaciones',  icon: IconBell,  href: '/configuracion-chat/notificaciones', color: 'yellow', desc: 'Tickets del loop de retroalimentación y validaciones IA' },
-  { label: 'Documentación',   icon: IconFiles, href: '/configuracion-chat/documentacion',  color: 'green',  desc: 'Gestión de documentos y URLs oficiales del RAG' },
+  { label: 'Notificaciones',    icon: IconBell,  href: '/configuracion-chat/notificaciones', color: 'yellow', desc: 'Tickets del loop de retroalimentación y validaciones IA' },
+  { label: 'Documentación',     icon: IconFiles, href: '/configuracion-chat/documentacion',  color: 'green',  desc: 'Gestión de documentos y URLs oficiales del RAG' },
+  { label: 'Identidad del Bot', icon: IconRobot, href: '/configuracion-chat/identidad-bot',  color: 'blue',   desc: 'Nombre, imagen, personalidad y comportamiento del asistente' },
 ]
 
 export default function ConfiguracionChatPage() {
@@ -22,12 +23,7 @@ export default function ConfiguracionChatPage() {
         <Grid>
           {CARDS.map((card, i) => (
             <Grid.Col key={card.href} span={{ base: 12, sm: 6, lg: 4 }}>
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.07 }}
-                whileHover={{ y: -3 }}
-              >
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }} whileHover={{ y: -3 }}>
                 <Paper withBorder p="xl" radius="md" style={{ cursor: 'pointer' }} onClick={() => router.push(card.href)}>
                   <Stack gap="sm">
                     <ThemeIcon size={44} radius="md" variant="light" color={card.color}>

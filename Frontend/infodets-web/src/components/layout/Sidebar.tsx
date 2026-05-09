@@ -1,8 +1,8 @@
 'use client'
 
-import { Box, NavLink, Stack, Text, Divider, Badge } from '@mantine/core'
+import { Box, NavLink, Stack, Text, Divider, Badge, Drawer } from '@mantine/core'
+import { useMediaQuery } from '@mantine/hooks'
 import { IconHome, IconFilePlus, IconShieldHalf, IconNews, IconMessageCircle, IconSettings, IconMessageCog } from '@tabler/icons-react'
-import { AnimatePresence } from 'framer-motion'
 import { usePathname, useRouter } from 'next/navigation'
 import { useSidebar } from '@/hooks/ui/useSidebar'
 import { useSessionStore } from '@/store/sessionStore'
@@ -19,8 +19,7 @@ const MENU_ITEMS = [
   { label: 'Configuración',          icon: IconSettings,      href: '/configuracion',      key: 'configuracion' },
 ]
 
-export function Sidebar() {
-  const { sidebarAbierto } = useSidebar()
+function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { tienePermiso } = useSessionStore()
   const { noLeidos, noticiasNoLeidas, marcarNoticiasVistas } = useUiStore()
   const pathname = usePathname()
@@ -29,48 +28,72 @@ export function Sidebar() {
   const itemsVisibles = MENU_ITEMS.filter(item => tienePermiso(item.key))
 
   return (
-    <AnimatePresence>
-      {sidebarAbierto && (
-        <Box
-          style={{
-            borderRight: '1px solid var(--mantine-color-default-border)',
-            backgroundColor: 'var(--mantine-color-body)',
-            height: '100%',
-            overflow: 'hidden',
-            flexShrink: 0,
-            width: 240,
+    <Stack gap={0} p="sm" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Text size="xs" fw={600} c="dimmed" px="sm" py="xs" tt="uppercase">Menú</Text>
+
+      {itemsVisibles.map(item => (
+        <NavLink
+          key={item.href}
+          label={item.label}
+          leftSection={<item.icon size={18} />}
+          rightSection={
+            item.href === '/mis-consultas' && noLeidos > 0
+              ? <Badge size="xs" color="red" variant="filled" circle>{noLeidos}</Badge>
+              : item.href === '/noticias' && noticiasNoLeidas > 0
+              ? <Badge size="xs" color="orange" variant="filled" circle>{noticiasNoLeidas}</Badge>
+              : undefined
+          }
+          active={pathname === item.href}
+          onClick={() => {
+            if (item.href === '/noticias') marcarNoticiasVistas()
+            router.push(item.href)
+            onNavigate?.()
           }}
-        >
-          <Stack gap={0} p="sm" style={{ minWidth: 240, height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <Text size="xs" fw={600} c="dimmed" px="sm" py="xs" tt="uppercase">Menú</Text>
+          style={{ cursor: 'pointer', borderRadius: 8 }}
+        />
+      ))}
 
-            {itemsVisibles.map(item => (
-              <NavLink
-                key={item.href}
-                label={item.label}
-                leftSection={<item.icon size={18} />}
-                rightSection={
-                  item.href === '/mis-consultas' && noLeidos > 0
-                    ? <Badge size="xs" color="red" variant="filled" circle>{noLeidos}</Badge>
-                    : item.href === '/noticias' && noticiasNoLeidas > 0
-                    ? <Badge size="xs" color="orange" variant="filled" circle>{noticiasNoLeidas}</Badge>
-                    : undefined
-                }
-                active={pathname === item.href}
-                onClick={() => {
-                  if (item.href === '/noticias') marcarNoticiasVistas()
-                  router.push(item.href)
-                }}
-                style={{ cursor: 'pointer', borderRadius: 8 }}
-              />
-            ))}
+      <Divider my="sm" />
+      <Text size="xs" fw={600} c="dimmed" px="sm" py="xs" tt="uppercase">Historial</Text>
+    </Stack>
+  )
+}
 
-            <Divider my="sm" />
+export function Sidebar() {
+  const { sidebarAbierto, setSidebar } = useSidebar()
+  const isMobile = useMediaQuery('(max-width: 48em)')
 
-            <Text size="xs" fw={600} c="dimmed" px="sm" py="xs" tt="uppercase">Historial</Text>
-          </Stack>
-        </Box>
-      )}
-    </AnimatePresence>
+  // Mobile — Drawer overlay
+  if (isMobile) {
+    return (
+      <Drawer
+        opened={sidebarAbierto}
+        onClose={() => setSidebar(false)}
+        size={260}
+        padding={0}
+        withCloseButton={false}
+        styles={{ body: { padding: 0, height: '100%' } }}
+      >
+        <SidebarContent onNavigate={() => setSidebar(false)} />
+      </Drawer>
+    )
+  }
+
+  // Desktop — fijo
+  if (!sidebarAbierto) return null
+
+  return (
+    <Box
+      style={{
+        borderRight: '1px solid var(--mantine-color-default-border)',
+        backgroundColor: 'var(--mantine-color-body)',
+        height: '100%',
+        overflow: 'hidden',
+        flexShrink: 0,
+        width: 240,
+      }}
+    >
+      <SidebarContent />
+    </Box>
   )
 }

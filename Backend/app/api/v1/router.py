@@ -12,6 +12,8 @@ from app.api.v1.routes.noticia_routes import router as noticia_router
 from app.api.v1.routes.ticket_routes import router as ticket_router
 from app.api.v1.routes.validacion_routes import router as validacion_router
 from app.api.v1.routes.url_routes import router as url_router
+from app.api.v1.routes.audit_routes import router as audit_router
+from app.api.v1.routes.bot_routes import router as bot_router
 
 api_router = APIRouter(prefix="/v1")
 api_router.include_router(auth_router)
@@ -28,3 +30,5 @@ api_router.include_router(noticia_router)
 api_router.include_router(ticket_router)
 api_router.include_router(validacion_router)
 api_router.include_router(url_router)
+api_router.include_router(audit_router)
+api_router.include_router(bot_router)

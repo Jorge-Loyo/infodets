@@ -22,8 +22,8 @@ export function Footer() {
           <Text size="xs" fw={600} c="dimmed">{APP_NAME}</Text>
           <Text size="xs" c="dimmed">©</Text>
           <Text size="xs" c="dimmed">{AÑO}</Text>
-          <Divider orientation="vertical" />
-          <Text size="xs" c="dimmed">Sistema de Gestión de Conocimiento Dinámico</Text>
+          <Divider orientation="vertical" visibleFrom="sm" />
+          <Text size="xs" c="dimmed" visibleFrom="sm">Sistema de Gestión de Conocimiento Dinámico</Text>
         </Group>
 
         {/* Centro — links */}
@@ -34,7 +34,7 @@ export function Footer() {
         </Group>
 
         {/* Derecha — versión */}
-        <Group gap="xs">
+        <Group gap="xs" visibleFrom="sm">
           <Text size="xs" c="dimmed">v1.0.0</Text>
           <Divider orientation="vertical" />
           <Text size="xs" c="dimmed">Desarrollado por</Text>
