@@ -13,6 +13,7 @@ import { motion } from 'framer-motion'
 import { useState } from 'react'
 import { notifications } from '@mantine/notifications'
 import { useUiStore } from '@/store/uiStore'
+import axiosInstance from '@/lib/axiosInstance'
 
 const TIPOGRAFIAS = [
   { value: 'Plus Jakarta Sans', label: 'Plus Jakarta Sans (por defecto)' },
@@ -27,15 +28,31 @@ const PALETAS = [
   { value: 'violet', label: 'Violeta' },
   { value: 'teal',   label: 'Verde azulado' },
   { value: 'green',  label: 'Verde' },
+  { value: 'yellow', label: 'Amarillo' },
   { value: 'orange', label: 'Naranja' },
   { value: 'red',    label: 'Rojo' },
   { value: 'gray',   label: 'Gris' },
 ]
 
 const TEMAS_PREDEFINIDOS = [
-  { label: 'Estándar',       headerColor: '#ffffff', paletaColor: 'blue',   tipografia: 'Plus Jakarta Sans', colorScheme: 'light' as const, esPersonalizado: false },
-  { label: 'Moderno',       headerColor: '#5c2d91', paletaColor: 'violet', tipografia: 'Inter, sans-serif',  colorScheme: 'dark'  as const, esPersonalizado: false },
-  { label: 'Personalizado', headerColor: null,      paletaColor: null,     tipografia: null,                 colorScheme: null,             esPersonalizado: true  },
+  { label: 'Estándar',       headerColor: '#ffffff', paletaColor: 'blue',   tipografia: 'Plus Jakarta Sans', colorScheme: 'light' as const, esPersonalizado: false, colores: null },
+  { label: 'Moderno',        headerColor: '#5c2d91', paletaColor: 'violet', tipografia: 'Inter, sans-serif',  colorScheme: 'dark'  as const, esPersonalizado: false, colores: null },
+  {
+    label: 'Ciudad',
+    headerColor: '#38485C',
+    paletaColor: 'yellow',
+    tipografia: 'Plus Jakarta Sans',
+    colorScheme: 'light' as const,
+    esPersonalizado: false,
+    colores: {
+      colorFondo:    '#F3F6F9',
+      colorSidebar:  '#38485C',
+      colorTarjeta:  '#ffffff',
+      colorTexto:    '#38485C',
+      colorBoton:    '#FFDB2E',
+    },
+  },
+  { label: 'Personalizado',  headerColor: null,      paletaColor: null,     tipografia: null,                 colorScheme: null,             esPersonalizado: true,  colores: null  },
 ]
 
 const PREGUNTAS_COLORES = [
@@ -67,16 +84,21 @@ export default function TemasPage() {
   const esPersonalizado = temaActivoLocal === 'Personalizado'
   const haycambios = localHeader !== headerColor || localPaleta !== paletaColor || localTipo !== tipografia || localLogo !== logoUrl || localLogoSize !== logoSize || localColorScheme !== colorScheme
 
-  const aplicarTema = () => {
-    setHeaderColor(localHeader)
-    setPaletaColor(localPaleta)
-    setTipografia(localTipo)
-    setLogoUrl(localLogo)
-    setLogoSize(localLogoSize)
-    setColorScheme(localColorScheme)
-    if (esPersonalizado) setColoresPersonalizados(localColores)
-    setTemaActivo(temaActivoLocal ?? 'Claro')
-    notifications.show({ color: 'green', message: 'Tema aplicado correctamente ✅' })
+  const aplicarTema = async () => {
+    try {
+      const urlFinal = await subirLogoAlBackend()
+      setHeaderColor(localHeader)
+      setPaletaColor(localPaleta)
+      setTipografia(localTipo)
+      setLogoUrl(urlFinal)
+      setLogoSize(localLogoSize)
+      setColorScheme(localColorScheme)
+      if (esPersonalizado || temaActivoLocal === 'Ciudad') setColoresPersonalizados(localColores)
+      setTemaActivo(temaActivoLocal ?? 'Estándar')
+      notifications.show({ color: 'green', message: 'Tema aplicado correctamente ✅' })
+    } catch {
+      notifications.show({ color: 'red', message: 'Error al subir el logo' })
+    }
   }
 
   const resetear = () => {
@@ -93,17 +115,31 @@ export default function TemasPage() {
     setLocalPaleta(tema.paletaColor!)
     setLocalTipo(tema.tipografia!)
     setLocalColorScheme(tema.colorScheme!)
+    if (tema.colores) setLocalColores(tema.colores)
   }
 
-  const handleLogo = (file: File | null) => {
+  const handleLogo = async (file: File | null) => {
     setArchivoLogo(file)
     if (file) {
+      // Preview local inmediata
       const reader = new FileReader()
       reader.onload = (e) => setLocalLogo(e.target?.result as string)
       reader.readAsDataURL(file)
     } else {
+      // Eliminar logo del backend
+      try {
+        await axiosInstance.delete('/sistema/logo')
+      } catch {}
       setLocalLogo('')
     }
+  }
+
+  const subirLogoAlBackend = async (): Promise<string> => {
+    if (!archivoLogo) return localLogo
+    const form = new FormData()
+    form.append('archivo', archivoLogo)
+    const res = await axiosInstance.post<{ logo_url: string }>('/sistema/logo', form)
+    return res.data.logo_url
   }
 
   return (
@@ -218,6 +254,12 @@ export default function TemasPage() {
                     {tema.esPersonalizado ? (
                       <Box style={{ height: 40, borderRadius: 8, background: 'linear-gradient(135deg, #1c7ed6, #9c36b5, #f08c00)', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <IconWand size={18} color="white" />
+                      </Box>
+                    ) : tema.label === 'Ciudad' ? (
+                      <Box style={{ height: 40, borderRadius: 8, overflow: 'hidden', marginBottom: 10, display: 'flex' }}>
+                        <Box style={{ flex: 1, backgroundColor: '#38485C' }} />
+                        <Box style={{ width: 14, backgroundColor: '#FFDB2E' }} />
+                        <Box style={{ flex: 2, backgroundColor: '#F3F6F9' }} />
                       </Box>
                     ) : (
                       <Box style={{ height: 40, borderRadius: 8, backgroundColor: tema.headerColor!, border: '1px solid var(--mantine-color-default-border)', marginBottom: 10 }} />
