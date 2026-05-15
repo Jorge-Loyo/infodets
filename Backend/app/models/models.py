@@ -277,3 +277,11 @@ class MemoriaUsuario(Base):
     resumen: Mapped[str | None] = mapped_column(Text, nullable=True)
     total_consultas: Mapped[int] = mapped_column(Integer, default=0)
     actualizado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class ConfiguracionSistema(Base):
+    __tablename__ = "configuracion_sistema"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    logo_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    actualizado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

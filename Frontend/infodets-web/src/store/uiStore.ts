@@ -103,7 +103,6 @@ export const useUiStore = create<UiStore>()(
         headerColor: state.headerColor,
         paletaColor: state.paletaColor,
         tipografia: state.tipografia,
-        logoUrl: state.logoUrl,
         logoSize: state.logoSize,
         colorScheme: state.colorScheme,
         colorSidebar: state.colorSidebar,
@@ -112,7 +111,7 @@ export const useUiStore = create<UiStore>()(
         colorFondo: state.colorFondo,
         colorTarjeta: state.colorTarjeta,
         temaActivo: state.temaActivo,
-        fotoPerfil: state.fotoPerfil,
+        // logoUrl y fotoPerfil NO se persisten — son base64 y superan el límite de localStorage
       }),
     }
   )
