@@ -26,14 +26,17 @@ export function Header() {
     if (!isAuthenticated()) return
     axiosInstance.get<{ logo_url: string | null }>('/sistema')
       .then(res => {
+        console.log('[LOGO] logo_url del backend:', res.data.logo_url)
         if (res.data.logo_url) {
           const docsUrl = process.env.NEXT_PUBLIC_DOCS_URL ?? 'http://localhost:8000'
-          setLogoUrl(`${docsUrl}${res.data.logo_url}`)
+          const url = res.data.logo_url.startsWith('http') ? res.data.logo_url : `${docsUrl}${res.data.logo_url}`
+          console.log('[LOGO] URL final:', url)
+          setLogoUrl(url)
         } else {
           setLogoUrl('')
         }
       })
-      .catch(() => {})
+      .catch((e) => console.error('[LOGO] Error:', e))
   }, [isAuthenticated])
 
   useEffect(() => {
