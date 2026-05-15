@@ -138,8 +138,13 @@ export default function TemasPage() {
     if (!archivoLogo) return localLogo
     const form = new FormData()
     form.append('archivo', archivoLogo)
-    const res = await axiosInstance.post<{ logo_url: string }>('/sistema/logo', form)
-    return res.data.logo_url
+    const res = await axiosInstance.post<{ logo_url: string }>('/sistema/logo', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    // Construir URL absoluta apuntando al backend
+    const docsUrl = process.env.NEXT_PUBLIC_DOCS_URL ?? 'http://localhost:8000'
+    const url = res.data.logo_url.startsWith('http') ? res.data.logo_url : `${docsUrl}${res.data.logo_url}`
+    return url
   }
 
   return (
