@@ -13,8 +13,12 @@ GROQ_MODEL = "llama-3.3-70b-versatile"
 API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 
 # Umbrales del Loop de Retroalimentación
-CONFIDENCE_THRESHOLD = 0.75   # < 75% activa fallback escalonado
-UMBRAL_NIVEL2 = 0.0           # si nivel 1 también falla, activa búsqueda web
+CONFIDENCE_THRESHOLD = 0.70
+UMBRAL_NIVEL2 = 0.0
+
+# Feature flags
+HYDE_ENABLED = True   # activo solo para preguntas cortas/referenciales
+QUERY_EXPANSION_ENABLED = False
 
 SYSTEM_PROMPT = """Eres un asistente oficial del sistema INFODETS para una entidad pública.
 Tu función es responder consultas basándote EXCLUSIVAMENTE en la documentación oficial proporcionada.
@@ -36,19 +40,130 @@ MENSAJE_ESCALAMIENTO = (
 )
 
 
+def _reranker(pregunta: str, chunks: list[dict], top_n: int = 5) -> list[dict]:
+    """FASE 4 — Re-ranking: reordena chunks por relevancia real usando Cohere."""
+    if not settings.cohere_api_key or not chunks:
+        return chunks[:top_n]
+    try:
+        import cohere
+        co = cohere.ClientV2(api_key=settings.cohere_api_key)
+        documentos = [r["text"][:512] for r in chunks]
+        resultado = co.rerank(
+            model="rerank-v3.5",
+            query=pregunta,
+            documents=documentos,
+            top_n=top_n,
+        )
+        reordenados = [chunks[r.index] for r in resultado.results]
+        logger.info(f"[Rerank] {len(chunks)} → {len(reordenados)} chunks reordenados")
+        return reordenados
+    except Exception as e:
+        logger.warning(f"[Rerank] Error: {e} — usando orden original")
+        return chunks[:top_n]
+
+
+# ─── FASE 3: Query Expansion ──────────────────────────────────────────────────
+
+def _expandir_query(pregunta: str) -> list[str]:
+    """Genera 2 variantes de la pregunta para mayor cobertura semántica."""
+    try:
+        client = Groq(api_key=settings.groq_api_key)
+        resp = client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[
+                {"role": "system", "content": "Dado una pregunta, generá exactamente 2 variantes alternativas en español usando sinónimos o reformulaciones. Respondé SOLO con las 2 variantes separadas por salto de línea, sin numeración ni explicaciones."},
+                {"role": "user", "content": pregunta},
+            ],
+            temperature=0.4, max_tokens=80,
+        )
+        texto = resp.choices[0].message.content or ""
+        variantes = [v.strip() for v in texto.strip().split("\n") if v.strip()][:2]
+        logger.info(f"[QueryExp] Variantes: {variantes}")
+        return variantes
+    except Exception as e:
+        logger.warning(f"[QueryExp] Error: {e}")
+        return []
+
+
+# ─── FASE 2: HyDE ────────────────────────────────────────────────────────────
+
+def _generar_hipotesis(pregunta: str) -> str:
+    """Genera una respuesta hipotética para mejorar el embedding de búsqueda."""
+    try:
+        client = Groq(api_key=settings.groq_api_key)
+        resp = client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[
+                {"role": "system", "content": "Generá una respuesta breve y factual en español a la siguiente pregunta, como si fuera un fragmento de un documento oficial. Máximo 3 oraciones."},
+                {"role": "user", "content": pregunta},
+            ],
+            temperature=0.3, max_tokens=150,
+        )
+        hipotesis = resp.choices[0].message.content or ""
+        logger.info(f"[HyDE] Hipótesis: {hipotesis[:80]}...")
+        return hipotesis
+    except Exception as e:
+        logger.warning(f"[HyDE] Error: {e}")
+        return ""
+
+
 # ─── Nivel 0: Búsqueda local en Qdrant ───────────────────────────────────────
+
+def _combinar_resultados(base: list[dict], nuevos: list[dict]) -> list[dict]:
+    """Combina dos listas de resultados deduplicando por texto, quedándose con mayor score."""
+    vistos = {r["text"][:50]: r for r in base}
+    for r in nuevos:
+        key = r["text"][:50]
+        if key not in vistos or r["score"] > vistos[key]["score"]:
+            vistos[key] = r
+    return sorted(vistos.values(), key=lambda x: x["score"], reverse=True)[:10]
+
 
 def buscar_contexto(pregunta: str, limit: int = 5) -> tuple[list[dict], float]:
     logger.info(f"[RAG] Buscando contexto para: {pregunta[:80]}...")
-    vector = generate_query_embedding(pregunta)
-    # Buscar más resultados para asegurar que haya docs reales entre los top
-    resultados_raw = search(vector, limit=10)
-    # Separar docs reales (con source_url) de validaciones indexadas
+    import concurrent.futures
+
+    # FASES 2 y 3 en paralelo: HyDE + Query Expansion simultáneos
+    hipotesis = ""
+    variantes = []
+    if HYDE_ENABLED or QUERY_EXPANSION_ENABLED:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            fut_hyde = executor.submit(_generar_hipotesis, pregunta) if HYDE_ENABLED else None
+            fut_variantes = executor.submit(_expandir_query, pregunta) if QUERY_EXPANSION_ENABLED else None
+            hipotesis = fut_hyde.result() if fut_hyde else ""
+            variantes = fut_variantes.result() if fut_variantes else []
+
+    # Buscar con hipótesis (HyDE)
+    vector_principal = generate_query_embedding(hipotesis if hipotesis else pregunta)
+    resultados_raw = search(vector_principal, limit=10)
+
+    max_score_actual = max((r["score"] for r in resultados_raw), default=0.0)
+
+    # Si HyDE no supera umbral, combinar con pregunta original
+    if max_score_actual < CONFIDENCE_THRESHOLD and hipotesis:
+        vector_original = generate_query_embedding(pregunta)
+        resultados_raw = _combinar_resultados(resultados_raw, search(vector_original, limit=10))
+        max_score_actual = max((r["score"] for r in resultados_raw), default=0.0)
+
+    # Si sigue bajo umbral, usar variantes ya generadas en paralelo
+    if max_score_actual < CONFIDENCE_THRESHOLD and variantes:
+        for variante in variantes:
+            try:
+                vector_var = generate_query_embedding(variante)
+                resultados_raw = _combinar_resultados(resultados_raw, search(vector_var, limit=5))
+            except Exception:
+                pass
+        max_score_actual = max((r["score"] for r in resultados_raw), default=0.0)
+        logger.info(f"[QueryExp] Nuevo max tras variantes: {max_score_actual:.3f}")
+
     docs_reales = [r for r in resultados_raw if r.get("source_url", "")]
     validaciones = [r for r in resultados_raw if not r.get("source_url", "")]
-    # Priorizar docs reales, completar con validaciones si hacen falta
-    resultados = (docs_reales + validaciones)[:limit]
-    max_score = max((r["score"] for r in (docs_reales or resultados)), default=0.0)
+    candidatos = (docs_reales + validaciones)[:10]
+
+    # FASE 4 — Re-ranking: reordenar por relevancia real
+    resultados = _reranker(pregunta, candidatos, top_n=limit)
+
+    max_score = max((r["score"] for r in (docs_reales[:limit] or resultados)), default=0.0)
     logger.info(f"[RAG] {len(resultados_raw)} chunks ({len(docs_reales)} docs reales) — score máximo: {max_score:.3f}")
     return resultados, max_score
 
@@ -56,10 +171,9 @@ def buscar_contexto(pregunta: str, limit: int = 5) -> tuple[list[dict], float]:
 def construir_contexto(resultados: list[dict]) -> str:
     if not resultados:
         return ""
-    # Excluir validaciones indexadas (sin source_url) del contexto
     docs = [r for r in resultados if r.get("source_url", "")]
     if not docs:
-        docs = resultados  # fallback: usar todos si no hay docs con URL
+        docs = resultados
     return "\n\n---\n\n".join(
         f"[Fuente {i+1}: {r.get('source_url', 'N/A')}]\n{r['text']}"
         for i, r in enumerate(docs)
@@ -68,12 +182,16 @@ def construir_contexto(resultados: list[dict]) -> str:
 
 # ─── Nivel 1: Búsqueda en URLs oficiales predefinidas ────────────────────────
 
-UMBRAL_RELEVANCIA_NIVEL1 = 0.40  # mínimo 40% de palabras clave de la pregunta deben aparecer en el texto
-STOPWORDS = {'cual', 'como', 'donde', 'quien', 'quién', 'cuál', 'cómo', 'dónde', 'para', 'este', 'esta', 'esto', 'esos', 'esas', 'tiene', 'sabe', 'sabes', 'sobre', 'del', 'los', 'las', 'una', 'uno', 'son', 'hay', 'fue', 'ser', 'sus', 'por', 'con', 'que', 'nombre'}
+UMBRAL_RELEVANCIA_NIVEL1 = 0.40
+STOPWORDS = {
+    'cual', 'como', 'donde', 'quien', 'quién', 'cuál', 'cómo', 'dónde',
+    'para', 'este', 'esta', 'esto', 'esos', 'esas', 'tiene', 'sabe', 'sabes',
+    'sobre', 'del', 'los', 'las', 'una', 'uno', 'son', 'hay', 'fue', 'ser',
+    'sus', 'por', 'con', 'que', 'nombre',
+}
 
 
 def _es_relevante(pregunta: str, texto: str) -> bool:
-    """Verifica si el texto contiene suficientes palabras clave de la pregunta."""
     import re
     palabras = set(re.findall(r'\b\w{3,}\b', pregunta.lower())) - STOPWORDS
     if not palabras:
@@ -85,7 +203,6 @@ def _es_relevante(pregunta: str, texto: str) -> bool:
 
 
 def buscar_en_urls_oficiales(pregunta: str) -> str:
-    """Extrae texto de las URLs oficiales activas en la DB, filtrando por relevancia."""
     from app.core.database import SessionLocal
     from app.services.url_service import get_urls_activas
     import re
@@ -122,7 +239,6 @@ def buscar_en_urls_oficiales(pregunta: str) -> str:
 # ─── Nivel 2: Búsqueda web via API ───────────────────────────────────────────
 
 def buscar_en_web(pregunta: str) -> str:
-    """Busca en internet usando la API de búsqueda configurada (Serper/Tavily)."""
     if not settings.search_api_key or not settings.search_api_url:
         return ""
     try:
@@ -145,10 +261,10 @@ def buscar_en_web(pregunta: str) -> str:
     return ""
 
 
-# ─── Generación de respuesta ─────────────────────────────────────────────────
+# ─── Generación de respuesta — FASE 1: System/User separados ─────────────────
 
-def _prompt(pregunta: str, contexto: str, tipo: str, memoria: dict | None = None, historial: list[dict] | None = None) -> str:
-    # Cargar identidad del bot desde DB
+def _construir_system(tipo: str, memoria: dict | None = None) -> str:
+    """Construye el system prompt con identidad del bot, fecha, feriados y memoria."""
     system = SYSTEM_PROMPT
     try:
         from app.core.database import SessionLocal
@@ -157,11 +273,9 @@ def _prompt(pregunta: str, contexto: str, tipo: str, memoria: dict | None = None
         db = SessionLocal()
         bot = db.query(BotIdentidad).first()
         db.close()
-        # Fecha y hora actual en Argentina (UTC-3)
         ar_tz = timezone(timedelta(hours=-3))
         ahora = datetime.now(ar_tz)
         fecha_hora = ahora.strftime('%A %d de %B de %Y, %H:%M hs (hora Argentina)')
-        # Feriados del año actual desde API pública
         feriados_info = ""
         try:
             anio = ahora.year
@@ -195,7 +309,7 @@ Reglas:
 2. Si la información no está en el contexto, indicá claramente que no tenés documentación oficial sobre ese tema.
 3. Nunca inventes información. La precisión legal es crítica.
 4. Respondé siempre en {bot.idioma}.
-5. EXCEPCIÓN: Para preguntas sobre fecha, hora, día, feriados, calendario o información general de Argentina, respondé usando los datos de contexto del sistema (fecha/hora/feriados) sin necesidad de documentación oficial."""
+5. EXCEPCIÓN: Para preguntas sobre fecha, hora, día, feriados, calendario o información general de Argentina, respondé usando los datos de contexto del sistema sin necesidad de documentación oficial. Los feriados están listados arriba en 'Próximos feriados en Argentina'."""
         else:
             system = f"""{SYSTEM_PROMPT}
 País: Argentina | Zona horaria: America/Argentina/Buenos_Aires (UTC-3)
@@ -204,7 +318,15 @@ EXCEPCIÓN: Para preguntas sobre fecha, hora, día, feriados o calendario, respo
     except Exception:
         pass
 
-    # — Inyección de memoria del usuario —
+    if tipo == "externo":
+        system = system.replace(
+            "EXCLUSIVAMENTE en la documentación oficial proporcionada",
+            "el contexto provisto"
+        ).replace(
+            "EXCLUSIVAMENTE en la documentación oficial",
+            "el contexto provisto"
+        )
+
     nombre_usuario = (memoria or {}).get("nombre") or ""
     es_primera = (memoria or {}).get("es_primera_consulta", False)
     resumen_previo = (memoria or {}).get("resumen") or ""
@@ -214,41 +336,31 @@ EXCEPCIÓN: Para preguntas sobre fecha, hora, día, feriados o calendario, respo
     if resumen_previo:
         system = f"{system}\nConsultas previas del usuario (para contexto):\n{resumen_previo}"
 
-    # — Historial de la conversación activa —
+    return system
+
+
+def _construir_user(pregunta: str, contexto: str, tipo: str, historial: list[dict] | None = None) -> str:
+    """Construye el mensaje del usuario con contexto e historial."""
     historial_texto = ""
     if historial:
         entradas = [f"Usuario: {h['pregunta']}\nAsistente: {h['respuesta'][:300]}" for h in historial[-5:]]
         historial_texto = "\nHISTORIAL DE ESTA CONVERSACIÓN:\n" + "\n---\n".join(entradas) + "\n"
 
     if tipo == "local":
-        return f"""{system}
-
-DOCUMENTACIÓN OFICIAL DISPONIBLE:
+        return f"""DOCUMENTACIÓN OFICIAL DISPONIBLE:
 {contexto}{historial_texto}
-Pregunta del usuario: {pregunta}
+Pregunta: {pregunta}
 
 Respondé basándote únicamente en la documentación oficial proporcionada arriba."""
 
     if tipo == "externo":
-        system_externo = system.replace(
-            "EXCLUSIVAMENTE en la documentación oficial proporcionada",
-            "el contexto provisto"
-        ).replace(
-            "EXCLUSIVAMENTE en la documentación oficial",
-            "el contexto provisto"
-        )
-        return f"""{system_externo}
-
-CONTEXTO ENCONTRADO EN FUENTES EXTERNAS:
+        return f"""CONTEXTO ENCONTRADO EN FUENTES EXTERNAS:
 {contexto}{historial_texto}
-Pregunta del usuario: {pregunta}
+Pregunta: {pregunta}
 
 INSTRUCCIÓN: Respondé usando el contexto provisto arriba. Si el contexto contiene información relacionada con la pregunta, usála para responder e indicá la fuente. Solo si el contexto no tiene absolutamente ninguna relación con la pregunta, indicá que no tenés información disponible. No uses tu conocimiento general."""
 
-    return f"""{system}
-
-No se encontró documentación oficial interna sobre este tema.
-Responde con tu conocimiento general si es relevante, o indicá que no tenés información disponible.{historial_texto}
+    return f"""No se encontró documentación oficial interna sobre este tema.{historial_texto}
 Pregunta: {pregunta}"""
 
 
@@ -271,10 +383,12 @@ def generar_respuesta_stream(pregunta: str, contexto: str, tipo: str = "local", 
 
 
 def _generar_gemini_stream(pregunta: str, contexto: str, tipo: str, memoria: dict | None = None, historial: list[dict] | None = None):
-    prompt = _prompt(pregunta, contexto, tipo, memoria, historial)
+    system = _construir_system(tipo, memoria)
+    user = _construir_user(pregunta, contexto, tipo, historial)
     url = f"{API_BASE}/models/{GEMINI_MODEL}:generateContent"
     payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
+        "systemInstruction": {"parts": [{"text": system}]},
+        "contents": [{"role": "user", "parts": [{"text": user}]}],
         "generationConfig": {"temperature": 0.1, "maxOutputTokens": 1024},
     }
     response = httpx.post(
@@ -289,11 +403,15 @@ def _generar_gemini_stream(pregunta: str, contexto: str, tipo: str, memoria: dic
 
 
 def _generar_groq_stream(pregunta: str, contexto: str, tipo: str, memoria: dict | None = None, historial: list[dict] | None = None):
-    prompt = _prompt(pregunta, contexto, tipo, memoria, historial)
+    system = _construir_system(tipo, memoria)
+    user = _construir_user(pregunta, contexto, tipo, historial)
     client = Groq(api_key=settings.groq_api_key)
     stream = client.chat.completions.create(
         model=GROQ_MODEL,
-        messages=[{"role": "user", "content": prompt}],
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user",   "content": user},
+        ],
         stream=True, temperature=0.1, max_tokens=1024,
     )
     for chunk in stream:
@@ -306,29 +424,22 @@ def _generar_groq_stream(pregunta: str, contexto: str, tipo: str, memoria: dict 
 
 class ResultadoBusqueda:
     def __init__(self, nivel: int, contexto: str, tipo_respuesta: str):
-        self.nivel = nivel          # 0=local, 1=urls, 2=web, 3=escalamiento
+        self.nivel = nivel
         self.contexto = contexto
-        self.tipo_respuesta = tipo_respuesta  # local | externo | escalamiento
+        self.tipo_respuesta = tipo_respuesta
 
 
 def ejecutar_loop_retroalimentacion(pregunta: str, max_score: float, resultados_qdrant: list[dict]) -> ResultadoBusqueda:
-    """
-    Ejecuta el loop de retroalimentación escalonado según el requerimiento.
-    Retorna el nivel alcanzado y el contexto a usar.
-    """
-    # Nivel 0 — Qdrant local con confianza suficiente
     if max_score >= CONFIDENCE_THRESHOLD:
         return ResultadoBusqueda(0, construir_contexto(resultados_qdrant), "local")
 
     logger.info(f"[LOOP] Score {max_score:.3f} < {CONFIDENCE_THRESHOLD} — activando fallback escalonado")
 
-    # Nivel 1 — URLs oficiales predefinidas
     contexto_nivel1 = buscar_en_urls_oficiales(pregunta)
     if contexto_nivel1:
         logger.info("[LOOP] Nivel 1: contexto encontrado en URLs oficiales")
         return ResultadoBusqueda(1, contexto_nivel1, "externo")
 
-    # Nivel 2 — Búsqueda web
     contexto_nivel2 = buscar_en_web(pregunta)
     if contexto_nivel2 and _es_relevante(pregunta, contexto_nivel2):
         logger.info("[LOOP] Nivel 2: contexto relevante encontrado en búsqueda web")
@@ -336,17 +447,18 @@ def ejecutar_loop_retroalimentacion(pregunta: str, max_score: float, resultados_
     if contexto_nivel2:
         logger.debug("[LOOP] Nivel 2 descartado por baja relevancia")
 
-    # Nivel 3 — Escalamiento humano
     logger.info("[LOOP] Nivel 3: escalamiento humano")
     return ResultadoBusqueda(3, "", "escalamiento")
 
 
 # Mantener compatibilidad con código existente
 def generar_respuesta(pregunta: str, contexto: str, tipo: str = "local") -> str:
-    prompt = _prompt(pregunta, contexto, tipo)
+    system = _construir_system(tipo)
+    user = _construir_user(pregunta, contexto, tipo)
     url = f"{API_BASE}/models/{GEMINI_MODEL}:generateContent"
     payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
+        "systemInstruction": {"parts": [{"text": system}]},
+        "contents": [{"role": "user", "parts": [{"text": user}]}],
         "generationConfig": {"temperature": 0.1, "maxOutputTokens": 1024},
     }
     response = httpx.post(
