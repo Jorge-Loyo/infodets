@@ -108,6 +108,10 @@ async def cargar_documento(
         "chunks": chunks_procesados,
     })
 
+    # Invalidar caché semántico al subir nuevo documento
+    from app.services.cache_service import invalidar_cache
+    invalidar_cache(db)
+
     audit_service.registrar(
         db, accion="cargar", entidad="documento",
         entidad_id=document_id, entidad_nombre=titulo,

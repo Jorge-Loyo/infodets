@@ -27,9 +27,21 @@ from app.middleware.auth_middleware import get_current_user
 from app.core.database import get_db, SessionLocal
 from app.models.models import HistorialChat, ConsultaInvitado, Conversacion
 from app.services.memoria_service import obtener_memoria, actualizar_memoria
+from app.services.cache_service import buscar_en_cache, guardar_en_cache
+from app.services.embedding_service import generate_query_embedding
+
+import re as _re
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["Chat"])
+
+PATRON_FECHA_HORA = _re.compile(
+    r'\b(qu[eé]\s+d[ií]a|hoy|fecha|hora|d[ií]a\s+de\s+hoy|feriado|feriados|calendario|qu[eé]\s+hora|cu[aá]ndo|esta\s+semana|pr[oó]xim)\b',
+    _re.IGNORECASE
+)
+
+def _es_pregunta_fecha(texto: str) -> bool:
+    return bool(PATRON_FECHA_HORA.search(texto))
 
 
 # ── Streaming ─────────────────────────────────────────────────────────────────
@@ -59,14 +71,7 @@ async def chat_stream(
 
     def generate():
         try:
-            try:
-                resultados, max_score = buscar_contexto(request.mensaje)
-            except Exception as e:
-                logger.warning(f"[CHAT] Error Qdrant: {type(e).__name__}: {e}")
-                resultados, max_score = [], 0.0
-            resultado = ejecutar_loop_retroalimentacion(request.mensaje, max_score, resultados)
-
-            # Cargar memoria e historial del usuario
+            # Cargar memoria e historial ANTES del loop para enriquecer la búsqueda
             db_mem = SessionLocal()
             try:
                 memoria = obtener_memoria(db_mem, usuario_id)
@@ -77,9 +82,52 @@ async def chat_stream(
                     .order_by(HistorialChat.creado_en.desc())
                     .limit(5)
                     .all()
-                ][::-1]  # orden cronológico
+                ][::-1]
             finally:
                 db_mem.close()
+
+            # Enriquecer la pregunta con contexto del historial para el loop RAG
+            pregunta_enriquecida = request.mensaje
+            if historial:
+                ultima = historial[-1]
+                # Si la pregunta es corta o referencial, agregar contexto de la última pregunta
+                palabras = request.mensaje.strip().split()
+                es_referencial = len(palabras) <= 8 or any(
+                    p in request.mensaje.lower()
+                    for p in ['solo', 'dame', 'muéstrame', 'cuáles', 'cuales', 'los de', 'las de', 'más', 'mas', 'también', 'tambien', 'ahora']
+                )
+                if es_referencial:
+                    pregunta_enriquecida = f"{ultima['pregunta']} — {request.mensaje}"
+
+            # Preguntas de fecha/hora/feriados — responder directo desde system prompt
+            embedding_pregunta = None
+            cache_hit = None
+            if _es_pregunta_fecha(request.mensaje):
+                resultado = type('R', (), {'nivel': 0, 'contexto': '', 'tipo_respuesta': 'local'})()
+                resultados, max_score = [], 1.0
+            else:
+                # FASE 6 — Caché Semántico: buscar solo con pregunta original (no enriquecida)
+                db_cache = SessionLocal()
+                try:
+                    embedding_pregunta = generate_query_embedding(request.mensaje)
+                    cache_hit = buscar_en_cache(db_cache, embedding_pregunta)
+                except Exception:
+                    pass
+                finally:
+                    db_cache.close()
+
+                if cache_hit:
+                    logger.info(f"[CHAT] Cache HIT — respondiendo desde caché")
+                    yield f"data: {json.dumps({'tipo': 'chunk', 'texto': cache_hit.respuesta})}\n\n"
+                    yield f"data: {json.dumps({'tipo': 'final', 'consulta_id': consulta_id, 'fuentes': [], 'confianza': 1.0, 'tipo_respuesta': cache_hit.tipo_respuesta, 'nivel': cache_hit.nivel})}\n\n"
+                    return
+
+                try:
+                    resultados, max_score = buscar_contexto(pregunta_enriquecida)
+                except Exception as e:
+                    logger.warning(f"[CHAT] Error Qdrant: {type(e).__name__}: {e}")
+                    resultados, max_score = [], 0.0
+                resultado = ejecutar_loop_retroalimentacion(pregunta_enriquecida, max_score, resultados)
 
             logger.info(
                 f"[CHAT] consulta_id={consulta_id} | score={max_score:.3f} "
@@ -133,6 +181,14 @@ async def chat_stream(
                 actualizar_memoria(db_mem2, usuario_id, request.mensaje, respuesta_texto)
             finally:
                 db_mem2.close()
+
+            # FASE 6 — Guardar en caché si la respuesta es de calidad (solo preguntas no referenciales)
+            if resultado.nivel in (0, 1) and embedding_pregunta and pregunta_enriquecida == request.mensaje:
+                db_cache2 = SessionLocal()
+                try:
+                    guardar_en_cache(db_cache2, pregunta_enriquecida, embedding_pregunta, respuesta_texto, resultado.tipo_respuesta, resultado.nivel)
+                finally:
+                    db_cache2.close()
 
             if max_score < UMBRAL_TICKET:
                 db_t = SessionLocal()
