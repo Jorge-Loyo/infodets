@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+import sqlalchemy as sa
 from sqlalchemy import String, Text, Float, Boolean, Integer, Enum, ForeignKey, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -285,3 +286,17 @@ class ConfiguracionSistema(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
     logo_url: Mapped[str | None] = mapped_column(String, nullable=True)
     actualizado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class CacheRespuesta(Base):
+    __tablename__ = "cache_respuestas"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    pregunta: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding: Mapped[list] = mapped_column(sa.ARRAY(sa.Float), nullable=False)
+    respuesta: Mapped[str] = mapped_column(Text, nullable=False)
+    tipo_respuesta: Mapped[str] = mapped_column(String, default='local')
+    nivel: Mapped[int] = mapped_column(Integer, default=0)
+    hits: Mapped[int] = mapped_column(Integer, default=0)
+    creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    expira_en: Mapped[datetime] = mapped_column(DateTime, nullable=False)
