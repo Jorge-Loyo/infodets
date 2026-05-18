@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     search_api_key: str = ""
     search_api_url: str = ""
 
+    # Re-ranking (Fase 4)
+    cohere_api_key: str = ""
+
     # Contrasena por defecto para blanqueo
     default_password: str = "Infodets2024!"
 

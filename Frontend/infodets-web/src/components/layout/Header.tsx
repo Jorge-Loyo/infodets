@@ -16,10 +16,28 @@ export function Header() {
   const { toggleSidebar } = useSidebar()
   const { isAuthenticated, perfilNombre } = useSessionStore()
   const [mounted, setMounted] = useState(false)
-  const { noLeidos, setNoLeidos, noticiasNoLeidas, setNoticiasNoLeidas, ultimaVisitaNoticias, headerColor, paletaColor, tipografia, logoUrl, logoSize, colorScheme, temaActivo, setColorScheme, fotoPerfil } = useUiStore()
+  const { noLeidos, setNoLeidos, noticiasNoLeidas, setNoticiasNoLeidas, ultimaVisitaNoticias, headerColor, paletaColor, tipografia, logoUrl, logoSize, colorScheme, temaActivo, setColorScheme, fotoPerfil, setLogoUrl } = useUiStore()
   const router = useRouter()
 
   useEffect(() => { setMounted(true) }, [])
+
+  // Cargar logo desde el backend al iniciar
+  useEffect(() => {
+    if (!isAuthenticated()) return
+    axiosInstance.get<{ logo_url: string | null }>('/sistema')
+      .then(res => {
+        console.log('[LOGO] logo_url del backend:', res.data.logo_url)
+        if (res.data.logo_url) {
+          const docsUrl = process.env.NEXT_PUBLIC_DOCS_URL ?? 'http://localhost:8000'
+          const url = res.data.logo_url.startsWith('http') ? res.data.logo_url : `${docsUrl}${res.data.logo_url}`
+          console.log('[LOGO] URL final:', url)
+          setLogoUrl(url)
+        } else {
+          setLogoUrl('')
+        }
+      })
+      .catch((e) => console.error('[LOGO] Error:', e))
+  }, [isAuthenticated])
 
   useEffect(() => {
     if (!isAuthenticated()) return
