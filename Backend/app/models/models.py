@@ -285,6 +285,17 @@ class ConfiguracionSistema(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
     logo_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    header_color: Mapped[str] = mapped_column(String, default="#ffffff")
+    paleta_color: Mapped[str] = mapped_column(String, default="blue")
+    tipografia: Mapped[str] = mapped_column(String, default="Plus Jakarta Sans")
+    logo_size: Mapped[int] = mapped_column(Integer, default=32)
+    color_scheme: Mapped[str] = mapped_column(String, default="light")
+    color_sidebar: Mapped[str] = mapped_column(String, default="")
+    color_texto: Mapped[str] = mapped_column(String, default="")
+    color_boton: Mapped[str] = mapped_column(String, default="")
+    color_fondo: Mapped[str] = mapped_column(String, default="")
+    color_tarjeta: Mapped[str] = mapped_column(String, default="")
+    tema_activo: Mapped[str] = mapped_column(String, default="Estándar")
     actualizado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
