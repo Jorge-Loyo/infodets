@@ -569,3 +569,544 @@ chore:    mantenimiento
 
 _INFODETS — Sistema de Gestión de Conocimiento Dinámico_
 _Plan de Desarrollo v4.1 — Sprint Testeo — Mayo 2026_
+
+---
+
+## 11. HISTORIAS DE USUARIO
+
+> Formato: **Como** [rol] **quiero** [acción] **para** [beneficio]
+> Estado: ✅ Implementado | 🔲 Pendiente
+
+---
+
+### ÉPICA 1 — Autenticación y Acceso
+
+#### HU-001 — Login con cuenta institucional
+**Como** empleado de la entidad
+**Quiero** iniciar sesión con mi email y contraseña institucional
+**Para** acceder al sistema de consultas de forma segura
+
+**Criterios de aceptación:**
+- El sistema autentica contra AWS Cognito
+- Al ingresar, se carga el perfil y permisos del usuario
+- Si las credenciales son incorrectas, muestra mensaje de error claro
+- La sesión persiste hasta cerrar sesión manualmente
+
+**Estado:** ✅ Implementado
+
+---
+
+#### HU-002 — Acceso como invitado
+**Como** ciudadano externo sin cuenta
+**Quiero** realizar consultas sin registrarme
+**Para** obtener información pública sin barreras de acceso
+
+**Criterios de aceptación:**
+- El formulario solicita nombre, apellido y email
+- Las consultas de invitados se registran en la base de datos
+- Si la IA no puede responder, se genera un ticket de escalamiento
+- El invitado recibe el mensaje de escalamiento en pantalla
+
+**Estado:** ✅ Implementado
+
+---
+
+#### HU-003 — Cierre de sesión seguro
+**Como** usuario autenticado
+**Quiero** cerrar sesión desde cualquier pantalla
+**Para** proteger mi cuenta en equipos compartidos
+
+**Criterios de aceptación:**
+- El botón de logout está visible en el header
+- Al cerrar sesión se limpia el estado local y la sesión de Cognito
+- Redirige al login automáticamente
+
+**Estado:** ✅ Implementado
+
+---
+
+### ÉPICA 2 — Chat con IA
+
+#### HU-004 — Consulta con respuesta desde documentación oficial
+**Como** usuario autenticado
+**Quiero** hacer preguntas en lenguaje natural
+**Para** obtener respuestas basadas en documentación oficial de la entidad
+
+**Criterios de aceptación:**
+- La respuesta se muestra en streaming (token a token)
+- Se indica el porcentaje de confianza de la respuesta
+- Se muestran las fuentes con link al documento PDF
+- El badge indica "Documentación oficial" en verde
+
+**Estado:** ✅ Implementado
+
+---
+
+#### HU-005 — Consulta con fuente externa cuando no hay documentación
+**Como** usuario autenticado
+**Quiero** recibir una respuesta aunque no haya documentación interna
+**Para** no quedarme sin información en consultas válidas
+
+**Criterios de aceptación:**
+- Si Qdrant no supera el umbral, busca en URLs oficiales configuradas (Nivel 1)
+- Si Nivel 1 falla, busca en internet (Nivel 2)
+- Se muestra aviso diferenciado: ℹ️ para URL oficial, ⚠️ para búsqueda web
+- Se muestra la URL de la fuente externa
+
+**Estado:** ✅ Implementado
+
+---
+
+#### HU-006 — Escalamiento cuando no hay respuesta disponible
+**Como** usuario autenticado
+**Quiero** ser notificado cuando la IA no puede responder
+**Para** saber que mi consulta será atendida por un humano
+
+**Criterios de aceptación:**
+- Se muestra mensaje de escalamiento claro
+- Se crea un ticket automáticamente con `requiere_respuesta=true`
+- El ticket aparece en "Mis consultas" con badge rojo "Escalado"
+- El administrador recibe notificación del escalamiento
+
+**Estado:** ✅ Implementado
+
+---
+
+#### HU-007 — Historial de conversación con contexto
+**Como** usuario autenticado
+**Quiero** que el bot recuerde lo que pregunté antes en la misma sesión
+**Para** hacer preguntas de seguimiento sin repetir contexto
+
+**Criterios de aceptación:**
+- "Dame solo los de tecnología" después de preguntar sobre portales funciona correctamente
+- El historial de los últimos 5 mensajes se incluye en el prompt
+- Las conversaciones se pueden fijar para acceso rápido
+- Máximo 5 conversaciones no fijadas por usuario
+
+**Estado:** ✅ Implementado
+
+---
+
+#### HU-008 — Memoria persistente del usuario
+**Como** usuario recurrente
+**Quiero** que el bot me recuerde entre sesiones
+**Para** recibir respuestas personalizadas sin repetir mi contexto
+
+**Criterios de aceptación:**
+- En la primera consulta el bot saluda por nombre
+- El bot recuerda las últimas 10 consultas del usuario
+- El resumen de consultas previas se inyecta en el system prompt
+- La memoria persiste en la tabla `memoria_usuario`
+
+**Estado:** ✅ Implementado
+
+---
+
+#### HU-009 — Respuesta instantánea para preguntas de fecha y hora
+**Como** usuario
+**Quiero** preguntar la fecha, hora o feriados
+**Para** obtener información del sistema sin esperar búsquedas innecesarias
+
+**Criterios de aceptación:**
+- "Qué día es hoy?" responde en menos de 2 segundos
+- Muestra 100% de confianza
+- No activa el loop RAG ni HyDE
+- Usa la fecha/hora de Argentina (UTC-3)
+
+**Estado:** ✅ Implementado
+
+---
+
+### ÉPICA 3 — Gestión de Consultas (Mis Consultas)
+
+#### HU-010 — Ver mis tickets de escalamiento
+**Como** usuario autenticado
+**Quiero** ver el estado de mis consultas escaladas
+**Para** saber si un administrador ya respondió
+
+**Criterios de aceptación:**
+- Lista todos los tickets del usuario ordenados por fecha
+- Badge diferenciado por nivel (azul=Nivel 1, naranja=Nivel 2, rojo=Nivel 3)
+- Indica si hay respuestas nuevas no leídas
+- Al abrir el ticket marca los mensajes como leídos
+
+**Estado:** ✅ Implementado
+
+---
+
+#### HU-011 — Responder a un ticket de escalamiento
+**Como** usuario autenticado
+**Quiero** enviar mensajes adicionales en un ticket escalado
+**Para** agregar información que ayude al administrador a responder
+
+**Criterios de aceptación:**
+- Campo de texto con envío por Enter o botón
+- Los mensajes del admin se muestran diferenciados con avatar "A"
+- El contador de no leídos se actualiza en el header
+- El ticket cambia a estado "respondido" cuando el admin contesta
+
+**Estado:** ✅ Implementado
+
+---
+
+### ÉPICA 4 — Documentación
+
+#### HU-012 — Ver documentos oficiales disponibles
+**Como** usuario autenticado
+**Quiero** ver la lista de documentos indexados en el sistema
+**Para** saber qué información está disponible para consultar
+
+**Criterios de aceptación:**
+- Lista documentos con título, categoría y dependencia
+- Permite descargar o visualizar el PDF
+- Filtra por categoría y dependencia
+- Solo muestra documentos de tipo "público"
+
+**Estado:** ✅ Implementado
+
+---
+
+#### HU-013 — Subir documento para entrenamiento de la IA
+**Como** administrador o editor
+**Quiero** subir documentos PDF para entrenar la IA
+**Para** ampliar la base de conocimiento del sistema
+
+**Criterios de aceptación:**
+- Solo acepta archivos PDF
+- El documento se fragmenta en chunks hijo/padre (Parent-Child)
+- Se generan embeddings y se indexan en Qdrant
+- Al subir un documento se invalida el caché semántico
+- El documento aparece en el listado con estado "indexado"
+
+**Estado:** ✅ Implementado
+
+---
+
+### ÉPICA 5 — Noticias Institucionales
+
+#### HU-014 — Ver noticias publicadas
+**Como** usuario autenticado
+**Quiero** ver las noticias institucionales
+**Para** mantenerme informado sobre novedades de la entidad
+
+**Criterios de aceptación:**
+- Lista noticias con imagen, título, autor y fecha
+- Indica cuántas noticias nuevas hay desde la última visita
+- Permite dar like a una noticia
+- Las noticias no publicadas no son visibles para usuarios regulares
+
+**Estado:** ✅ Implementado
+
+---
+
+#### HU-015 — Crear y publicar noticias
+**Como** administrador
+**Quiero** crear noticias institucionales con imagen
+**Para** comunicar novedades a todos los usuarios del sistema
+
+**Criterios de aceptación:**
+- Formulario con título, contenido, categoría, autor e imagen
+- La imagen se sube al servidor y se sirve estáticamente
+- Las noticias pueden publicarse o guardarse como borrador
+- Al publicar, los usuarios ven el badge de "nuevas noticias"
+
+**Estado:** ✅ Implementado
+
+---
+
+### ÉPICA 6 — Administración de Usuarios
+
+#### HU-016 — Gestionar usuarios del sistema
+**Como** administrador
+**Quiero** crear, editar y deshabilitar usuarios
+**Para** controlar quién tiene acceso al sistema
+
+**Criterios de aceptación:**
+- Lista usuarios con nombre, email, rol y perfil
+- Permite cambiar el perfil de un usuario
+- Permite blanquear la contraseña
+- El Super Admin no puede ser editado ni eliminado
+- Todas las acciones quedan registradas en el log de auditoría
+
+**Estado:** ✅ Implementado
+
+---
+
+#### HU-017 — Gestionar perfiles y permisos
+**Como** administrador
+**Quiero** crear perfiles con permisos específicos
+**Para** controlar qué secciones puede ver cada tipo de usuario
+
+**Criterios de aceptación:**
+- Perfiles configurables con permisos por sección
+- Los permisos se aplican en tiempo real al navegar
+- El perfil "Super Admin" está protegido contra modificaciones
+- Jerarquía: Super Admin > Admin > resto
+
+**Estado:** ✅ Implementado
+
+---
+
+#### HU-018 — Ver log de auditoría de usuarios
+**Como** administrador
+**Quiero** ver un historial de todas las acciones sobre usuarios
+**Para** tener trazabilidad de cambios en el sistema
+
+**Criterios de aceptación:**
+- Registra: crear, modificar, eliminar, cambiar perfil, blanquear contraseña
+- Muestra quién realizó la acción y cuándo (timezone Argentina)
+- Permite ver el detalle de cada cambio en un modal
+- Paginado para manejar grandes volúmenes
+
+**Estado:** ✅ Implementado
+
+---
+
+### ÉPICA 7 — Configuración del Chat
+
+#### HU-019 — Configurar identidad del bot
+**Como** administrador
+**Quiero** personalizar el nombre, tono y personalidad del asistente
+**Para** que el bot represente la identidad de la entidad
+
+**Criterios de aceptación:**
+- Configurable: nombre, sexo, personalidad, tono, idioma, institución
+- Permite subir imagen del bot
+- Los cambios se reflejan inmediatamente en el chat
+- La identidad se inyecta en el system prompt del LLM
+
+**Estado:** ✅ Implementado
+
+---
+
+#### HU-020 — Gestionar URLs oficiales para búsqueda
+**Como** administrador
+**Quiero** configurar URLs oficiales que la IA puede consultar
+**Para** ampliar las fuentes de información del Nivel 1 del loop RAG
+
+**Criterios de aceptación:**
+- Agregar, activar/desactivar y eliminar URLs
+- Las URLs activas se usan en el Nivel 1 del loop RAG
+- Se aplica filtro de relevancia léxica antes de usar el contenido
+- Las URLs inactivas no se consultan
+
+**Estado:** ✅ Implementado
+
+---
+
+#### HU-021 — Gestionar notificaciones y validaciones
+**Como** administrador
+**Quiero** ver y gestionar los tickets y validaciones pendientes
+**Para** responder consultas escaladas y aprobar respuestas para indexar
+
+**Criterios de aceptación:**
+- Lista tickets por estado: pendiente, revisado, respondido
+- Tickets de Nivel 3 marcados como "requiere respuesta"
+- Permite responder directamente desde el panel
+- Validaciones pendientes pueden aprobarse o rechazarse para indexar en Qdrant
+
+**Estado:** ✅ Implementado
+
+---
+
+### ÉPICA 8 — Visualización y Temas
+
+#### HU-022 — Personalizar apariencia del sistema
+**Como** administrador
+**Quiero** configurar el logo, colores y tipografía del sistema
+**Para** adaptar la plataforma a la identidad visual de la entidad
+
+**Criterios de aceptación:**
+- Temas predefinidos: Estándar, Moderno, Ciudad, Personalizado
+- Logo se sube al servidor y persiste entre recargas
+- Colores personalizables: header, sidebar, fondo, tarjetas, botones, texto
+- Modo oscuro/claro configurable
+- Los cambios se aplican en tiempo real
+
+**Estado:** ✅ Implementado
+
+---
+
+### ÉPICA 9 — Mejoras RAG
+
+#### HU-023 — Búsqueda con System/User separados (Fase 1)
+**Como** sistema
+**Quiero** enviar el system prompt y el mensaje del usuario por separado al LLM
+**Para** mejorar el seguimiento de instrucciones y la calidad de respuestas
+
+**Estado:** ✅ Implementado — Gemini usa `systemInstruction`, Groq usa `role:system`
+
+---
+
+#### HU-024 — HyDE para mejor recall en Qdrant (Fase 2)
+**Como** sistema
+**Quiero** generar una respuesta hipotética antes de buscar en Qdrant
+**Para** mejorar el recall vectorial con embeddings más similares a los documentos
+
+**Estado:** ✅ Implementado — Genera hipótesis con Groq antes de buscar
+
+---
+
+#### HU-025 — Query Expansion para mayor cobertura (Fase 3)
+**Como** sistema
+**Quiero** generar variantes de la pregunta del usuario
+**Para** encontrar documentos relevantes aunque usen vocabulario diferente
+
+**Estado:** ✅ Implementado — 2 variantes en paralelo cuando score < umbral
+
+---
+
+#### HU-026 — Re-ranking con Cohere (Fase 4)
+**Como** sistema
+**Quiero** reordenar los chunks recuperados por relevancia real
+**Para** que el LLM reciba los fragmentos más pertinentes primero
+
+**Estado:** ✅ Implementado — Reordena top-10 chunks por relevancia real con Cohere Rerank
+
+---
+
+#### HU-027 — Parent-Child Retrieval (Fase 5)
+**Como** sistema
+**Quiero** indexar chunks pequeños para búsqueda y enviar chunks grandes al LLM
+**Para** combinar precisión en la búsqueda con contexto completo en la respuesta
+
+**Estado:** ✅ Implementado — Chunks hijo (300 tokens) para búsqueda, padre (1000 tokens) para contexto
+
+---
+
+#### HU-028 — Caché Semántico (Fase 6)
+**Como** sistema
+**Quiero** cachear respuestas de alta calidad por similitud semántica
+**Para** reducir latencia y costos de API en preguntas frecuentes
+
+**Estado:** ✅ Implementado — TTL 24h, coseno > 0.95, invalidación automática al subir docs
+
+---
+
+### ÉPICA 10 — Backlog / Pendientes
+
+#### HU-029 — Importación masiva de usuarios desde CSV
+**Como** administrador
+**Quiero** importar usuarios desde un archivo Excel/CSV
+**Para** dar de alta múltiples usuarios sin hacerlo uno por uno
+
+**Criterios de aceptación:**
+- Formulario de carga de archivo CSV/Excel
+- Validación de campos requeridos (email, nombre, perfil)
+- Reporte de errores por fila
+- Los usuarios importados reciben email con contraseña temporal
+
+**Estado:** 🔲 Pendiente
+
+---
+
+#### HU-030 — Exportar reportes de uso en PDF/Excel
+**Como** administrador
+**Quiero** exportar métricas de uso del sistema
+**Para** presentar informes de adopción a las autoridades
+
+**Criterios de aceptación:**
+- Exportar historial de consultas por usuario y período
+- Exportar tickets por estado y nivel
+- Formato PDF y Excel
+- Filtros por fecha, usuario y tipo de respuesta
+
+**Estado:** 🔲 Pendiente
+
+---
+
+#### HU-031 — Dashboard con métricas reales
+**Como** administrador
+**Quiero** ver estadísticas de uso en tiempo real
+**Para** monitorear la adopción y calidad del sistema
+
+**Criterios de aceptación:**
+- Total de consultas por día (gráfico de línea)
+- Distribución por nivel de respuesta (0/1/2/3)
+- Documentos más consultados
+- Tasa de escalamiento (Nivel 3 / total)
+- Usuarios más activos
+
+**Estado:** 🔲 Pendiente (endpoints existen, falta implementación real)
+
+---
+
+#### HU-032 — Notificaciones por email y WhatsApp
+**Como** usuario
+**Quiero** recibir notificaciones cuando un admin responda mi ticket
+**Para** no tener que revisar el sistema manualmente
+
+**Criterios de aceptación:**
+- Email al usuario cuando el admin responde un ticket Nivel 3
+- Opción de notificación por WhatsApp (via n8n)
+- El usuario puede configurar sus preferencias de notificación
+- Las notificaciones incluyen link directo al ticket
+
+**Estado:** 🔲 Pendiente
+
+---
+
+#### HU-033 — Integración con LDAP/Active Directory
+**Como** administrador de IT
+**Quiero** sincronizar usuarios desde el directorio corporativo
+**Para** no gestionar credenciales duplicadas
+
+**Criterios de aceptación:**
+- Configuración de servidor LDAP/AD
+- Sincronización automática de usuarios y grupos
+- Los grupos de AD se mapean a perfiles de INFODETS
+- Login con credenciales corporativas existentes
+
+**Estado:** 🔲 Pendiente
+
+---
+
+#### HU-034 — Calificación de respuestas por el usuario
+**Como** usuario
+**Quiero** calificar si una respuesta fue útil o no
+**Para** ayudar a mejorar la calidad del sistema
+
+**Criterios de aceptación:**
+- Botones 👍 / 👎 al final de cada respuesta
+- Opción de agregar comentario cuando la respuesta es incorrecta
+- Los feedbacks negativos generan validación pendiente para el admin
+- El admin puede aprobar la corrección para re-indexar
+
+**Estado:** 🔲 Pendiente (modelo `ReporteFeedback` existe, falta UI)
+
+---
+
+#### HU-035 — Soporte multiidioma
+**Como** usuario de habla no española
+**Quiero** interactuar con el sistema en mi idioma
+**Para** acceder a la información sin barreras lingüísticas
+
+**Criterios de aceptación:**
+- Detección automática del idioma del usuario
+- Respuestas en el idioma detectado
+- Interfaz traducida (español, inglés mínimo)
+- Configurable por perfil de usuario
+
+**Estado:** 🔲 Pendiente
+
+---
+
+### Resumen de Historias de Usuario
+
+| Épica | Total HU | Implementadas | Pendientes |
+|-------|----------|---------------|------------|
+| 1 — Autenticación | 3 | 3 | 0 |
+| 2 — Chat con IA | 6 | 6 | 0 |
+| 3 — Mis Consultas | 2 | 2 | 0 |
+| 4 — Documentación | 2 | 2 | 0 |
+| 5 — Noticias | 2 | 2 | 0 |
+| 6 — Administración | 3 | 3 | 0 |
+| 7 — Config Chat | 3 | 3 | 0 |
+| 8 — Visualización | 1 | 1 | 0 |
+| 9 — Mejoras RAG | 6 | 6 | 0 |
+| 10 — Backlog | 7 | 0 | 7 |
+| **TOTAL** | **35** | **28** | **7** |
+
+---
+
+_Historias de usuario agregadas: Mayo 2026_

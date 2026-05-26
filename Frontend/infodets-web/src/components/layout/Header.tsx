@@ -28,8 +28,7 @@ export function Header() {
       .then(res => {
         console.log('[LOGO] logo_url del backend:', res.data.logo_url)
         if (res.data.logo_url) {
-          const docsUrl = process.env.NEXT_PUBLIC_DOCS_URL ?? 'http://localhost:8000'
-          const url = res.data.logo_url.startsWith('http') ? res.data.logo_url : `${docsUrl}${res.data.logo_url}`
+          const url = res.data.logo_url.startsWith('http') ? res.data.logo_url : res.data.logo_url
           console.log('[LOGO] URL final:', url)
           setLogoUrl(url)
         } else {
