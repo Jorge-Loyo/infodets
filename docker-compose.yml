@@ -31,6 +31,8 @@ services:
       - "3000:3000"
     env_file:
       - ./Frontend/infodets-web/.env.local
+    environment:
+      - INTERNAL_BACKEND_URL=http://backend:8000
     depends_on:
       - backend
     networks:
