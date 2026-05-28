@@ -13,7 +13,7 @@ GROQ_MODEL = "llama-3.3-70b-versatile"
 API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 
 # Umbrales del Loop de Retroalimentación
-CONFIDENCE_THRESHOLD = 0.70
+CONFIDENCE_THRESHOLD = 0.40
 UMBRAL_NIVEL2 = 0.0
 
 # Feature flags

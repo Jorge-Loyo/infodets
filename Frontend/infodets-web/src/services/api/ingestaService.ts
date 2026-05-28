@@ -5,12 +5,33 @@ import type { IngestaResponse, DocumentoListItem } from '@/types/ingesta.types'
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/v1'
 
 export const ingestaService = {
+  analizar: async (archivo: File): Promise<{
+    titulo?: string
+    categoria?: string
+    dependencia?: string
+    anio?: number
+    nro_resolucion?: string
+    nro_decreto?: string
+    autor?: string
+    descripcion?: string
+  }> => {
+    const form = new FormData()
+    form.append('archivo', archivo)
+    const res = await axiosInstance.post('/admin/ingesta/analizar', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return res.data
+  },
+
   cargar: async (archivo: File, metadata: {
     titulo: string
     categoria: string
     dependencia: string
     descripcion?: string
     anio?: number
+    nro_resolucion?: string
+    nro_decreto?: string
+    autor?: string
     tipo?: string
   }): Promise<IngestaResponse> => {
     const form = new FormData()
@@ -20,6 +41,9 @@ export const ingestaService = {
     form.append('dependencia', metadata.dependencia)
     if (metadata.descripcion) form.append('descripcion', metadata.descripcion)
     if (metadata.anio) form.append('anio', String(metadata.anio))
+    if (metadata.nro_resolucion) form.append('nro_resolucion', metadata.nro_resolucion)
+    if (metadata.nro_decreto) form.append('nro_decreto', metadata.nro_decreto)
+    if (metadata.autor) form.append('autor', metadata.autor)
     form.append('tipo', metadata.tipo ?? 'publico')
 
     const res = await axiosInstance.post<IngestaResponse>('/admin/ingesta', form, {

@@ -52,6 +52,9 @@ export default function DocumentacionPage() {
   const [categoria, setCategoria] = useState('')
   const [dependencia, setDependencia] = useState('')
   const [anio, setAnio] = useState('')
+  const [nroResolucion, setNroResolucion] = useState('')
+  const [nroDecreto, setNroDecreto] = useState('')
+  const [autor, setAutor] = useState('')
   const opcionesCategorias = useTablaOpciones('categorias')
   const opcionesDependencias = useTablaOpciones('dependencias')
 
@@ -132,7 +135,7 @@ export default function DocumentacionPage() {
   )
 
   const limpiarFormulario = () => {
-    setArchivo(null); setTitulo(''); setCategoria(''); setDependencia(''); setAnio(''); setProgreso(0)
+    setArchivo(null); setTitulo(''); setCategoria(''); setDependencia(''); setAnio(''); setNroResolucion(''); setNroDecreto(''); setAutor(''); setProgreso(0)
   }
 
   const handleSubir = async () => {
@@ -143,7 +146,7 @@ export default function DocumentacionPage() {
     setSubiendo(true); setProgreso(10)
     try {
       setProgreso(30)
-      const resultado = await ingestaService.cargar(archivo, { titulo: titulo.trim(), categoria, dependencia, anio: anio ? parseInt(anio) : undefined })
+      const resultado = await ingestaService.cargar(archivo, { titulo: titulo.trim(), categoria, dependencia, anio: anio ? parseInt(anio) : undefined, nro_resolucion: nroResolucion.trim() || undefined, nro_decreto: nroDecreto.trim() || undefined, autor: autor.trim() || undefined })
       setProgreso(100)
       notifications.show({ color: 'green', title: '✅ Documento procesado', message: `"${resultado.titulo}" — ${resultado.vector_id}` })
       limpiarFormulario()
@@ -233,6 +236,15 @@ export default function DocumentacionPage() {
                   <Select label="Categoría *" placeholder="Selecciona" data={opcionesCategorias} value={categoria} onChange={v => setCategoria(v ?? '')} radius="md" required />
                   <Select label="Dependencia" placeholder="Selecciona" data={opcionesDependencias} value={dependencia} onChange={v => setDependencia(v ?? '')} radius="md" clearable />
                   <TextInput label="Año" placeholder="Ej: 2024" value={anio} onChange={e => setAnio(e.target.value)} radius="md" maxLength={4} />
+                  <Grid>
+                    <Grid.Col span={6}>
+                      <TextInput label="Nro. Resolución" placeholder="Ej: 001-2024" value={nroResolucion} onChange={e => setNroResolucion(e.target.value)} radius="md" />
+                    </Grid.Col>
+                    <Grid.Col span={6}>
+                      <TextInput label="Nro. Decreto" placeholder="Ej: 1990/97" value={nroDecreto} onChange={e => setNroDecreto(e.target.value)} radius="md" />
+                    </Grid.Col>
+                  </Grid>
+                  <TextInput label="Autor / Organismo" placeholder="Ej: Ministerio de Educación" value={autor} onChange={e => setAutor(e.target.value)} radius="md" />
                   {subiendo && progreso > 0 && (
                     <Stack gap={4}>
                       <Text size="xs" c="dimmed">Procesando e indexando...</Text>

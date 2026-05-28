@@ -29,6 +29,7 @@ export interface DocumentoListItem {
   titulo: string
   categoria: string
   dependencia: string
+  descripcion?: string
   estado: EstadoDocumento
   vector_id?: string
   created_at: string
