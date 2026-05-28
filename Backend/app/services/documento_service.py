@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.models.models import Documento, EstadoDocumentoEnum
 
 
-def crear_documento(db: Session, id: str, titulo: str, url_fuente: str, categoria: str | None = None, dependencia: str | None = None, tipo: str = "publico") -> Documento:
+def crear_documento(db: Session, id: str, titulo: str, url_fuente: str, categoria: str | None = None, dependencia: str | None = None, tipo: str = "publico", descripcion: str | None = None, anio: int | None = None, nro_resolucion: str | None = None, nro_decreto: str | None = None, autor: str | None = None) -> Documento:
     documento = Documento(
         id=id,
         titulo=titulo,
@@ -11,6 +11,11 @@ def crear_documento(db: Session, id: str, titulo: str, url_fuente: str, categori
         categoria=categoria,
         dependencia=dependencia,
         tipo=tipo,
+        descripcion=descripcion,
+        anio=anio,
+        nro_resolucion=nro_resolucion,
+        nro_decreto=nro_decreto,
+        autor=autor,
         estado=EstadoDocumentoEnum.indexado,
     )
     db.add(documento)

@@ -40,6 +40,7 @@ async def procesar_documento(
     document_id: str,
     source_url: str,
     titulo: str,
+    metadatos: dict | None = None,
 ) -> int:
     """
     Pipeline de ingesta con Parent-Child Retrieval:
@@ -56,6 +57,18 @@ async def procesar_documento(
         raise ValueError("El PDF no contiene texto extraible")
 
     logger.info(f"[INGESTA] {titulo} | Texto extraído: {len(texto)} caracteres")
+
+    # Construir texto enriquecido con metadatos para mejorar búsqueda
+    meta = metadatos or {}
+    meta_texto = f"Título: {titulo}"
+    if meta.get("nro_resolucion"):
+        meta_texto += f" | Resolución N° {meta['nro_resolucion']}"
+    if meta.get("nro_decreto"):
+        meta_texto += f" | Decreto N° {meta['nro_decreto']}"
+    if meta.get("categoria"):
+        meta_texto += f" | Categoría: {meta['categoria']}"
+    if meta.get("descripcion"):
+        meta_texto += f" | {meta['descripcion']}"
 
     # Generar chunks padre
     chunks_padre = fragmentar_texto(texto, PARENT_CHUNK_SIZE, PARENT_CHUNK_OVERLAP)
@@ -85,8 +98,10 @@ async def procesar_documento(
     logger.info(f"[INGESTA] {titulo} | Chunks hijo: {len(chunks_hijo)}")
 
     # Generar embeddings en lotes
+    # Prepend metadatos al texto de cada chunk hijo para mejorar relevancia
+    chunks_para_embedding = [f"{meta_texto}\n{hijo}" for hijo in chunks_hijo]
     logger.info(f"[INGESTA] Generando embeddings ({len(chunks_hijo)} chunks)...")
-    vectors = generate_embeddings_batch(chunks_hijo)
+    vectors = generate_embeddings_batch(chunks_para_embedding)
 
     # Indexar en Qdrant en lotes de 50 puntos
     points = []
@@ -102,6 +117,11 @@ async def procesar_documento(
                     "source_url": source_url,
                     "titulo": titulo,
                     "page_number": idx_padre,
+                    "categoria": meta.get("categoria", ""),
+                    "nro_resolucion": meta.get("nro_resolucion", ""),
+                    "nro_decreto": meta.get("nro_decreto", ""),
+                    "autor": meta.get("autor", ""),
+                    "descripcion": meta.get("descripcion", ""),
                 },
             )
         )

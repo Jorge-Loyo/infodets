@@ -34,5 +34,6 @@ class DocumentoListItem(BaseModel):
     titulo: str
     categoria: str
     dependencia: str
+    descripcion: Optional[str] = None
     estado: EstadoDocumento
     created_at: str
