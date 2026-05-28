@@ -89,7 +89,13 @@ async def cargar_documento(
             source_url=f"/v1/admin/ingesta/ver/{document_id}",
             titulo=titulo,
         )
+    except ValueError as e:
+        logger.warning(f"[INGESTA] PDF inválido: {e}")
+        os.unlink(ruta_permanente)
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        import traceback
+        logger.error(f"[INGESTA] Error procesando documento: {traceback.format_exc()}")
         os.unlink(ruta_permanente)
         raise HTTPException(status_code=500, detail=str(e))
 

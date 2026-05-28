@@ -8,21 +8,22 @@ from app.services.qdrant_service import init_collection, upsert
 
 logger = logging.getLogger(__name__)
 
-# FASE 5 — Parent-Child Retrieval
-# Chunks hijo: pequeños, para búsqueda precisa en Qdrant
-# Chunks padre: grandes, para contexto completo al LLM
-CHILD_CHUNK_SIZE = 300
+# Chunks más grandes para reducir cantidad total en documentos largos
+CHILD_CHUNK_SIZE = 500
 CHILD_CHUNK_OVERLAP = 50
-PARENT_CHUNK_SIZE = 1000
-PARENT_CHUNK_OVERLAP = 100
+PARENT_CHUNK_SIZE = 1500
+PARENT_CHUNK_OVERLAP = 150
 
 
 def extraer_texto_pdf(ruta_archivo: str) -> str:
-    reader = PdfReader(ruta_archivo)
-    texto = ""
-    for page in reader.pages:
-        texto += page.extract_text() or ""
-    return texto
+    try:
+        reader = PdfReader(ruta_archivo)
+        texto = ""
+        for page in reader.pages:
+            texto += page.extract_text() or ""
+        return texto
+    except Exception as e:
+        raise ValueError(f"No se pudo leer el PDF: {e}")
 
 
 def fragmentar_texto(texto: str, chunk_size: int, chunk_overlap: int) -> list[str]:
@@ -41,18 +42,20 @@ async def procesar_documento(
     titulo: str,
 ) -> int:
     """
-    Pipeline de ingesta con Parent-Child Retrieval (Fase 5):
+    Pipeline de ingesta con Parent-Child Retrieval:
     1. Extrae texto del PDF
     2. Genera chunks padre (grandes, para contexto)
-    3. Genera chunks hijo (pequeños, para búsqueda) con referencia al padre
-    4. Indexa SOLO los chunks hijo en Qdrant con el texto del padre en el payload
-    Retorna la cantidad de chunks hijo procesados.
+    3. Genera chunks hijo (medianos, para búsqueda) con referencia al padre
+    4. Indexa los chunks hijo en Qdrant con el texto del padre en el payload
+    Soporta documentos de hasta 300+ páginas.
     """
     init_collection()
 
     texto = extraer_texto_pdf(ruta_archivo)
     if not texto.strip():
         raise ValueError("El PDF no contiene texto extraible")
+
+    logger.info(f"[INGESTA] {titulo} | Texto extraído: {len(texto)} caracteres")
 
     # Generar chunks padre
     chunks_padre = fragmentar_texto(texto, PARENT_CHUNK_SIZE, PARENT_CHUNK_OVERLAP)
@@ -68,9 +71,9 @@ async def procesar_documento(
         separators=["\n\n", "\n", ".", " "],
     )
 
-    chunks_hijo = []       # texto del hijo (para embedding)
-    textos_padre = []      # texto del padre correspondiente (para contexto al LLM)
-    indices_padre = []     # índice del padre para page_number
+    chunks_hijo = []
+    textos_padre = []
+    indices_padre = []
 
     for i, padre in enumerate(chunks_padre):
         hijos = child_splitter.split_text(padre)
@@ -81,11 +84,11 @@ async def procesar_documento(
 
     logger.info(f"[INGESTA] {titulo} | Chunks hijo: {len(chunks_hijo)}")
 
-    # Generar embeddings de los chunks hijo (búsqueda precisa)
-    logger.info(f"[INGESTA] Generando embeddings en batch...")
+    # Generar embeddings en lotes
+    logger.info(f"[INGESTA] Generando embeddings ({len(chunks_hijo)} chunks)...")
     vectors = generate_embeddings_batch(chunks_hijo)
 
-    # Indexar chunks hijo con texto del padre en el payload
+    # Indexar en Qdrant en lotes de 50 puntos
     points = []
     for i, (hijo, vector, padre, idx_padre) in enumerate(zip(chunks_hijo, vectors, textos_padre, indices_padre)):
         points.append(
@@ -93,8 +96,8 @@ async def procesar_documento(
                 id=str(uuid.uuid4()),
                 vector=vector,
                 payload={
-                    "text": padre,          # LLM recibe el chunk PADRE (más contexto)
-                    "text_hijo": hijo,      # texto del hijo (para debug)
+                    "text": padre,
+                    "text_hijo": hijo,
                     "document_id": document_id,
                     "source_url": source_url,
                     "titulo": titulo,
@@ -105,5 +108,5 @@ async def procesar_documento(
 
     logger.info(f"[INGESTA] Guardando {len(points)} vectores en Qdrant...")
     upsert(points)
-    logger.info(f"[INGESTA] ✅ Completado — {len(chunks_hijo)} chunks hijo indexados con {len(chunks_padre)} chunks padre")
+    logger.info(f"[INGESTA] ✅ Completado — {len(chunks_hijo)} chunks indexados")
     return len(chunks_hijo)
