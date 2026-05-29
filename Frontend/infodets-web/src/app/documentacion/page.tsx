@@ -91,7 +91,12 @@ export default function DocumentacionPage() {
     try {
       const resultado = await ingestaService.analizar(file)
       if (resultado.titulo) setTitulo(resultado.titulo)
-      if (resultado.categoria && opcionesCategorias.includes(resultado.categoria)) setCategoria(resultado.categoria)
+      if (resultado.categoria) {
+        const match = opcionesCategorias.find((o: any) => 
+          typeof o === 'string' ? o === resultado.categoria : o.value === resultado.categoria || o.label === resultado.categoria
+        )
+        if (match) setCategoria(typeof match === 'string' ? match : match.value)
+      }
       if (resultado.dependencia) setDependencia(resultado.dependencia)
       if (resultado.anio) setAnio(String(resultado.anio))
       if (resultado.nro_resolucion) setNroResolucion(resultado.nro_resolucion)
