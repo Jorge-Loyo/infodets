@@ -198,7 +198,7 @@ export default function AdminNoticiasPage() {
 
                   {n.imagen_url && (
                     <div style={{ width: '100%', height: 200, borderRadius: 8, overflow: 'hidden' }}>
-                      <img src={`${BACKEND_URL}${n.imagen_url}`} alt={n.titulo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={n.imagen_url.startsWith('http') ? n.imagen_url : `${BACKEND_URL}${n.imagen_url}`} alt={n.titulo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                   )}
 

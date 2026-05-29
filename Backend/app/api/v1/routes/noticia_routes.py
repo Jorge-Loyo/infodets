@@ -1,4 +1,3 @@
-import os
 import uuid
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
@@ -8,14 +7,12 @@ from typing import Optional
 
 from app.core.database import get_db
 from app.schemas.common import R_400, R_401, R_403, R_404, R_422
-from app.services import noticia_service
+from app.services import noticia_service, cloudinary_service
 from app.middleware.auth_middleware import require_permiso, get_current_user
 from app.models.models import Noticia
 
 router = APIRouter(prefix="/noticias", tags=["Noticias"])
 
-UPLOAD_DIR = "uploads/noticias"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
 EXTENSIONES_PERMITIDAS = {"jpg", "jpeg", "png", "gif", "webp"}
 
 
@@ -115,11 +112,8 @@ async def crear_noticia(
         ext = imagen.filename.rsplit(".", 1)[-1].lower()
         if ext not in EXTENSIONES_PERMITIDAS:
             raise HTTPException(status_code=400, detail=f"Formato de imagen no permitido. Usar: {', '.join(EXTENSIONES_PERMITIDAS)}")
-        nombre = f"{uuid.uuid4()}.{ext}"
-        ruta = os.path.join(UPLOAD_DIR, nombre)
-        with open(ruta, "wb") as f:
-            f.write(await imagen.read())
-        imagen_url = f"/uploads/noticias/{nombre}"
+        contenido_img = await imagen.read()
+        imagen_url = cloudinary_service.upload_image(contenido_img, folder="infodets/noticias")
 
     noticia = noticia_service.crear(db, titulo, contenido, categoria, imagen_url, autor_nombre, autor_cargo)
     return NoticiaSchema.from_model(noticia)
@@ -146,11 +140,8 @@ async def actualizar_noticia(
     imagen_url = None
     if imagen and imagen.filename:
         ext = imagen.filename.rsplit(".", 1)[-1].lower()
-        nombre = f"{uuid.uuid4()}.{ext}"
-        ruta = os.path.join(UPLOAD_DIR, nombre)
-        with open(ruta, "wb") as f:
-            f.write(await imagen.read())
-        imagen_url = f"/uploads/noticias/{nombre}"
+        contenido_img = await imagen.read()
+        imagen_url = cloudinary_service.upload_image(contenido_img, folder="infodets/noticias")
 
     publicada_bool = publicada.lower() == "true" if publicada is not None else None
 
