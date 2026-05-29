@@ -10,8 +10,9 @@ import httpx
 
 from app.schemas.ingesta_schema import IngestaResponse, DocumentoListItem, EstadoDocumento
 from app.schemas.common import R_400, R_401, R_403, R_404, R_500
-from app.services.ingesta_service import procesar_documento
+from app.services.ingesta_service import procesar_documento, extraer_texto_pdf
 from app.services import documento_service
+from app.services.analisis_service import analizar_documento
 from app.core.settings import settings
 from app.core.database import get_db
 from app.middleware.auth_middleware import require_permiso
@@ -22,6 +23,38 @@ router = APIRouter(prefix="/admin/ingesta", tags=["Ingesta"])
 
 DOCS_DIR = "uploads/documentos"
 os.makedirs(DOCS_DIR, exist_ok=True)
+
+
+@router.post(
+    "/analizar",
+    status_code=200,
+    summary="Analizar PDF y extraer metadatos con IA",
+    description="Recibe un PDF, extrae texto y usa IA para sugerir título, categoría, resolución, decreto, autor y resumen.",
+)
+async def analizar_pdf(
+    archivo: UploadFile = File(...),
+    current_user: dict = Depends(require_permiso("gestionar_documentos")),
+):
+    if not archivo.filename or not archivo.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Solo se aceptan archivos PDF")
+
+    contenido = await archivo.read()
+    # Guardar temporalmente para extraer texto
+    tmp_path = os.path.join(DOCS_DIR, f"_tmp_analisis.pdf")
+    with open(tmp_path, "wb") as f:
+        f.write(contenido)
+
+    try:
+        texto = extraer_texto_pdf(tmp_path)
+        if not texto.strip():
+            raise HTTPException(status_code=400, detail="El PDF no contiene texto extraíble")
+        resultado = analizar_documento(texto)
+        return resultado
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
 
 def _notificar_n8n(payload: dict) -> None:
@@ -67,6 +100,9 @@ async def cargar_documento(
     dependencia: str = Form(...),
     descripcion: Optional[str] = Form(None),
     anio: Optional[int] = Form(None),
+    nro_resolucion: Optional[str] = Form(None),
+    nro_decreto: Optional[str] = Form(None),
+    autor: Optional[str] = Form(None),
     tipo: str = Form("publico"),
     archivo: UploadFile = File(...),
     db: Session = Depends(get_db),
@@ -88,15 +124,39 @@ async def cargar_documento(
             document_id=document_id,
             source_url=f"/v1/admin/ingesta/ver/{document_id}",
             titulo=titulo,
+            metadatos={
+                "categoria": categoria,
+                "dependencia": dependencia,
+                "nro_resolucion": nro_resolucion,
+                "nro_decreto": nro_decreto,
+                "descripcion": descripcion,
+            },
         )
+    except ValueError as e:
+        logger.warning(f"[INGESTA] PDF inválido: {e}")
+        os.unlink(ruta_permanente)
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        import traceback
+        logger.error(f"[INGESTA] Error procesando documento: {traceback.format_exc()}")
         os.unlink(ruta_permanente)
         raise HTTPException(status_code=500, detail=str(e))
 
     url_fuente = f"/v1/admin/ingesta/ver/{document_id}"
+
+    # Generar resumen con IA si no se proporcionó descripción
+    descripcion_final = descripcion
+    if not descripcion_final:
+        from app.services.ingesta_service import extraer_texto_pdf
+        from app.services.resumen_service import generar_resumen
+        texto_pdf = extraer_texto_pdf(ruta_permanente)
+        descripcion_final = generar_resumen(texto_pdf, titulo)
+
     documento_service.crear_documento(
         db, id=document_id, titulo=titulo,
         url_fuente=url_fuente, categoria=categoria, dependencia=dependencia, tipo=tipo,
+        descripcion=descripcion_final, anio=anio,
+        nro_resolucion=nro_resolucion, nro_decreto=nro_decreto, autor=autor,
     )
 
     _notificar_n8n({
@@ -167,11 +227,34 @@ async def listar_documentos(
             titulo=d.titulo,
             categoria=d.categoria or "",
             dependencia=d.dependencia or "",
+            descripcion=d.descripcion or "",
             estado=EstadoDocumento.PROCESADO,
             created_at=d.creado_en.isoformat() if d.creado_en else "",
         )
         for d in documentos
     ]
+
+
+@router.put(
+    "/{documento_id}/resumen",
+    status_code=200,
+    summary="Actualizar resumen/descripción del documento",
+    responses={**R_401, **R_403, **R_404},
+)
+async def actualizar_resumen(
+    documento_id: str,
+    descripcion: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permiso("gestionar_documentos")),
+):
+    _validar_documento_id(documento_id)
+    from app.models.models import Documento
+    doc = db.query(Documento).filter_by(id=documento_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Documento no encontrado")
+    doc.descripcion = descripcion
+    db.commit()
+    return {"ok": True}
 
 
 @router.put(
@@ -269,6 +352,7 @@ async def listar_documentos_recientes(db: Session = Depends(get_db)):
             titulo=d.titulo,
             categoria=d.categoria or "",
             dependencia=d.dependencia or "",
+            descripcion=d.descripcion or "",
             estado=EstadoDocumento.PROCESADO,
             created_at=d.creado_en.isoformat() if d.creado_en else "",
         )

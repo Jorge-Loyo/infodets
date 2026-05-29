@@ -17,7 +17,7 @@ const CATEGORIA_COLOR: Record<string, string> = {
   Institucional: 'blue', Normativa: 'violet', RRHH: 'teal', Tecnología: 'green', Finanzas: 'orange',
 }
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_DOCS_URL ?? process.env.NEXT_PUBLIC_API_URL?.replace('/v1', '') ?? 'http://localhost:8000'
+const BACKEND_URL = ''
 
 export default function NoticiasPage() {
   const [noticias, setNoticias] = useState<Noticia[]>([])

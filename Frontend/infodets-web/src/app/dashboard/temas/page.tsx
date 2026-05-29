@@ -95,9 +95,23 @@ export default function TemasPage() {
       setColorScheme(localColorScheme)
       if (esPersonalizado || temaActivoLocal === 'Ciudad') setColoresPersonalizados(localColores)
       setTemaActivo(temaActivoLocal ?? 'Estándar')
-      notifications.show({ color: 'green', message: 'Tema aplicado correctamente ✅' })
+      // Guardar tema en el servidor (global)
+      await axiosInstance.put('/sistema/tema', {
+        header_color: localHeader,
+        paleta_color: localPaleta,
+        tipografia: localTipo,
+        logo_size: localLogoSize,
+        color_scheme: localColorScheme,
+        color_sidebar: localColores.colorSidebar,
+        color_texto: localColores.colorTexto,
+        color_boton: localColores.colorBoton,
+        color_fondo: localColores.colorFondo,
+        color_tarjeta: localColores.colorTarjeta,
+        tema_activo: temaActivoLocal ?? 'Estándar',
+      })
+      notifications.show({ color: 'green', message: 'Tema aplicado y guardado globalmente ✅' })
     } catch {
-      notifications.show({ color: 'red', message: 'Error al subir el logo' })
+      notifications.show({ color: 'red', message: 'Error al guardar el tema' })
     }
   }
 

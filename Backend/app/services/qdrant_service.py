@@ -2,14 +2,20 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct, Filter, FieldCondition, MatchValue
 from app.core.settings import settings
 
-client = QdrantClient(url=settings.qdrant_url)
+client = QdrantClient(url=settings.qdrant_url, timeout=120)
 COLLECTION = settings.qdrant_collection
-VECTOR_SIZE = 3072  # gemini-embedding-001 genera vectores de 3072 dimensiones
+VECTOR_SIZE = 1024  # Cohere embed-multilingual-v3.0
 
 
 def init_collection():
-    """Crea la colección si no existe."""
+    """Crea la colección si no existe o la recrea si cambió el tamaño del vector."""
     existing = [c.name for c in client.get_collections().collections]
+    if COLLECTION in existing:
+        info = client.get_collection(COLLECTION)
+        current_size = info.config.params.vectors.size
+        if current_size != VECTOR_SIZE:
+            client.delete_collection(COLLECTION)
+            existing.remove(COLLECTION)
     if COLLECTION not in existing:
         client.create_collection(
             collection_name=COLLECTION,
