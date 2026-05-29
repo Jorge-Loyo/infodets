@@ -6,11 +6,13 @@
 <br/>
 
 <!-- Typing Animation -->
+
 <a href="https://git.io/typing-svg"><img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=22&pause=1000&color=1A73E8&center=true&vCenter=true&multiline=true&repeat=true&width=700&height=80&lines=IA+%2B+RAG+para+consultas+ciudadanas+inteligentes;Soberanía+de+datos+%7C+Mejora+continua+%7C+Fuentes+oficiales" alt="Typing SVG" /></a>
 
 <br/>
 
 <!-- Badges -->
+
 [![Python](https://img.shields.io/badge/Python-3.13-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org)
@@ -48,16 +50,16 @@ graph LR
 
 ### ✨ Características principales
 
-| Funcionalidad | Descripción |
-|:---:|:---|
-| 🤖 **Chat RAG** | Respuestas inteligentes basadas en documentos oficiales con citación de fuentes |
-| 📄 **Ingesta de documentos** | Carga y procesamiento automático de PDFs con embeddings vectoriales |
-| 🔄 **Mejora continua** | Detección automática de vacíos de información y sugerencias de ingesta |
-| 👥 **Gestión de usuarios** | Roles, perfiles y permisos granulares con autenticación Cognito |
-| 📰 **Noticias** | Sistema de publicaciones institucionales con imágenes en Cloudinary |
-| 🎨 **Personalización** | Temas, colores y logo configurables por el administrador |
-| 🎫 **Tickets** | Sistema de consultas formales con seguimiento |
-| 📊 **Dashboard** | Métricas y estadísticas del sistema |
+|        Funcionalidad         | Descripción                                                                     |
+| :--------------------------: | :------------------------------------------------------------------------------ |
+|       🤖 **Chat RAG**        | Respuestas inteligentes basadas en documentos oficiales con citación de fuentes |
+| 📄 **Ingesta de documentos** | Carga y procesamiento automático de PDFs con embeddings vectoriales             |
+|    🔄 **Mejora continua**    | Detección automática de vacíos de información y sugerencias de ingesta          |
+|  👥 **Gestión de usuarios**  | Roles, perfiles y permisos granulares con autenticación Cognito                 |
+|       📰 **Noticias**        | Sistema de publicaciones institucionales con imágenes en Cloudinary             |
+|    🎨 **Personalización**    | Temas, colores y logo configurables por el administrador                        |
+|        🎫 **Tickets**        | Sistema de consultas formales con seguimiento                                   |
+|       📊 **Dashboard**       | Métricas y estadísticas del sistema                                             |
 
 ---
 
@@ -115,18 +117,18 @@ graph TB
 
 <div align="center">
 
-| Capa | Tecnología | Versión |
-|:---:|:---:|:---:|
-| 🖥️ Frontend | Next.js + React + TypeScript | 16 / 19 / 5.0 |
-| ⚙️ Backend | FastAPI + Python | 0.115 / 3.13 |
-| 💾 Base de datos | AWS RDS PostgreSQL | 17 |
-| 🔍 Base vectorial | Qdrant (self-hosted) | Latest |
-| 🧠 IA Principal | Google Gemini | 2.0 |
-| 🧠 IA Fallback | Groq (Llama) | Latest |
-| 🔐 Autenticación | AWS Cognito + JWT HS256 | — |
-| 🖼️ Imágenes | Cloudinary CDN | — |
-| 🔄 Orquestación | n8n (Docker) | Latest |
-| ☁️ Infraestructura | AWS EC2 + RDS + Cognito | — |
+|        Capa        |          Tecnología          |    Versión    |
+| :----------------: | :--------------------------: | :-----------: |
+|    🖥️ Frontend     | Next.js + React + TypeScript | 16 / 19 / 5.0 |
+|     ⚙️ Backend     |       FastAPI + Python       | 0.115 / 3.13  |
+|  💾 Base de datos  |      AWS RDS PostgreSQL      |      17       |
+| 🔍 Base vectorial  |     Qdrant (self-hosted)     |    Latest     |
+|  🧠 IA Principal   |        Google Gemini         |      2.0      |
+|   🧠 IA Fallback   |         Groq (Llama)         |    Latest     |
+|  🔐 Autenticación  |   AWS Cognito + JWT HS256    |       —       |
+|    🖼️ Imágenes     |        Cloudinary CDN        |       —       |
+|  🔄 Orquestación   |         n8n (Docker)         |    Latest     |
+| ☁️ Infraestructura |   AWS EC2 + RDS + Cognito    |       —       |
 
 </div>
 
@@ -136,11 +138,11 @@ graph TB
 
 ### Prerequisitos
 
-| Herramienta | Versión | Instalación |
-|:---:|:---:|:---:|
-| Git | Reciente | [Descargar](https://git-scm.com/downloads) |
-| Node.js | 20+ | [Descargar](https://nodejs.org) |
-| Python | 3.13 | [Descargar](https://python.org/downloads) |
+| Herramienta | Versión  |                Instalación                 |
+| :---------: | :------: | :----------------------------------------: |
+|     Git     | Reciente | [Descargar](https://git-scm.com/downloads) |
+|   Node.js   |   20+    |      [Descargar](https://nodejs.org)       |
+|   Python    |   3.13   | [Descargar](https://python.org/downloads)  |
 
 > ⚠️ Al instalar Python, marcar **"Add Python to PATH"**
 
@@ -182,11 +184,11 @@ npm run dev
 
 ### 5️⃣ Verificar
 
-| Servicio | URL |
-|:---:|:---:|
-| 🖥️ Frontend | http://localhost:3000 |
-| ⚙️ Backend API | http://localhost:8000 |
-| 📖 Docs API | http://localhost:8000/docs |
+|    Servicio    |            URL             |
+| :------------: | :------------------------: |
+|  🖥️ Frontend   |   http://localhost:3000    |
+| ⚙️ Backend API |   http://localhost:8000    |
+|  📖 Docs API   | http://localhost:8000/docs |
 
 ---
 
@@ -206,12 +208,12 @@ docker-compose up --build
 
 <div align="center">
 
-| Servicio | URL | Motor |
-|:---:|:---:|:---:|
-| 🖥️ Frontend | `http://32.192.124.14:3000` | Docker |
-| ⚙️ Backend | `http://32.192.124.14:8000` | systemd |
-| 🔍 Qdrant | `http://32.192.124.14:6333` | Docker |
-| 🔄 n8n | `http://32.192.124.14:5678` | Docker |
+|  Servicio   |             URL             |  Motor  |
+| :---------: | :-------------------------: | :-----: |
+| 🖥️ Frontend | `http://32.192.124.14:3000` | Docker  |
+| ⚙️ Backend  | `http://32.192.124.14:8000` | systemd |
+|  🔍 Qdrant  | `http://32.192.124.14:6333` | Docker  |
+|   🔄 n8n    | `http://32.192.124.14:5678` | Docker  |
 
 </div>
 
@@ -314,24 +316,24 @@ AWS_SESSION_TOKEN=<temporal>
 
 ## 🌿 Ramas
 
-| Rama | Propósito |
-|:---:|:---|
-| `main` | 🚀 Producción — deploy al EC2 |
-| `Testeo` | 🧪 Rama activa de desarrollo |
-| `Frontend` | 🖥️ Desarrollo UI |
-| `Backend` | ⚙️ Desarrollo API |
-| `Configuracion` | 🔧 Infraestructura |
-| `Data` | 📊 Datos y modelos IA |
+|      Rama       | Propósito                     |
+| :-------------: | :---------------------------- |
+|     `main`      | 🚀 Producción — deploy al EC2 |
+|    `Testeo`     | 🧪 Rama activa de desarrollo  |
+|   `Frontend`    | 🖥️ Desarrollo UI              |
+|    `Backend`    | ⚙️ Desarrollo API             |
+| `Configuracion` | 🔧 Infraestructura            |
+|     `Data`      | 📊 Datos y modelos IA         |
 
 ---
 
 ## 📖 Documentación
 
-| Documento | Descripción |
-|:---|:---|
-| [📋 Guía de Instalación](Document/GUIA_INSTALACION.md) | Setup completo paso a paso |
-| [📐 Plan de Desarrollo](Document/PLAN_DESARROLLO_EQUIPO.md) | Roadmap y sprints |
-| [🧠 Mejoras RAG](Document/RAG_Mejoras_Por_Fases.md) | Fases de mejora del motor IA |
+| Documento                                                   | Descripción                  |
+| :---------------------------------------------------------- | :--------------------------- |
+| [📋 Guía de Instalación](Document/GUIA_INSTALACION.md)      | Setup completo paso a paso   |
+| [📐 Plan de Desarrollo](Document/PLAN_DESARROLLO_EQUIPO.md) | Roadmap y sprints            |
+| [🧠 Mejoras RAG](Document/RAG_Mejoras_Por_Fases.md)         | Fases de mejora del motor IA |
 
 ---
 
@@ -339,9 +341,11 @@ AWS_SESSION_TOKEN=<temporal>
 
 <div align="center">
 
-| Rol | Responsable |
-|:---:|:---:|
-| 🎯 Líder / Full Stack | Jorge Loyo |
+|                 Rol                 |   Responsable    |
+| :---------------------------------: | :--------------: |
+| Especialista Funcional / Full Stack |  Fernando Moya   |
+|       Tech Lead / Full Stack        | Santiago Isbaner |
+|    Product Manager / Full Stack     |    Jorge Loyo    |
 
 </div>
 
@@ -356,10 +360,10 @@ AWS_SESSION_TOKEN=<temporal>
 
 **INFODETS** — Sistema de Gestión de Conocimiento Dinámico
 
-*Desarrollado con ❤️ para la gestión pública inteligente*
+_Desarrollado con ❤️ para la gestión pública inteligente_
 
 <br/>
 
-[![GitHub](https://img.shields.io/badge/GitHub-Jorge--Loyo-181717?style=for-the-badge&logo=github)](https://github.com/Jorge-Loyo/infodets)
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github)](https://github.com/Jorge-Loyo/infodets)
 
 </div>
