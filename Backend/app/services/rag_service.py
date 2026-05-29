@@ -17,16 +17,17 @@ CONFIDENCE_THRESHOLD = 0.40
 UMBRAL_NIVEL2 = 0.0
 
 # Feature flags
-HYDE_ENABLED = True   # activo solo para preguntas cortas/referenciales
-QUERY_EXPANSION_ENABLED = False
+HYDE_ENABLED = True
+QUERY_EXPANSION_ENABLED = True  # Activado para mayor cobertura semántica
 
 SYSTEM_PROMPT = """Eres un asistente oficial del sistema INFODETS para una entidad pública.
 Tu función es responder consultas basándote EXCLUSIVAMENTE en la documentación oficial proporcionada.
 Reglas:
-1. Si la respuesta está en el contexto, responde con precisión citando la fuente.
+1. Si la respuesta está en el contexto, responde con precisión y claridad.
 2. Si la información no está en el contexto, indica claramente que no tienes documentación oficial sobre ese tema.
 3. Nunca inventes información. La precisión legal es crítica.
-4. Responde siempre en español."""
+4. Responde siempre en español.
+5. NUNCA menciones fuentes, documentos, referencias, ni de dónde sacaste la información. Solo respondé el contenido."""
 
 AVISO_FUENTE_EXTERNA = (
     "⚠️ He encontrado esta información en fuentes externas (no oficiales de esta oficina aún). "
@@ -40,14 +41,25 @@ MENSAJE_ESCALAMIENTO = (
 )
 
 
-def _reranker(pregunta: str, chunks: list[dict], top_n: int = 5) -> list[dict]:
+def _reranker(pregunta: str, chunks: list[dict], top_n: int = 7) -> list[dict]:
     """FASE 4 — Re-ranking: reordena chunks por relevancia real usando Cohere."""
     if not settings.cohere_api_key or not chunks:
         return chunks[:top_n]
     try:
         import cohere
         co = cohere.ClientV2(api_key=settings.cohere_api_key)
-        documentos = [r["text"][:512] for r in chunks]
+        # Incluir metadatos en el texto para mejor reranking
+        documentos = []
+        for r in chunks:
+            meta = ""
+            if r.get("titulo"):
+                meta += f"Documento: {r['titulo']}. "
+            if r.get("nro_resolucion"):
+                meta += f"Resolución N° {r['nro_resolucion']}. "
+            if r.get("nro_decreto"):
+                meta += f"Decreto N° {r['nro_decreto']}. "
+            documentos.append(f"{meta}{r['text'][:1024]}")
+
         resultado = co.rerank(
             model="rerank-v3.5",
             query=pregunta,
@@ -55,7 +67,7 @@ def _reranker(pregunta: str, chunks: list[dict], top_n: int = 5) -> list[dict]:
             top_n=top_n,
         )
         reordenados = [chunks[r.index] for r in resultado.results]
-        logger.info(f"[Rerank] {len(chunks)} → {len(reordenados)} chunks reordenados")
+        logger.info(f"[Rerank] {len(chunks)} → {len(reordenados)} chunks reordenados (scores: {[f'{r.relevance_score:.3f}' for r in resultado.results[:3]]})")
         return reordenados
     except Exception as e:
         logger.warning(f"[Rerank] Error: {e} — usando orden original")
@@ -71,10 +83,10 @@ def _expandir_query(pregunta: str) -> list[str]:
         resp = client.chat.completions.create(
             model=GROQ_MODEL,
             messages=[
-                {"role": "system", "content": "Dado una pregunta, generá exactamente 2 variantes alternativas en español usando sinónimos o reformulaciones. Respondé SOLO con las 2 variantes separadas por salto de línea, sin numeración ni explicaciones."},
+                {"role": "system", "content": "Dado una pregunta sobre documentos oficiales, generá exactamente 2 variantes alternativas en español que busquen la misma información pero con diferentes palabras clave. Respondé SOLO con las 2 variantes separadas por salto de línea, sin numeración ni explicaciones."},
                 {"role": "user", "content": pregunta},
             ],
-            temperature=0.4, max_tokens=80,
+            temperature=0.4, max_tokens=100,
         )
         texto = resp.choices[0].message.content or ""
         variantes = [v.strip() for v in texto.strip().split("\n") if v.strip()][:2]
@@ -94,7 +106,7 @@ def _generar_hipotesis(pregunta: str) -> str:
         resp = client.chat.completions.create(
             model=GROQ_MODEL,
             messages=[
-                {"role": "system", "content": "Generá una respuesta breve y factual en español a la siguiente pregunta, como si fuera un fragmento de un documento oficial. Máximo 3 oraciones."},
+                {"role": "system", "content": "Generá una respuesta breve y factual en español a la siguiente pregunta, como si fuera un fragmento de un documento oficial argentino (resolución, decreto, reglamento). Máximo 3 oraciones. Incluí términos técnicos y legales relevantes."},
                 {"role": "user", "content": pregunta},
             ],
             temperature=0.3, max_tokens=150,
@@ -110,42 +122,46 @@ def _generar_hipotesis(pregunta: str) -> str:
 # ─── Nivel 0: Búsqueda local en Qdrant ───────────────────────────────────────
 
 def _combinar_resultados(base: list[dict], nuevos: list[dict]) -> list[dict]:
-    """Combina dos listas de resultados deduplicando por texto, quedándose con mayor score."""
-    vistos = {r["text"][:50]: r for r in base}
+    """Combina dos listas de resultados deduplicando por document_id+page, quedándose con mayor score."""
+    vistos = {}
+    for r in base:
+        key = f"{r.get('document_id', '')}_{r.get('page_number', 0)}_{r['text'][:30]}"
+        vistos[key] = r
     for r in nuevos:
-        key = r["text"][:50]
+        key = f"{r.get('document_id', '')}_{r.get('page_number', 0)}_{r['text'][:30]}"
         if key not in vistos or r["score"] > vistos[key]["score"]:
             vistos[key] = r
-    return sorted(vistos.values(), key=lambda x: x["score"], reverse=True)[:10]
+    return sorted(vistos.values(), key=lambda x: x["score"], reverse=True)[:15]
 
 
-def buscar_contexto(pregunta: str, limit: int = 5) -> tuple[list[dict], float]:
+def buscar_contexto(pregunta: str, limit: int = 7) -> tuple[list[dict], float]:
     logger.info(f"[RAG] Buscando contexto para: {pregunta[:80]}...")
     import concurrent.futures
 
-    # FASES 2 y 3 en paralelo: HyDE + Query Expansion simultáneos
+    # FASES 2 y 3 en paralelo: HyDE + Query Expansion + búsqueda original simultáneos
     hipotesis = ""
     variantes = []
-    if HYDE_ENABLED or QUERY_EXPANSION_ENABLED:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-            fut_hyde = executor.submit(_generar_hipotesis, pregunta) if HYDE_ENABLED else None
-            fut_variantes = executor.submit(_expandir_query, pregunta) if QUERY_EXPANSION_ENABLED else None
-            hipotesis = fut_hyde.result() if fut_hyde else ""
-            variantes = fut_variantes.result() if fut_variantes else []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+        fut_hyde = executor.submit(_generar_hipotesis, pregunta) if HYDE_ENABLED else None
+        fut_variantes = executor.submit(_expandir_query, pregunta) if QUERY_EXPANSION_ENABLED else None
+        # Siempre buscar con la pregunta original en paralelo
+        fut_original = executor.submit(lambda: search(generate_query_embedding(pregunta), limit=10))
 
-    # Buscar con hipótesis (HyDE)
-    vector_principal = generate_query_embedding(hipotesis if hipotesis else pregunta)
-    resultados_raw = search(vector_principal, limit=10)
+        hipotesis = fut_hyde.result() if fut_hyde else ""
+        variantes = fut_variantes.result() if fut_variantes else []
+        resultados_original = fut_original.result()
+
+    # Buscar con hipótesis (HyDE) si se generó
+    if hipotesis:
+        vector_hyde = generate_query_embedding(hipotesis)
+        resultados_hyde = search(vector_hyde, limit=10)
+        resultados_raw = _combinar_resultados(resultados_original, resultados_hyde)
+    else:
+        resultados_raw = resultados_original
 
     max_score_actual = max((r["score"] for r in resultados_raw), default=0.0)
 
-    # Si HyDE no supera umbral, combinar con pregunta original
-    if max_score_actual < CONFIDENCE_THRESHOLD and hipotesis:
-        vector_original = generate_query_embedding(pregunta)
-        resultados_raw = _combinar_resultados(resultados_raw, search(vector_original, limit=10))
-        max_score_actual = max((r["score"] for r in resultados_raw), default=0.0)
-
-    # Si sigue bajo umbral, usar variantes ya generadas en paralelo
+    # Si sigue bajo umbral, usar variantes
     if max_score_actual < CONFIDENCE_THRESHOLD and variantes:
         for variante in variantes:
             try:
@@ -158,9 +174,9 @@ def buscar_contexto(pregunta: str, limit: int = 5) -> tuple[list[dict], float]:
 
     docs_reales = [r for r in resultados_raw if r.get("source_url", "")]
     validaciones = [r for r in resultados_raw if not r.get("source_url", "")]
-    candidatos = (docs_reales + validaciones)[:10]
+    candidatos = (docs_reales + validaciones)[:15]
 
-    # FASE 4 — Re-ranking: reordenar por relevancia real
+    # FASE 4 — Re-ranking con metadatos
     resultados = _reranker(pregunta, candidatos, top_n=limit)
 
     max_score = max((r["score"] for r in (docs_reales[:limit] or resultados)), default=0.0)
@@ -174,10 +190,17 @@ def construir_contexto(resultados: list[dict]) -> str:
     docs = [r for r in resultados if r.get("source_url", "")]
     if not docs:
         docs = resultados
-    return "\n\n---\n\n".join(
-        f"[Fuente {i+1}: {r.get('source_url', 'N/A')}]\n{r['text']}"
-        for i, r in enumerate(docs)
-    )
+    partes = []
+    for i, r in enumerate(docs):
+        partes.append(r['text'])
+    # Deduplicar textos iguales
+    vistos = []
+    unicos = []
+    for p in partes:
+        if p not in vistos:
+            vistos.append(p)
+            unicos.append(p)
+    return "\n\n---\n\n".join(unicos)
 
 
 # ─── Nivel 1: Búsqueda en URLs oficiales predefinidas ────────────────────────
@@ -305,11 +328,12 @@ País: Argentina | Zona horaria: America/Argentina/Buenos_Aires (UTC-3)
 Fecha y hora actual: {fecha_hora}{feriados_info}
 Tu función es responder consultas basándote EXCLUSIVAMENTE en la documentación oficial proporcionada.
 Reglas:
-1. Si la respuesta está en el contexto, respondé con precisión citando la fuente.
+1. Si la respuesta está en el contexto, respondé con precisión y claridad.
 2. Si la información no está en el contexto, indicá claramente que no tenés documentación oficial sobre ese tema.
 3. Nunca inventes información. La precisión legal es crítica.
 4. Respondé siempre en {bot.idioma}.
-5. EXCEPCIÓN: Para preguntas sobre fecha, hora, día, feriados, calendario o información general de Argentina, respondé usando los datos de contexto del sistema sin necesidad de documentación oficial. Los feriados están listados arriba en 'Próximos feriados en Argentina'."""
+5. NUNCA menciones fuentes, documentos, referencias, ni de dónde sacaste la información. Solo respondé el contenido.
+6. EXCEPCIÓN: Para preguntas sobre fecha, hora, día, feriados, calendario o información general de Argentina, respondé usando los datos de contexto del sistema sin necesidad de documentación oficial."""
         else:
             system = f"""{SYSTEM_PROMPT}
 País: Argentina | Zona horaria: America/Argentina/Buenos_Aires (UTC-3)
@@ -351,7 +375,12 @@ def _construir_user(pregunta: str, contexto: str, tipo: str, historial: list[dic
 {contexto}{historial_texto}
 Pregunta: {pregunta}
 
-Respondé basándote únicamente en la documentación oficial proporcionada arriba."""
+INSTRUCCIONES DE FORMATO (OBLIGATORIAS):
+- Respondé de forma natural, clara y fluida.
+- PROHIBIDO mencionar fuentes, números de fuente, nombres de documentos, o referencias de cualquier tipo. Ni dentro del texto ni al final.
+- Solo respondé el contenido informativo puro, sin citar de dónde viene.
+- Basáte ÚNICAMENTE en la documentación proporcionada.
+- Si la pregunta es ambigua, pedí aclaración."""
 
     if tipo == "externo":
         return f"""CONTEXTO ENCONTRADO EN FUENTES EXTERNAS:
@@ -389,7 +418,7 @@ def _generar_gemini_stream(pregunta: str, contexto: str, tipo: str, memoria: dic
     payload = {
         "systemInstruction": {"parts": [{"text": system}]},
         "contents": [{"role": "user", "parts": [{"text": user}]}],
-        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 1024},
+        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 2048},
     }
     response = httpx.post(
         url, json=payload,
@@ -412,7 +441,7 @@ def _generar_groq_stream(pregunta: str, contexto: str, tipo: str, memoria: dict 
             {"role": "system", "content": system},
             {"role": "user",   "content": user},
         ],
-        stream=True, temperature=0.1, max_tokens=1024,
+        stream=True, temperature=0.1, max_tokens=2048,
     )
     for chunk in stream:
         text = chunk.choices[0].delta.content
@@ -459,7 +488,7 @@ def generar_respuesta(pregunta: str, contexto: str, tipo: str = "local") -> str:
     payload = {
         "systemInstruction": {"parts": [{"text": system}]},
         "contents": [{"role": "user", "parts": [{"text": user}]}],
-        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 1024},
+        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 2048},
     }
     response = httpx.post(
         url, json=payload,

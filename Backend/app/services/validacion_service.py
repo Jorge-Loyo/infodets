@@ -6,12 +6,20 @@ from app.models.models import ValidacionRespuesta
 
 logger = logging.getLogger(__name__)
 
-UMBRAL_AUTO = 0.85      # score >= 0.85 → se indexa automáticamente
-UMBRAL_REVISION = 0.50  # score >= 0.50 → va a revisión manual
+UMBRAL_AUTO = 0.70      # score >= 0.70 → se indexa automáticamente
+UMBRAL_REVISION = 0.35  # score >= 0.35 → va a revisión manual
 
 
 def crear_validacion(db: Session, pregunta: str, respuesta: str, puntaje: float, fuente: str = "usuario") -> ValidacionRespuesta | None:
     if puntaje < UMBRAL_REVISION:
+        return None
+
+    # No crear duplicados si ya existe la misma pregunta pendiente o aprobada
+    existente = db.query(ValidacionRespuesta).filter(
+        ValidacionRespuesta.pregunta == pregunta,
+        ValidacionRespuesta.estado.in_(["pendiente", "aprobado", "auto_indexado"]),
+    ).first()
+    if existente:
         return None
 
     if puntaje >= UMBRAL_AUTO:
