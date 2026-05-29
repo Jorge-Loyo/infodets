@@ -3,7 +3,7 @@
 import {
   Box, Title, Text, Paper, Stack, Group, ThemeIcon,
   Badge, ActionIcon, Divider, LoadingOverlay, Button,
-  Tabs, ScrollArea, Textarea, Avatar,
+  Tabs, ScrollArea, Textarea, Avatar, Modal,
 } from '@mantine/core'
 import {
   IconBell, IconCheck, IconTrash, IconAlertCircle, IconRefresh,
@@ -160,6 +160,7 @@ export default function NotificacionesPage() {
   const [tab, setTab] = useState<string>('tickets')
   const [tabTicket, setTabTicket] = useState<string>('pendiente')
   const [ticketAbierto, setTicketAbierto] = useState<string | null>(null)
+  const [validacionAbierta, setValidacionAbierta] = useState<Validacion | null>(null)
 
   const cargar = async () => {
     setCargando(true)
@@ -366,7 +367,7 @@ export default function NotificacionesPage() {
           {tab === 'validaciones' && (
             <>
               <Text size="sm" c="dimmed" mb="md">
-                Consultas con confianza entre 50% y 85% que requieren revisión manual antes de indexarse en la IA.
+                Consultas con confianza entre 35% y 70% que requieren revisión manual antes de indexarse en la IA.
               </Text>
               {!cargando && validaciones.length === 0 && (
                 <Stack align="center" py="xl">
@@ -377,7 +378,7 @@ export default function NotificacionesPage() {
               <Stack gap="md">
                 {validaciones.map((v, i) => (
                   <motion.div key={v.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }}>
-                    <Paper withBorder p="md" radius="md" bg="blue.0">
+                    <Paper withBorder p="md" radius="md" bg="blue.0" style={{ cursor: 'pointer' }} onClick={() => setValidacionAbierta(v)}>
                       <Group justify="space-between" mb="xs">
                         <Group gap="xs">
                           <Badge size="xs" color="blue" variant="light">{v.fuente}</Badge>
@@ -385,14 +386,12 @@ export default function NotificacionesPage() {
                           <Text size="xs" c="dimmed">{formatFecha(v.creado_en)}</Text>
                         </Group>
                         <Group gap={4}>
-                          <ActionIcon variant="filled" color="green" size="sm" onClick={() => aprobarValidacion(v.id)}><IconCheck size={14} /></ActionIcon>
-                          <ActionIcon variant="filled" color="red" size="sm" onClick={() => rechazarValidacion(v.id)}><IconX size={14} /></ActionIcon>
+                          <ActionIcon variant="filled" color="green" size="sm" onClick={(e) => { e.stopPropagation(); aprobarValidacion(v.id) }}><IconCheck size={14} /></ActionIcon>
+                          <ActionIcon variant="filled" color="red" size="sm" onClick={(e) => { e.stopPropagation(); rechazarValidacion(v.id) }}><IconX size={14} /></ActionIcon>
                         </Group>
                       </Group>
                       <Text size="sm" fw={600} mb={4}>❓ {v.pregunta}</Text>
-                      <ScrollArea h={80}>
-                        <Text size="xs" c="dimmed" style={{ whiteSpace: 'pre-wrap' }}>{v.respuesta}</Text>
-                      </ScrollArea>
+                      <Text size="xs" c="dimmed" lineClamp={2}>{v.respuesta}</Text>
                     </Paper>
                   </motion.div>
                 ))}
@@ -401,6 +400,40 @@ export default function NotificacionesPage() {
           )}
         </Paper>
       </motion.div>
+
+      {/* Modal validación completa */}
+      <Modal opened={!!validacionAbierta} onClose={() => setValidacionAbierta(null)} title="Revisar respuesta de la IA" radius="md" size="lg">
+        {validacionAbierta && (
+          <Stack gap="md">
+            <Group gap="xs">
+              <Badge color="blue" variant="light">{validacionAbierta.fuente}</Badge>
+              <Badge color="teal" variant="light">{Math.round(validacionAbierta.puntaje_confianza * 100)}% confianza</Badge>
+              <Text size="xs" c="dimmed">{formatFecha(validacionAbierta.creado_en)}</Text>
+            </Group>
+
+            <Paper withBorder p="md" radius="md" bg="gray.0">
+              <Text size="xs" fw={600} c="dimmed" mb={4}>PREGUNTA DEL USUARIO:</Text>
+              <Text size="sm" fw={600}>{validacionAbierta.pregunta}</Text>
+            </Paper>
+
+            <Paper withBorder p="md" radius="md" bg="blue.0">
+              <Text size="xs" fw={600} c="dimmed" mb={4}>RESPUESTA DE LA IA:</Text>
+              <ScrollArea h={300}>
+                <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{validacionAbierta.respuesta}</Text>
+              </ScrollArea>
+            </Paper>
+
+            <Divider />
+            <Group justify="space-between">
+              <Text size="xs" c="dimmed">¿La respuesta es correcta? Al aprobar se indexa para futuras consultas.</Text>
+              <Group gap="sm">
+                <Button color="red" variant="light" leftSection={<IconX size={14} />} onClick={() => { rechazarValidacion(validacionAbierta.id); setValidacionAbierta(null) }}>Rechazar</Button>
+                <Button color="green" leftSection={<IconCheck size={14} />} onClick={() => { aprobarValidacion(validacionAbierta.id); setValidacionAbierta(null) }}>Aprobar e indexar</Button>
+              </Group>
+            </Group>
+          </Stack>
+        )}
+      </Modal>
     </Box>
   )
 }
