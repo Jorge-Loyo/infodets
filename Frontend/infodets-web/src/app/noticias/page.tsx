@@ -17,7 +17,7 @@ const CATEGORIA_COLOR: Record<string, string> = {
   Institucional: 'blue', Normativa: 'violet', RRHH: 'teal', Tecnología: 'green', Finanzas: 'orange',
 }
 
-const BACKEND_URL = ''
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/v1', '') || 'http://localhost:8000'
 
 export default function NoticiasPage() {
   const [noticias, setNoticias] = useState<Noticia[]>([])
@@ -108,7 +108,7 @@ export default function NoticiasPage() {
 
                         {n.imagen_url && (
                           <div style={{ width: '100%', height: 280, borderRadius: 8, overflow: 'hidden' }}>
-                            <img src={`${BACKEND_URL}${n.imagen_url}`} alt={n.titulo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <img src={n.imagen_url.startsWith('http') ? n.imagen_url : `${BACKEND_URL}${n.imagen_url}`} alt={n.titulo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           </div>
                         )}
 

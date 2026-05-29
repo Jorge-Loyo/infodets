@@ -10,7 +10,7 @@ from app.middleware.auth_middleware import require_permiso, get_current_user
 
 router = APIRouter(prefix="/tablas", tags=["Tablas"])
 
-TABLAS_PUBLICAS = {"instituciones", "dependencias", "cargos", "categorias"}
+TABLAS_PUBLICAS = {"instituciones", "dependencias", "cargos", "categorias", "categorias_noticias"}
 
 
 class TablaValorSchema(BaseModel):
