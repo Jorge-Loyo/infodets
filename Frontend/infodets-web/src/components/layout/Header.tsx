@@ -16,27 +16,52 @@ export function Header() {
   const { toggleSidebar } = useSidebar()
   const { isAuthenticated, perfilNombre } = useSessionStore()
   const [mounted, setMounted] = useState(false)
-  const { noLeidos, setNoLeidos, noticiasNoLeidas, setNoticiasNoLeidas, ultimaVisitaNoticias, headerColor, paletaColor, tipografia, logoUrl, logoSize, colorScheme, temaActivo, setColorScheme, fotoPerfil, setLogoUrl } = useUiStore()
+  const { noLeidos, setNoLeidos, noticiasNoLeidas, setNoticiasNoLeidas, ultimaVisitaNoticias, headerColor, paletaColor, tipografia, logoUrl, logoSize, colorScheme, temaActivo, setColorScheme, fotoPerfil, setLogoUrl, setHeaderColor, setPaletaColor, setTipografia, setLogoSize, setColoresPersonalizados, setTemaActivo } = useUiStore()
   const router = useRouter()
 
   useEffect(() => { setMounted(true) }, [])
 
-  // Cargar logo desde el backend al iniciar
+  // Cargar config del sistema (logo + tema global) al iniciar
   useEffect(() => {
     if (!isAuthenticated()) return
-    axiosInstance.get<{ logo_url: string | null }>('/sistema')
+    axiosInstance.get<{
+      logo_url: string | null
+      header_color: string
+      paleta_color: string
+      tipografia: string
+      logo_size: number
+      color_scheme: string
+      color_sidebar: string
+      color_texto: string
+      color_boton: string
+      color_fondo: string
+      color_tarjeta: string
+      tema_activo: string
+    }>('/sistema')
       .then(res => {
-        console.log('[LOGO] logo_url del backend:', res.data.logo_url)
-        if (res.data.logo_url) {
-          const docsUrl = process.env.NEXT_PUBLIC_DOCS_URL ?? 'http://localhost:8000'
-          const url = res.data.logo_url.startsWith('http') ? res.data.logo_url : `${docsUrl}${res.data.logo_url}`
-          console.log('[LOGO] URL final:', url)
+        const d = res.data
+        if (d.logo_url) {
+          const url = d.logo_url.startsWith('http') ? d.logo_url : d.logo_url
           setLogoUrl(url)
         } else {
           setLogoUrl('')
         }
+        // Aplicar tema global
+        setHeaderColor(d.header_color)
+        setPaletaColor(d.paleta_color)
+        setTipografia(d.tipografia)
+        setLogoSize(d.logo_size)
+        setColorScheme(d.color_scheme as 'light' | 'dark')
+        setColoresPersonalizados({
+          colorSidebar: d.color_sidebar,
+          colorTexto: d.color_texto,
+          colorBoton: d.color_boton,
+          colorFondo: d.color_fondo,
+          colorTarjeta: d.color_tarjeta,
+        })
+        setTemaActivo(d.tema_activo)
       })
-      .catch((e) => console.error('[LOGO] Error:', e))
+      .catch((e) => console.error('[SISTEMA] Error:', e))
   }, [isAuthenticated])
 
   useEffect(() => {

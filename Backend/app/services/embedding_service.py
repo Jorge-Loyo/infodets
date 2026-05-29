@@ -1,41 +1,39 @@
-import httpx
 import logging
+import cohere
 from app.core.settings import settings
 
 logger = logging.getLogger(__name__)
 
-EMBEDDING_MODEL = "gemini-embedding-001"
-VECTOR_SIZE = 3072
-API_BASE = "https://generativelanguage.googleapis.com/v1beta"
+EMBEDDING_MODEL = "embed-multilingual-v3.0"
+VECTOR_SIZE = 1024
+
+_client = cohere.ClientV2(api_key=settings.cohere_api_key)
 
 
-def generate_embeddings_batch(texts: list[str], task_type: str = "RETRIEVAL_DOCUMENT") -> list[list[float]]:
+def generate_embeddings_batch(texts: list[str], task_type: str = "search_document", batch_size: int = 96) -> list[list[float]]:
     """
-    Genera embeddings para múltiples textos en una sola llamada API.
-    Mucho más eficiente que llamar una vez por chunk.
+    Genera embeddings usando Cohere embed-multilingual-v3.0 (producción).
+    Sin rate limits prácticos. PDFs de 300 páginas en ~15-30 segundos.
     """
-    url = f"{API_BASE}/models/{EMBEDDING_MODEL}:batchEmbedContents"
-    requests_payload = [
-        {
-            "model": f"models/{EMBEDDING_MODEL}",
-            "content": {"parts": [{"text": text}]},
-            "taskType": task_type,
-        }
-        for text in texts
-    ]
-    payload = {"requests": requests_payload}
+    texts = [t if t.strip() else " " for t in texts]
+    all_embeddings = []
+    total_lotes = (len(texts) + batch_size - 1) // batch_size
 
-    logger.info(f"[EMBEDDING] Enviando batch de {len(texts)} textos a Google...")
-    response = httpx.post(
-        url,
-        json=payload,
-        params={"key": settings.gemini_api_key},
-        timeout=120,
-    )
-    response.raise_for_status()
-    embeddings = response.json()["embeddings"]
-    logger.info(f"[EMBEDDING] ✅ Batch completado — {len(embeddings)} embeddings recibidos")
-    return [e["values"] for e in embeddings]
+    for i in range(0, len(texts), batch_size):
+        batch = texts[i:i + batch_size]
+        lote_num = i // batch_size + 1
+        logger.info(f"[EMBEDDING] Lote {lote_num}/{total_lotes} ({len(batch)} textos)...")
+
+        response = _client.embed(
+            texts=batch,
+            model=EMBEDDING_MODEL,
+            input_type=task_type,
+            embedding_types=["float"],
+        )
+        all_embeddings.extend(response.embeddings.float_)
+
+    logger.info(f"[EMBEDDING] ✅ {len(all_embeddings)} embeddings generados")
+    return all_embeddings
 
 
 def generate_embedding(text: str) -> list[float]:
@@ -45,17 +43,4 @@ def generate_embedding(text: str) -> list[float]:
 
 def generate_query_embedding(query: str) -> list[float]:
     """Genera un embedding para una consulta del usuario."""
-    url = f"{API_BASE}/models/{EMBEDDING_MODEL}:embedContent"
-    payload = {
-        "model": f"models/{EMBEDDING_MODEL}",
-        "content": {"parts": [{"text": query}]},
-        "taskType": "RETRIEVAL_QUERY",
-    }
-    response = httpx.post(
-        url,
-        json=payload,
-        params={"key": settings.gemini_api_key},
-        timeout=30,
-    )
-    response.raise_for_status()
-    return response.json()["embedding"]["values"]
+    return generate_embeddings_batch([query], task_type="search_query")[0]

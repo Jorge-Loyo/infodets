@@ -129,9 +129,37 @@ async def invitar_usuario(
     current_user: dict = Depends(require_permiso("gestionar_usuarios")),
 ):
     try:
+        email = datos.email.strip().lower()
+
+        # 1. Crear usuario en Cognito con contraseña por defecto
+        cognito = _get_cognito_client()
+        try:
+            cognito.admin_create_user(
+                UserPoolId=settings.cognito_user_pool_id,
+                Username=email,
+                UserAttributes=[
+                    {"Name": "email", "Value": email},
+                    {"Name": "email_verified", "Value": "true"},
+                ],
+                MessageAction="SUPPRESS",  # No enviar email de Cognito
+            )
+            # Setear contraseña permanente para evitar FORCE_CHANGE_PASSWORD
+            cognito.admin_set_user_password(
+                UserPoolId=settings.cognito_user_pool_id,
+                Username=email,
+                Password=settings.default_password,
+                Permanent=True,
+            )
+        except cognito.exceptions.UsernameExistsException:
+            raise ValueError(f"Ya existe un usuario en Cognito con el email {email}")
+        except Exception as e:
+            logger.error(f"[INVITAR] Error creando usuario en Cognito: {e}")
+            raise HTTPException(status_code=503, detail=f"Error al crear usuario en Cognito: {e}")
+
+        # 2. Crear usuario en la base de datos local
         usuario = usuario_service.invitar_usuario(
             db,
-            email=datos.email.strip().lower(),
+            email=email,
             nombre=datos.nombre,
             apellido=datos.apellido,
             rol=datos.rol,
@@ -145,13 +173,14 @@ async def invitar_usuario(
         if datos.perfil_id:
             ps.asignar_perfil_a_usuario(db, str(usuario.id), datos.perfil_id)
 
+        # 3. Notificar via n8n (best-effort)
         try:
             async with httpx.AsyncClient(timeout=5) as client:
                 await client.post(
                     f"{settings.n8n_url}/webhook/invitar-usuario",
                     json={
-                        "email": datos.email,
-                        "nombre": datos.nombre or datos.email,
+                        "email": email,
+                        "nombre": datos.nombre or email,
                         "login_url": settings.frontend_url,
                         "rol": datos.rol,
                     },
@@ -161,7 +190,7 @@ async def invitar_usuario(
 
         audit_service.registrar(
             db, accion="crear", entidad="usuario",
-            entidad_id=str(usuario.id), entidad_nombre=datos.email,
+            entidad_id=str(usuario.id), entidad_nombre=email,
             detalle=f"Usuario invitado con perfil_id={datos.perfil_id}",
             realizado_por_id=current_user.get("_usuario_id"),
             realizado_por_email=current_user.get("email"),
