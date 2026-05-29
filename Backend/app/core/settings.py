@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     # Re-ranking (Fase 4)
     cohere_api_key: str = ""
 
+    # Cloudinary
+    cloudinary_cloud_name: str = ""
+    cloudinary_api_key: str = ""
+    cloudinary_api_secret: str = ""
+
     # Contrasena por defecto para blanqueo
     default_password: str = "Infodets2024!"
 

@@ -1,4 +1,3 @@
-import os
 import uuid
 from datetime import datetime
 from fastapi import APIRouter, Depends, UploadFile, File
@@ -11,11 +10,10 @@ from app.core.database import get_db
 from app.middleware.auth_middleware import require_permiso, get_current_user
 from app.models.models import ConfiguracionSistema
 from app.schemas.common import R_401, R_403
+from app.services import cloudinary_service
 
 router = APIRouter(prefix="/sistema", tags=["Configuración Sistema"])
 
-UPLOAD_DIR = "uploads/sistema"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
 EXTENSIONES_PERMITIDAS = {"jpg", "jpeg", "png", "gif", "webp", "svg"}
 
 
@@ -110,17 +108,12 @@ async def subir_logo(
     if ext not in EXTENSIONES_PERMITIDAS:
         return JSONResponse(status_code=400, content={"detail": f"Formato no permitido. Usar: {', '.join(EXTENSIONES_PERMITIDAS)}"})
 
-    nombre = f"logo_{uuid.uuid4()}.{ext}"
-    ruta = os.path.join(UPLOAD_DIR, nombre)
-    with open(ruta, "wb") as f:
-        f.write(await archivo.read())
+    contenido = await archivo.read()
+    url = cloudinary_service.upload_image(contenido, folder="infodets/sistema")
 
-    url = f"/uploads/sistema/{nombre}"
     config = _get_or_create(db)
     if config.logo_url:
-        ruta_anterior = config.logo_url.lstrip("/")
-        if os.path.exists(ruta_anterior):
-            os.unlink(ruta_anterior)
+        cloudinary_service.delete_image(config.logo_url)
     config.logo_url = url
     config.actualizado_en = datetime.utcnow()
     db.commit()
@@ -138,9 +131,7 @@ def eliminar_logo(
 ):
     config = _get_or_create(db)
     if config.logo_url:
-        ruta = config.logo_url.lstrip("/")
-        if os.path.exists(ruta):
-            os.unlink(ruta)
+        cloudinary_service.delete_image(config.logo_url)
     config.logo_url = None
     config.actualizado_en = datetime.utcnow()
     db.commit()

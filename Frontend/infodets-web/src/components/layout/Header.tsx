@@ -41,7 +41,7 @@ export function Header() {
       .then(res => {
         const d = res.data
         if (d.logo_url) {
-          const url = d.logo_url.startsWith('http') ? d.logo_url : d.logo_url
+          const url = d.logo_url.startsWith('http') ? d.logo_url : `${process.env.NEXT_PUBLIC_API_URL?.replace('/v1', '') || 'http://localhost:8000'}${d.logo_url}`
           setLogoUrl(url)
         } else {
           setLogoUrl('')
