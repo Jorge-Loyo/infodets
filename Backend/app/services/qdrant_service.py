@@ -37,6 +37,11 @@ def search(vector: list[float], limit: int = 5) -> list[dict]:
             "source_url": r.payload.get("source_url", ""),
             "titulo": r.payload.get("titulo", ""),
             "page_number": r.payload.get("page_number", 0),
+            "categoria": r.payload.get("categoria", ""),
+            "nro_resolucion": r.payload.get("nro_resolucion", ""),
+            "nro_decreto": r.payload.get("nro_decreto", ""),
+            "autor": r.payload.get("autor", ""),
+            "descripcion": r.payload.get("descripcion", ""),
             "score": r.score,
         }
         for r in results
