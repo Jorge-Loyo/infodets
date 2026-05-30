@@ -27,13 +27,16 @@ jobs:
             source venv/bin/activate
             pip install -r requirements.txt -q
             alembic upgrade head || true
-            # Reiniciar backend
-            pkill -f 'uvicorn main:app' || true
-            sleep 3
+            deactivate
+            # Reiniciar backend: matar proceso en puerto 8000
+            fuser -k 8000/tcp 2>/dev/null || true
+            sleep 2
             cd ~/infodets/Backend
             source venv/bin/activate
             nohup uvicorn main:app --host 0.0.0.0 --port 8000 >> /tmp/uvicorn.log 2>&1 &
+            disown
             sleep 2
+            deactivate
             echo "Backend desplegado ✅"
 
             # ── Frontend ─────────────────────────────────────────
