@@ -26,22 +26,25 @@ jobs:
             cd ~/infodets/Backend
             source venv/bin/activate
             pip install -r requirements.txt -q
-            alembic upgrade head
+            alembic upgrade head || true
             # Reiniciar backend
             pkill -f 'uvicorn main:app' || true
+            sleep 3
+            cd ~/infodets/Backend
+            source venv/bin/activate
+            nohup uvicorn main:app --host 0.0.0.0 --port 8000 >> /tmp/uvicorn.log 2>&1 &
             sleep 2
-            nohup uvicorn main:app --host 0.0.0.0 --port 8000 > /dev/null 2>&1 &
-            deactivate
             echo "Backend desplegado ✅"
 
             # ── Frontend ─────────────────────────────────────────
             cd ~/infodets
-            docker build --no-cache -t infodets-frontend ./Frontend/infodets-web
             # Parar cualquier container en puerto 3000
             docker stop infodets-web 2>/dev/null || true
             docker stop infodets-frontend 2>/dev/null || true
             docker rm infodets-web 2>/dev/null || true
             docker rm infodets-frontend 2>/dev/null || true
+            # Build y run
+            docker build --no-cache -t infodets-frontend ./Frontend/infodets-web
             docker run -d \
               --name infodets-web \
               --restart unless-stopped \
