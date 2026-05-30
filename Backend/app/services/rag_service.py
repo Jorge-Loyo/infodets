@@ -8,8 +8,10 @@ from app.services.qdrant_service import search
 
 logger = logging.getLogger(__name__)
 
-GEMINI_MODEL = "gemini-2.0-flash-lite"
+GEMINI_MODEL = "gemini-2.5-flash"
 GROQ_MODEL = "llama-3.3-70b-versatile"
+SAMBANOVA_MODEL = "Meta-Llama-3.3-70B-Instruct"
+SAMBANOVA_API_KEY = "b717777b-2315-4e46-a2a6-6af22c7f1b9b"
 API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 
 # Umbrales del Loop de Retroalimentación
@@ -18,7 +20,36 @@ UMBRAL_NIVEL2 = 0.0
 
 # Feature flags
 HYDE_ENABLED = True
-QUERY_EXPANSION_ENABLED = True  # Activado para mayor cobertura semántica
+QUERY_EXPANSION_ENABLED = True
+
+
+def _llm_rapido(system: str, user: str, max_tokens: int = 150, temperature: float = 0.3) -> str:
+    """Llama a Groq o Sambanova (fallback) para tareas rápidas (HyDE, QueryExpansion)."""
+    # Intentar Groq primero
+    try:
+        client = Groq(api_key=settings.groq_api_key)
+        resp = client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            temperature=temperature, max_tokens=max_tokens,
+        )
+        return resp.choices[0].message.content or ""
+    except Exception as e:
+        logger.warning(f"[LLM] Groq falló: {e} — usando Sambanova")
+
+    # Fallback a Sambanova
+    try:
+        from openai import OpenAI
+        client = OpenAI(base_url="https://api.sambanova.ai/v1", api_key=SAMBANOVA_API_KEY)
+        resp = client.chat.completions.create(
+            model=SAMBANOVA_MODEL,
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            temperature=temperature, max_tokens=max_tokens,
+        )
+        return resp.choices[0].message.content or ""
+    except Exception as e:
+        logger.warning(f"[LLM] Sambanova también falló: {e}")
+        return ""
 
 SYSTEM_PROMPT = """Eres un asistente oficial del sistema INFODETS para una entidad pública.
 Tu función es responder consultas basándote EXCLUSIVAMENTE en la documentación oficial proporcionada.
@@ -78,45 +109,28 @@ def _reranker(pregunta: str, chunks: list[dict], top_n: int = 7) -> list[dict]:
 
 def _expandir_query(pregunta: str) -> list[str]:
     """Genera 2 variantes de la pregunta para mayor cobertura semántica."""
-    try:
-        client = Groq(api_key=settings.groq_api_key)
-        resp = client.chat.completions.create(
-            model=GROQ_MODEL,
-            messages=[
-                {"role": "system", "content": "Dado una pregunta sobre documentos oficiales, generá exactamente 2 variantes alternativas en español que busquen la misma información pero con diferentes palabras clave. Respondé SOLO con las 2 variantes separadas por salto de línea, sin numeración ni explicaciones."},
-                {"role": "user", "content": pregunta},
-            ],
-            temperature=0.4, max_tokens=100,
-        )
-        texto = resp.choices[0].message.content or ""
-        variantes = [v.strip() for v in texto.strip().split("\n") if v.strip()][:2]
-        logger.info(f"[QueryExp] Variantes: {variantes}")
-        return variantes
-    except Exception as e:
-        logger.warning(f"[QueryExp] Error: {e}")
+    texto = _llm_rapido(
+        "Dado una pregunta sobre documentos oficiales, gené exactamente 2 variantes alternativas en español que busquen la misma información pero con diferentes palabras clave. Respondé SOLO con las 2 variantes separadas por salto de línea, sin numeración ni explicaciones.",
+        pregunta, max_tokens=100, temperature=0.4
+    )
+    if not texto:
         return []
+    variantes = [v.strip() for v in texto.strip().split("\n") if v.strip()][:2]
+    logger.info(f"[QueryExp] Variantes: {variantes}")
+    return variantes
 
 
 # ─── FASE 2: HyDE ────────────────────────────────────────────────────────────
 
 def _generar_hipotesis(pregunta: str) -> str:
     """Genera una respuesta hipotética para mejorar el embedding de búsqueda."""
-    try:
-        client = Groq(api_key=settings.groq_api_key)
-        resp = client.chat.completions.create(
-            model=GROQ_MODEL,
-            messages=[
-                {"role": "system", "content": "Generá una respuesta breve y factual en español a la siguiente pregunta, como si fuera un fragmento de un documento oficial argentino (resolución, decreto, reglamento). Máximo 3 oraciones. Incluí términos técnicos y legales relevantes."},
-                {"role": "user", "content": pregunta},
-            ],
-            temperature=0.3, max_tokens=150,
-        )
-        hipotesis = resp.choices[0].message.content or ""
+    hipotesis = _llm_rapido(
+        "Generá una respuesta breve y factual en español a la siguiente pregunta, como si fuera un fragmento de un documento oficial argentino (resolución, decreto, reglamento). Máximo 3 oraciones. Incluí términos técnicos y legales relevantes.",
+        pregunta, max_tokens=150, temperature=0.3
+    )
+    if hipotesis:
         logger.info(f"[HyDE] Hipótesis: {hipotesis[:80]}...")
-        return hipotesis
-    except Exception as e:
-        logger.warning(f"[HyDE] Error: {e}")
-        return ""
+    return hipotesis
 
 
 # ─── Nivel 0: Búsqueda local en Qdrant ───────────────────────────────────────
@@ -394,21 +408,79 @@ Pregunta: {pregunta}"""
 
 
 def generar_respuesta_stream(pregunta: str, contexto: str, tipo: str = "local", memoria: dict | None = None, historial: list[dict] | None = None):
+    """Intenta Gemini -> Groq -> Sambanova. El primero que funcione genera la respuesta."""
+    # Intento 1: Gemini
     try:
-        logger.info("[RAG] Intentando con Gemini...")
-        yield from _generar_gemini_stream(pregunta, contexto, tipo, memoria, historial)
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == 429:
-            logger.warning("[RAG] Gemini rate limit — usando Groq")
-            yield from _generar_groq_stream(pregunta, contexto, tipo, memoria, historial)
-        else:
-            raise
+        logger.info("[RAG] Intentando Gemini...")
+        texto = _generar_respuesta_sync(pregunta, contexto, tipo, memoria, historial, "gemini")
+        if texto:
+            yield texto
+            return
     except Exception as e:
-        if "429" in str(e):
-            logger.warning("[RAG] Gemini rate limit (exc) — usando Groq")
-            yield from _generar_groq_stream(pregunta, contexto, tipo, memoria, historial)
-        else:
-            raise
+        logger.warning(f"[RAG] Gemini falló: {str(e)[:80]}")
+
+    # Intento 2: Groq
+    try:
+        logger.info("[RAG] Intentando Groq...")
+        texto = _generar_respuesta_sync(pregunta, contexto, tipo, memoria, historial, "groq")
+        if texto:
+            yield texto
+            return
+    except Exception as e:
+        logger.warning(f"[RAG] Groq falló: {str(e)[:80]}")
+
+    # Intento 3: Sambanova
+    try:
+        logger.info("[RAG] Intentando Sambanova...")
+        texto = _generar_respuesta_sync(pregunta, contexto, tipo, memoria, historial, "sambanova")
+        if texto:
+            yield texto
+            return
+    except Exception as e:
+        logger.error(f"[RAG] Sambanova falló: {str(e)[:80]}")
+
+    yield "Lo siento, los servicios de IA están temporalmente saturados. Por favor intentá de nuevo en unos minutos."
+
+
+def _generar_respuesta_sync(pregunta: str, contexto: str, tipo: str, memoria, historial, provider: str) -> str:
+    system = _construir_system(tipo, memoria)
+    user = _construir_user(pregunta, contexto, tipo, historial)
+
+    if provider == "gemini":
+        url = f"{API_BASE}/models/{GEMINI_MODEL}:generateContent"
+        payload = {
+            "systemInstruction": {"parts": [{"text": system}]},
+            "contents": [{"role": "user", "parts": [{"text": user}]}],
+            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 2048},
+        }
+        response = httpx.post(
+            url, json=payload,
+            params={"key": settings.gemini_generation_key or settings.gemini_api_key},
+            timeout=60,
+        )
+        response.raise_for_status()
+        return response.json()["candidates"][0]["content"]["parts"][0]["text"]
+
+    elif provider == "groq":
+        client = Groq(api_key=settings.groq_api_key)
+        resp = client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            temperature=0.1, max_tokens=2048,
+        )
+        return resp.choices[0].message.content or ""
+
+    elif provider == "sambanova":
+        from openai import OpenAI
+        client = OpenAI(base_url="https://api.sambanova.ai/v1", api_key=SAMBANOVA_API_KEY)
+        resp = client.chat.completions.create(
+            model=SAMBANOVA_MODEL,
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            temperature=0.1, max_tokens=2048,
+        )
+        return resp.choices[0].message.content or ""
+
+    return ""
 
 
 def _generar_gemini_stream(pregunta: str, contexto: str, tipo: str, memoria: dict | None = None, historial: list[dict] | None = None):
@@ -447,6 +519,24 @@ def _generar_groq_stream(pregunta: str, contexto: str, tipo: str, memoria: dict 
         text = chunk.choices[0].delta.content
         if text:
             yield text
+
+
+def _generar_sambanova_stream(pregunta: str, contexto: str, tipo: str, memoria: dict | None = None, historial: list[dict] | None = None):
+    from openai import OpenAI
+    system = _construir_system(tipo, memoria)
+    user = _construir_user(pregunta, contexto, tipo, historial)
+    client = OpenAI(base_url="https://api.sambanova.ai/v1", api_key=SAMBANOVA_API_KEY)
+    stream = client.chat.completions.create(
+        model=SAMBANOVA_MODEL,
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user",   "content": user},
+        ],
+        stream=True, temperature=0.1, max_tokens=2048,
+    )
+    for chunk in stream:
+        if chunk.choices[0].delta.content:
+            yield chunk.choices[0].delta.content
 
 
 # ─── Función principal del loop de retroalimentación ─────────────────────────
