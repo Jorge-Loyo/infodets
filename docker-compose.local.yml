@@ -49,18 +49,12 @@ services:
       dockerfile: Dockerfile.local
     container_name: infodets-backend
     restart: unless-stopped
+    env_file:
+      - ./.env.deploy
     environment:
       - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=infodets
-      - DB_USER=infodets_admin
-      - DB_PASSWORD=Infodets2024!
       - DATABASE_URL=postgresql://infodets_admin:Infodets2024!@postgres:5432/infodets
       - QDRANT_URL=http://qdrant:6333
-      - QDRANT_COLLECTION=infodets_docs
-      - APP_ENV=production
-    env_file:
-      - ./Backend/.env.local
     depends_on:
       postgres:
         condition: service_healthy
