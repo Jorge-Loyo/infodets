@@ -72,8 +72,8 @@ services:
     build:
       context: ./Frontend/infodets-web
       args:
-        NEXT_PUBLIC_API_URL=/v1
-        NEXT_PUBLIC_DOCS_URL=
+        - NEXT_PUBLIC_API_URL=/v1
+        - NEXT_PUBLIC_DOCS_URL=
     container_name: infodets-frontend
     restart: unless-stopped
     depends_on:
