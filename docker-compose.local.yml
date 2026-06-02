@@ -1,0 +1,77 @@
+# docker-compose.local.yml
+# Levanta TODO el stack de INFODETS sin dependencias de AWS
+# Uso: docker-compose -f docker-compose.local.yml up --build -d
+
+version: '3.8'
+
+services:
+  # ── Base de datos PostgreSQL (reemplaza RDS) ──
+  postgres:
+    image: postgres:17-alpine
+    container_name: infodets-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: infodets
+      POSTGRES_USER: infodets_admin
+      POSTGRES_PASSWORD: Infodets2024!
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U infodets_admin -d infodets"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Qdrant (base vectorial) ──
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: infodets-qdrant
+    restart: unless-stopped
+    volumes:
+      - qdrant_data:/qdrant/storage
+    ports:
+      - "6333:6333"
+
+  # ── Backend FastAPI ──
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile.local
+    container_name: infodets-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=infodets
+      - DB_USER=infodets_admin
+      - DB_PASSWORD=Infodets2024!
+      - DATABASE_URL=postgresql://infodets_admin:Infodets2024!@postgres:5432/infodets
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_COLLECTION=infodets_docs
+      - APP_ENV=production
+    env_file:
+      - ./Backend/.env.local
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+
+  # ── Frontend Next.js ──
+  frontend:
+    build:
+      context: ./Frontend/infodets-web
+    container_name: infodets-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  qdrant_data:
