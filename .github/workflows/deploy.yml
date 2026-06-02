@@ -19,6 +19,14 @@ jobs:
           timeout: 1200s
           command_timeout: 20m
           script: |
+            # ── Preparar entorno ─────────────────────────────────────
+            mkdir -p ~/.aws
+            cat > ~/.aws/credentials << 'AWSEOF'
+            [default]
+            aws_access_key_id = 
+            aws_secret_access_key = 
+            AWSEOF
+
             cd ~/infodets
             git pull origin main
 
