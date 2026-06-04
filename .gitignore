@@ -13,3 +13,5 @@ Popurri/Key/*.pem
 # Archivos de configuración local
 **/start-local.sh
 **/start-local.bat
+
+.env.deploy

@@ -19,6 +19,14 @@ jobs:
           timeout: 1200s
           command_timeout: 20m
           script: |
+            # ── Preparar entorno ─────────────────────────────────────
+            mkdir -p ~/.aws
+            cat > ~/.aws/credentials << 'AWSEOF'
+            [default]
+            aws_access_key_id = 
+            aws_secret_access_key = 
+            AWSEOF
+
             cd ~/infodets
             git pull origin main
 
@@ -26,16 +34,28 @@ jobs:
             cd ~/infodets/Backend
             source venv/bin/activate
             pip install -r requirements.txt -q
-            alembic upgrade head
-            sudo systemctl restart fastapi
+            alembic upgrade head || true
+            deactivate
+            # Reiniciar backend: matar proceso en puerto 8000
+            fuser -k 8000/tcp 2>/dev/null || true
+            sleep 2
+            cd ~/infodets/Backend
+            source venv/bin/activate
+            nohup uvicorn main:app --host 0.0.0.0 --port 8000 >> /tmp/uvicorn.log 2>&1 &
+            disown
+            sleep 2
             deactivate
             echo "Backend desplegado ✅"
 
             # ── Frontend ─────────────────────────────────────────
             cd ~/infodets
-            docker build --no-cache -t infodets-frontend ./Frontend/infodets-web
+            # Parar cualquier container en puerto 3000
             docker stop infodets-web 2>/dev/null || true
+            docker stop infodets-frontend 2>/dev/null || true
             docker rm infodets-web 2>/dev/null || true
+            docker rm infodets-frontend 2>/dev/null || true
+            # Build y run
+            docker build --no-cache -t infodets-frontend ./Frontend/infodets-web
             docker run -d \
               --name infodets-web \
               --restart unless-stopped \

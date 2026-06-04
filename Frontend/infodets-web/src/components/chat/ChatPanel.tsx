@@ -3,9 +3,9 @@
 import {
   Box, Stack, Text, Paper, Textarea, ActionIcon,
   Group, ThemeIcon, ScrollArea, Avatar, Loader,
-  Badge, Anchor,
+  Badge, Anchor, Tooltip,
 } from '@mantine/core'
-import { IconSend, IconRobot, IconUser, IconExternalLink } from '@tabler/icons-react'
+import { IconSend, IconRobot, IconUser, IconExternalLink, IconThumbUp, IconThumbDown } from '@tabler/icons-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useRef, useEffect } from 'react'
 import { useSessionStore } from '@/store/sessionStore'
@@ -21,6 +21,8 @@ interface Mensaje {
   tipo_respuesta?: string
   nivel?: number
   cargando?: boolean
+  consulta_id?: string
+  feedback?: 'correcto' | 'incorrecto' | null
 }
 
 const SUGERENCIAS = [
@@ -74,6 +76,7 @@ export function ChatPanel() {
   const [enviando, setEnviando] = useState(false)
   const [conversacionId, setConversacionId] = useState<string | null>(null)
   const [botConfig, setBotConfig] = useState<BotConfig>({ nombre: 'Infobot', imagen_url: '' })
+  const [feedbackEnviando, setFeedbackEnviando] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const { usuario, token } = useSessionStore()
   const { incrementarConsultas, conversacionCargada, limpiarConversacion } = useUiStore()
@@ -165,7 +168,7 @@ export function ChatPanel() {
             } else if (evento.tipo === 'final') {
               setMensajes((prev) => prev.map((m) =>
                 m.id === msgAsistente.id
-                  ? { ...m, fuentes: evento.fuentes, confianza: evento.confianza, tipo_respuesta: evento.tipo_respuesta, nivel: evento.nivel, cargando: false }
+                  ? { ...m, fuentes: evento.fuentes, confianza: evento.confianza, tipo_respuesta: evento.tipo_respuesta, nivel: evento.nivel, consulta_id: evento.consulta_id, cargando: false }
                   : m
               ))
             } else if (evento.tipo === 'error') {
@@ -184,6 +187,26 @@ export function ChatPanel() {
       setEnviando(false)
       incrementarConsultas()
     }
+  }
+
+  const enviarFeedback = async (msg: Mensaje, tipo: 'correcto' | 'incorrecto') => {
+    if (!msg.consulta_id) return
+    setFeedbackEnviando(msg.id)
+    try {
+      await fetch(`${API_URL}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          consulta_id: msg.consulta_id,
+          usuario_id: usuario?.rdsId ?? usuario?.id ?? '',
+          tipo,
+        }),
+      })
+      setMensajes((prev) => prev.map((m) =>
+        m.id === msg.id ? { ...m, feedback: tipo } : m
+      ))
+    } catch {}
+    setFeedbackEnviando(null)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -262,7 +285,7 @@ export function ChatPanel() {
                         </>
                       )}
                     </Paper>
-                    {!msg.cargando && (msg.fuentes !== undefined || msg.confianza !== undefined) && (
+                    {!msg.cargando && msg.rol === 'asistente' && msg.texto && !msg.texto.startsWith('❌') && (
                       <Stack gap={4}>
                         <Group gap="xs">
                           {msg.confianza !== undefined && (
@@ -297,6 +320,35 @@ export function ChatPanel() {
                             ))}
                           </Stack>
                         )}
+                        {/* Feedback 👍/👎 */}
+                        <Group gap={4} mt={4}>
+                          {msg.feedback ? (
+                            <Badge size="xs" variant="light" color={msg.feedback === 'correcto' ? 'green' : 'red'}>
+                              {msg.feedback === 'correcto' ? '👍 Útil' : '👎 Reportada'}
+                            </Badge>
+                          ) : (
+                            <>
+                              <Tooltip label="Respuesta útil">
+                                <ActionIcon
+                                  size="xs" variant="subtle" color="green"
+                                  loading={feedbackEnviando === msg.id}
+                                  onClick={() => enviarFeedback(msg, 'correcto')}
+                                >
+                                  <IconThumbUp size={14} />
+                                </ActionIcon>
+                              </Tooltip>
+                              <Tooltip label="Respuesta incorrecta">
+                                <ActionIcon
+                                  size="xs" variant="subtle" color="red"
+                                  loading={feedbackEnviando === msg.id}
+                                  onClick={() => enviarFeedback(msg, 'incorrecto')}
+                                >
+                                  <IconThumbDown size={14} />
+                                </ActionIcon>
+                              </Tooltip>
+                            </>
+                          )}
+                        </Group>
                       </Stack>
                     )}
                   </Stack>
