@@ -15,6 +15,8 @@ from app.api.v1.routes.url_routes import router as url_router
 from app.api.v1.routes.audit_routes import router as audit_router
 from app.api.v1.routes.bot_routes import router as bot_router
 from app.api.v1.routes.sistema_routes import router as sistema_router
+from app.api.v1.routes.bulk_routes import router as bulk_router
+from app.api.v1.routes.ldap_routes import router as ldap_router
 
 api_router = APIRouter(prefix="/v1")
 api_router.include_router(auth_router)
@@ -34,3 +36,5 @@ api_router.include_router(url_router)
 api_router.include_router(audit_router)
 api_router.include_router(bot_router)
 api_router.include_router(sistema_router)
+api_router.include_router(bulk_router)
+api_router.include_router(ldap_router)

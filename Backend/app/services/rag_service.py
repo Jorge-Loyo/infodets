@@ -5,6 +5,7 @@ from groq import Groq
 from app.core.settings import settings
 from app.services.embedding_service import generate_query_embedding
 from app.services.qdrant_service import search
+from app.services.idioma_service import detectar_idioma, INSTRUCCIONES_IDIOMA
 
 logger = logging.getLogger(__name__)
 
@@ -444,6 +445,11 @@ def generar_respuesta_stream(pregunta: str, contexto: str, tipo: str = "local", 
 
 def _generar_respuesta_sync(pregunta: str, contexto: str, tipo: str, memoria, historial, provider: str) -> str:
     system = _construir_system(tipo, memoria)
+    # HU-035: Detectar idioma del usuario y adaptar respuesta
+    idioma_detectado = detectar_idioma(pregunta)
+    instruccion_idioma = INSTRUCCIONES_IDIOMA.get(idioma_detectado, "")
+    if instruccion_idioma:
+        system = f"{system}\n[IDIOMA DETECTADO]: {instruccion_idioma}"
     user = _construir_user(pregunta, contexto, tipo, historial)
 
     if provider == "gemini":

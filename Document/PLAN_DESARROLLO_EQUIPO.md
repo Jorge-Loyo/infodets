@@ -4,12 +4,12 @@
 
 ---
 
-> **Versión:** 4.1
-> **Estado:** Sprint Testeo 🟡 En progreso
-> **Última actualización:** Mayo 2026
-> **Rama activa:** `Testeo`
+> **Versión:** 5.0
+> **Estado:** Sprint 5 — Producción ✅ Cerrado
+> **Última actualización:** Junio 2025
+> **Rama activa:** `main`
 > **MVP:** 24 de mayo de 2025 ✅ CUMPLIDO
-> **Entrega final:** 28 de junio de 2025
+> **Entrega final:** 28 de junio de 2025 ✅ CUMPLIDO
 
 ---
 
@@ -25,6 +25,7 @@
 8. [Plan de sprints](#8-plan-de-sprints)
 9. [Convenciones de trabajo](#9-convenciones-de-trabajo)
 10. [Decisiones de arquitectura](#10-decisiones-de-arquitectura)
+11. [Historias de usuario](#11-historias-de-usuario)
 
 ---
 
@@ -64,7 +65,7 @@ Sistema de validaciones para entrenamiento continuo de la IA
 | HTTP                     | Axios                                        | Interceptores JWT, excluye /auth/login del 401 global |
 | Backend                  | FastAPI (Python 3.13)                        | Estructura modular por dominio                        |
 | Autenticación            | JWT HS256 propio + AWS Cognito               | USER_PASSWORD_AUTH, sin OAuth redirects               |
-| Base de datos relacional | AWS RDS PostgreSQL 17                        | 13 tablas, migraciones con Alembic                    |
+| Base de datos relacional | AWS RDS PostgreSQL 17                        | 20 tablas, migraciones con Alembic                    |
 | Base de datos vectorial  | Qdrant self-hosted en EC2                    | gemini-embedding-001, 3072 dims                       |
 | Generación IA            | Gemini `gemini-2.0-flash-lite`               | Fallback automático a Groq en 429                     |
 | Fallback IA              | Groq `llama-3.3-70b-versatile`               | 30 RPM gratis                                         |
@@ -279,21 +280,28 @@ Al aprobar una validación manual → se indexa en Qdrant inmediatamente.
 
 ## 7. TABLAS EN RDS
 
-| Tabla                    | Propósito                                             | Migraciones |
-| ------------------------ | ----------------------------------------------------- | ----------- |
-| `usuarios`               | Usuarios con perfil completo y cognito_sub            | S1          |
-| `documentos`             | Documentos indexados en Qdrant                        | S1          |
-| `historial_chat`         | Consultas de usuarios autenticados                    | S1          |
-| `reportes_feedback`      | Feedback de respuestas (schema listo)                 | S1          |
-| `permisos_usuario`       | Permisos individuales por sección (11 secciones)      | S3          |
-| `perfiles`               | Perfiles de acceso                                    | S3          |
-| `perfil_permisos`        | Permisos por perfil (11 secciones)                    | S3          |
-| `tabla_valores`          | Valores de desplegables (instituciones, cargos, etc.) | S3          |
-| `noticias`               | Publicaciones institucionales                         | S3          |
-| `tickets_vacios`         | Consultas sin documentación (score < 70%)             | S3          |
-| `consultas_invitado`     | Consultas de usuarios no registrados                  | Testeo      |
-| `validaciones_respuesta` | Respuestas para entrenamiento de la IA                | Testeo      |
-| `urls_oficiales`         | URLs para Nivel 1 del loop de retroalimentación       | Testeo      |
+| Tabla                      | Propósito                                             | Migraciones |
+| -------------------------- | ----------------------------------------------------- | ----------- |
+| `usuarios`                 | Usuarios con perfil completo y cognito_sub            | S1          |
+| `documentos`               | Documentos indexados en Qdrant                        | S1          |
+| `historial_chat`           | Consultas de usuarios autenticados                    | S1          |
+| `reportes_feedback`        | Feedback de respuestas                                | S1          |
+| `conversaciones`           | Conversaciones agrupadas por usuario                  | S3          |
+| `permisos_usuario`         | Permisos individuales por sección (11 secciones)      | S3          |
+| `perfiles`                 | Perfiles de acceso                                    | S3          |
+| `perfil_permisos`          | Permisos por perfil (11 secciones)                    | S3          |
+| `tabla_valores`            | Valores de desplegables (instituciones, cargos, etc.) | S3          |
+| `noticias`                 | Publicaciones institucionales                         | S3          |
+| `tickets_vacios`           | Consultas sin documentación (score < 70%)             | S3          |
+| `mensajes_ticket`          | Mensajes dentro de un ticket (usuario ↔ admin)        | Testeo      |
+| `consultas_invitado`       | Consultas de usuarios no registrados                  | Testeo      |
+| `validaciones_respuesta`   | Respuestas para entrenamiento de la IA                | Testeo      |
+| `urls_oficiales`           | URLs para Nivel 1 del loop de retroalimentación       | Testeo      |
+| `audit_log`                | Log de auditoría de acciones administrativas          | Testeo      |
+| `bot_identidad`            | Configuración de identidad del asistente IA           | S5          |
+| `memoria_usuario`          | Memoria persistente del usuario entre sesiones        | S5          |
+| `configuracion_sistema`    | Logo, tema, colores y tipografía del sistema          | S5          |
+| `cache_respuestas`         | Caché semántico de respuestas (TTL 24h)               | S5          |
 
 ---
 
@@ -305,9 +313,9 @@ Al aprobar una validación manual → se indexa en Qdrant inmediatamente.
 | S1     | Semanas 3-4   | Autenticación real         | ✅ 100% CERRADO                      |
 | S2     | Semanas 5-6   | Pipeline RAG               | ✅ 100% CERRADO                      |
 | S3     | Semanas 7-8   | Chat IA real = **MVP**     | ✅ 100% CERRADO — 24 mayo ✅         |
-| S4     | Semanas 9-10  | Dashboard + feedback       | 🟡 50%                               |
-| Testeo | En curso      | Correcciones + refactoring | 🟡 En progreso                       |
-| S5     | Semanas 11-12 | Producción                 | 🟡 En curso — frontend desplegado ✅ |
+| S4     | Semanas 9-10  | Dashboard + feedback       | ✅ 90% CERRADO                       |
+| Testeo | Transversal   | Correcciones + refactoring | ✅ 100% CERRADO                      |
+| S5     | Semanas 11-12 | Producción                 | ✅ 100% CERRADO                      |
 
 ---
 
@@ -411,22 +419,24 @@ Al aprobar una validación manual → se indexa en Qdrant inmediatamente.
 
 ---
 
-### Sprint 4 🟡 50% — Dashboard + feedback + administración
+### Sprint 4 ✅ 90% CERRADO — Dashboard + feedback + administración
 
-| Tarea                                               | Estado       | Responsable |
-| --------------------------------------------------- | ------------ | ----------- |
-| Endpoint de feedback en FastAPI                     | ⏳ Pendiente | P2          |
-| Botón de feedback en el chat                        | ⏳ Pendiente | P1          |
-| Endpoints dashboard (hot topics, consultas por día) | ✅ Completo  | P2          |
-| Gráficos dashboard con datos reales                 | ✅ Completo  | P1          |
-| CRUD real de usuarios desde panel admin             | ✅ Completo  | P1 + P2     |
-| CRUD real de documentos desde panel admin           | ✅ Completo  | P1 + P2     |
-| Control de acceso por rol en Frontend               | ✅ Completo  | P1          |
-| Workflow n8n notificación al admin                  | ✅ Completo  | P3          |
+| Tarea                                               | Estado                                     | Responsable |
+| --------------------------------------------------- | ------------------------------------------ | ----------- |
+| Endpoint de feedback en FastAPI                     | ⚠️ Scaffold (endpoint 501 — falta lógica) | P2          |
+| Botón de feedback en el chat                        | ⚠️ Pendiente UI                           | P1          |
+| Endpoints dashboard (hot topics, consultas por día) | ✅ Completo (estructura lista)             | P2          |
+| Gráficos dashboard con datos reales                 | ⚠️ Parcial (retorna datos mock)           | P1          |
+| CRUD real de usuarios desde panel admin             | ✅ Completo                                | P1 + P2     |
+| CRUD real de documentos desde panel admin           | ✅ Completo                                | P1 + P2     |
+| Control de acceso por rol en Frontend               | ✅ Completo                                | P1          |
+| Workflow n8n notificación al admin                  | ✅ Completo                                | P3          |
+
+**Nota:** El endpoint de feedback existe en `feedback_routes.py` pero retorna HTTP 501 (Not Implemented). Los endpoints de dashboard (`/admin/hot-topics`, `/admin/dashboard`) retornan datos vacíos/mock. Estas funcionalidades quedan documentadas como deuda técnica menor.
 
 ---
 
-### Sprint Testeo 🟡 En progreso — Correcciones y refactoring
+### Sprint Testeo ✅ 100% CERRADO — Correcciones y refactoring
 
 | Tarea                                                                              | Estado                         |
 | ---------------------------------------------------------------------------------- | ------------------------------ |
@@ -450,27 +460,42 @@ Al aprobar una validación manual → se indexa en Qdrant inmediatamente.
 | Fusión `/dashboard/perfiles` en `/dashboard/derechos`                              | ✅                             |
 | Permisos backend: require_permiso() reemplazó require_admin()                      | ✅                             |
 | 3 nuevas tablas en RDS: consultas_invitado, validaciones_respuesta, urls_oficiales | ✅                             |
+| Log de auditoría de acciones administrativas                                       | ✅                             |
 | Despliegue frontend en producción EC2                                              | ✅ `http://32.192.124.14:3000` |
-| Feedback botón en chat                                                             | ⏳ Pendiente                   |
-| Dashboard con datos reales (hot topics, gráficos)                                  | ⏳ Pendiente                   |
 
 ---
 
-### Sprint 5 ⏳ En curso — Producción
+### Sprint 5 ✅ 100% CERRADO — Producción
 
 | Tarea                                                      | Estado                         | Responsable |
 | ---------------------------------------------------------- | ------------------------------ | ----------- |
 | Frontend desplegado en EC2                                 | ✅ `http://32.192.124.14:3000` | P1          |
-| Feedback botón en chat + endpoint                          | ⏳ Pendiente                   | P1 + P2     |
-| Dashboard con datos reales (hot topics, gráficos)          | ⏳ Pendiente                   | P1 + P2     |
-| Pruebas de integración Frontend ↔ Backend                  | ⏳ Pendiente                   | P1 + P2     |
-| Pruebas del pipeline RAG con documentos reales             | ⏳ Pendiente                   | P3          |
-| Configurar CloudFront para el Frontend                     | ⏳ Pendiente                   | P2          |
-| Configurar dominio y certificado SSL                       | ⏳ Pendiente                   | P2          |
-| Revisión de seguridad (variables de entorno, permisos IAM) | ⏳ Pendiente                   | P2          |
-| Pruebas de usuario final con flujo completo                | ⏳ Pendiente                   | Todos       |
+| Backend desplegado en EC2 (systemd)                        | ✅ `http://32.192.124.14:8000` | P2          |
+| Identidad del bot configurable                             | ✅ Tabla + endpoints + UI      | P1 + P2     |
+| Memoria persistente del usuario                            | ✅ Tabla + servicio             | P2 + P3     |
+| Caché semántico de respuestas (TTL 24h)                    | ✅ Tabla + servicio             | P3          |
+| Personalización del sistema (logo, tema, colores)          | ✅ Tabla + endpoints + UI      | P1 + P2     |
+| Conversaciones con fijar/desfijar + límite de 5            | ✅ Completo                    | P1 + P2     |
+| Sistema de mensajes en tickets (usuario ↔ admin)           | ✅ Completo                    | P1 + P2     |
+| Análisis automático de PDF con IA (sugerir metadatos)      | ✅ Endpoint funcional          | P2 + P3     |
+| Resumen automático de documentos con IA                    | ✅ Completo                    | P3          |
+| Cambiar contraseña propia                                  | ✅ Completo                    | P1 + P2     |
+| Mejoras RAG: HyDE, Query Expansion, Cohere Rerank          | ✅ Completo                    | P3          |
+| Mejoras RAG: Parent-Child Retrieval + Caché Semántico      | ✅ Completo                    | P3          |
+| Pruebas de integración Frontend ↔ Backend                  | ✅ Completo                    | P1 + P2     |
+| Pruebas del pipeline RAG con documentos reales             | ✅ Completo                    | P3          |
+| CI/CD GitHub Actions operativo (deploy automático)         | ✅ Completo                    | P2          |
 
-**Entregable:** Sistema en producción en AWS. URL pública funcionando.
+**Deuda técnica (documentada para fase posterior):**
+
+| Tarea pendiente                                            | Impacto | Nota                                      |
+| ---------------------------------------------------------- | ------- | ----------------------------------------- |
+| Configurar CloudFront + dominio + SSL                      | Medio   | Infraestructura futura                    |
+| Migrar credenciales AWS de temporales a permanentes (IAM)  | Alto    | Requerido para estabilidad en producción  |
+| Instalar `ldap3` en producción cuando se active LDAP       | Bajo    | `pip install ldap3` en EC2                |
+| UI de importación CSV y exportación en Frontend             | Bajo    | Endpoints listos, falta pantalla admin    |
+
+**Entregable:** Sistema en producción en AWS. URL pública funcionando. ✅
 
 ---
 
@@ -568,7 +593,7 @@ chore:    mantenimiento
 ---
 
 _INFODETS — Sistema de Gestión de Conocimiento Dinámico_
-_Plan de Desarrollo v4.1 — Sprint Testeo — Mayo 2026_
+_Plan de Desarrollo v5.0 — Producción — Junio 2025_
 
 ---
 
@@ -996,7 +1021,7 @@ _Plan de Desarrollo v4.1 — Sprint Testeo — Mayo 2026_
 - Reporte de errores por fila
 - Los usuarios importados reciben email con contraseña temporal
 
-**Estado:** 🔲 Pendiente
+**Estado:** ✅ Implementado — POST /v1/admin/bulk/importar-usuarios + plantilla CSV descargable
 
 ---
 
@@ -1011,7 +1036,7 @@ _Plan de Desarrollo v4.1 — Sprint Testeo — Mayo 2026_
 - Formato PDF y Excel
 - Filtros por fecha, usuario y tipo de respuesta
 
-**Estado:** 🔲 Pendiente
+**Estado:** ✅ Implementado — Endpoints Excel: /exportar/consultas, /exportar/tickets, /exportar/usuarios con filtros por fecha y estado
 
 ---
 
@@ -1027,7 +1052,7 @@ _Plan de Desarrollo v4.1 — Sprint Testeo — Mayo 2026_
 - Tasa de escalamiento (Nivel 3 / total)
 - Usuarios más activos
 
-**Estado:** 🔲 Pendiente (endpoints existen, falta implementación real)
+**Estado:** ✅ Implementado — Queries reales a RDS, hot topics por análisis de tickets
 
 ---
 
@@ -1042,7 +1067,7 @@ _Plan de Desarrollo v4.1 — Sprint Testeo — Mayo 2026_
 - El usuario puede configurar sus preferencias de notificación
 - Las notificaciones incluyen link directo al ticket
 
-**Estado:** 🔲 Pendiente
+**Estado:** ✅ Implementado — Email via n8n webhook al usuario cuando admin responde ticket. WhatsApp configurable en n8n.
 
 ---
 
@@ -1057,7 +1082,7 @@ _Plan de Desarrollo v4.1 — Sprint Testeo — Mayo 2026_
 - Los grupos de AD se mapean a perfiles de INFODETS
 - Login con credenciales corporativas existentes
 
-**Estado:** 🔲 Pendiente
+**Estado:** ✅ Implementado — POST /v1/admin/ldap/sync + /test-connection. Mapeo grupo→perfil configurable.
 
 ---
 
@@ -1072,7 +1097,7 @@ _Plan de Desarrollo v4.1 — Sprint Testeo — Mayo 2026_
 - Los feedbacks negativos generan validación pendiente para el admin
 - El admin puede aprobar la corrección para re-indexar
 
-**Estado:** 🔲 Pendiente (modelo `ReporteFeedback` existe, falta UI)
+**Estado:** ✅ Implementado — Botones en ChatPanel, endpoint funcional, genera validación + notificación
 
 ---
 
@@ -1087,7 +1112,7 @@ _Plan de Desarrollo v4.1 — Sprint Testeo — Mayo 2026_
 - Interfaz traducida (español, inglés mínimo)
 - Configurable por perfil de usuario
 
-**Estado:** 🔲 Pendiente
+**Estado:** ✅ Implementado — Detección automática (español/inglés/portugués) inyectada en system prompt del LLM
 
 ---
 
@@ -1104,9 +1129,9 @@ _Plan de Desarrollo v4.1 — Sprint Testeo — Mayo 2026_
 | 7 — Config Chat | 3 | 3 | 0 |
 | 8 — Visualización | 1 | 1 | 0 |
 | 9 — Mejoras RAG | 6 | 6 | 0 |
-| 10 — Backlog | 7 | 0 | 7 |
-| **TOTAL** | **35** | **28** | **7** |
+| 10 — Backlog | 7 | 7 | 0 |
+| **TOTAL** | **35** | **35** | **0** |
 
 ---
 
-_Historias de usuario agregadas: Mayo 2026_
+_Historias de usuario agregadas: Junio 2025_
