@@ -9,6 +9,7 @@ from app.schemas.common import MensajeOk, R_401, R_403, R_404
 from app.services import ticket_service
 from app.middleware.auth_middleware import require_permiso, get_current_user
 from app.models.models import TicketVacio, Usuario
+from app.services.notificacion_usuario_service import notificar_usuario_respuesta
 
 router = APIRouter(prefix="/tickets", tags=["Tickets"])
 
@@ -236,4 +237,21 @@ def enviar_mensaje(
     msg = ticket_service.enviar_mensaje(db, ticket_id, autor_id, rol, body.texto)
     if not msg:
         raise HTTPException(status_code=404, detail="Ticket no encontrado")
+
+    # HU-032: Notificar al usuario por email cuando el admin responde
+    if rol == "admin":
+        ticket = db.query(TicketVacio).filter(TicketVacio.id == _uuid.UUID(ticket_id)).first()
+        if ticket and ticket.usuario_id and not ticket.usuario_id.startswith("invitado:"):
+            try:
+                usuario = db.query(Usuario).filter(Usuario.id == _uuid.UUID(ticket.usuario_id)).first()
+                if usuario and usuario.email:
+                    notificar_usuario_respuesta(
+                        email=usuario.email,
+                        nombre=usuario.nombre or usuario.email,
+                        ticket_pregunta=ticket.pregunta,
+                        ticket_id=str(ticket.id),
+                    )
+            except Exception:
+                pass
+
     return MensajeSchema.from_model(msg)

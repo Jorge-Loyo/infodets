@@ -166,7 +166,7 @@ async def chat_stream(
                 yield f"data: {json.dumps({'tipo': 'chunk', 'texto': texto})}\n\n"
 
             respuesta_texto = "".join(respuesta_completa)
-            guardar_historial(
+            historial_id = guardar_historial(
                 usuario_id=usuario_id,
                 query=request.mensaje,
                 answer=respuesta_texto,
@@ -252,7 +252,7 @@ async def chat_stream(
                         vistos.add(url)
                         fuentes.append({"nombre": url, "url": url, "pagina": None})
 
-            yield f"data: {json.dumps({'tipo': 'final', 'consulta_id': consulta_id, 'fuentes': fuentes, 'confianza': round(max_score, 3), 'tipo_respuesta': resultado.tipo_respuesta, 'nivel': resultado.nivel})}\n\n"
+            yield f"data: {json.dumps({'tipo': 'final', 'consulta_id': historial_id or consulta_id, 'fuentes': fuentes, 'confianza': round(max_score, 3), 'tipo_respuesta': resultado.tipo_respuesta, 'nivel': resultado.nivel})}\n\n"
 
         except (ValueError, RuntimeError, ConnectionError) as e:
             logger.error(f"[CHAT] Error: {e}")

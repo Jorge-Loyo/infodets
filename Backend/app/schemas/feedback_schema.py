@@ -9,7 +9,7 @@ class FeedbackTipo(str, Enum):
 
 
 class FeedbackRequest(BaseModel):
-    consulta_id: str
+    consulta_id: str  # UUID del historial_chat
     usuario_id: str
     tipo: FeedbackTipo
     comentario: Optional[str] = None
