@@ -1,10 +1,22 @@
 # docker-compose.local.yml
-# Levanta TODO el stack de INFODETS sin dependencias de AWS
-# Uso: docker-compose -f docker-compose.local.yml up --build -d
-
-version: '3.8'
+# Levanta TODO el stack de INFODETS con una sola URL pública
+# Uso: docker compose -f docker-compose.local.yml up --build -d
+# Cloudflare Tunnel apunta a localhost:80 (nginx)
 
 services:
+  # ── Nginx Reverse Proxy (punto de entrada único) ──
+  nginx:
+    image: nginx:alpine
+    container_name: infodets-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - backend
+
   # ── Base de datos PostgreSQL (reemplaza RDS) ──
   postgres:
     image: postgres:17-alpine
@@ -16,8 +28,6 @@ services:
       POSTGRES_PASSWORD: Infodets2024!
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U infodets_admin -d infodets"]
       interval: 5s
@@ -31,8 +41,6 @@ services:
     restart: unless-stopped
     volumes:
       - qdrant_data:/qdrant/storage
-    ports:
-      - "6333:6333"
 
   # ── Backend FastAPI ──
   backend:
@@ -41,20 +49,12 @@ services:
       dockerfile: Dockerfile.local
     container_name: infodets-backend
     restart: unless-stopped
-    ports:
-      - "8000:8000"
+    env_file:
+      - ./.env.deploy
     environment:
       - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=infodets
-      - DB_USER=infodets_admin
-      - DB_PASSWORD=Infodets2024!
       - DATABASE_URL=postgresql://infodets_admin:Infodets2024!@postgres:5432/infodets
       - QDRANT_URL=http://qdrant:6333
-      - QDRANT_COLLECTION=infodets_docs
-      - APP_ENV=production
-    env_file:
-      - ./Backend/.env.local
     depends_on:
       postgres:
         condition: service_healthy
@@ -65,10 +65,11 @@ services:
   frontend:
     build:
       context: ./Frontend/infodets-web
+      args:
+        - NEXT_PUBLIC_API_URL=/v1
+        - NEXT_PUBLIC_DOCS_URL=
     container_name: infodets-frontend
     restart: unless-stopped
-    ports:
-      - "3000:3000"
     depends_on:
       - backend
 

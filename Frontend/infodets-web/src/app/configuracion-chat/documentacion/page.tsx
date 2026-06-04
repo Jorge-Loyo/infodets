@@ -4,13 +4,13 @@ import {
   Box, Grid, Text, Stack, Paper, Group, Title,
   TextInput, Select, Button, Badge, FileInput,
   Table, ActionIcon, ThemeIcon, Divider, LoadingOverlay,
-  Progress, Tabs, Switch, Tooltip, Modal,
+  Progress, Tabs, Switch, Tooltip, Modal, Textarea,
 } from '@mantine/core'
 import {
   IconUpload, IconFileTypePdf, IconTrash,
   IconSearch, IconFolderOpen, IconRefresh, IconBrain,
   IconLink, IconPlus, IconWorld, IconEye, IconEdit,
-  IconCloudUpload, IconHistory,
+  IconCloudUpload, IconHistory, IconSparkles, IconCheck,
 } from '@tabler/icons-react'
 
 const DOCS_URL = 'http://32.192.124.14:8000'
@@ -45,6 +45,8 @@ export default function DocumentacionPage() {
   const [documentos, setDocumentos] = useState<DocumentoListItem[]>([])
   const [cargando, setCargando] = useState(true)
   const [subiendo, setSubiendo] = useState(false)
+  const [analizando, setAnalizando] = useState(false)
+  const [analizado, setAnalizado] = useState(false)
   const [progreso, setProgreso] = useState(0)
   const [busqueda, setBusqueda] = useState('')
   const [archivo, setArchivo] = useState<File | null>(null)
@@ -55,8 +57,9 @@ export default function DocumentacionPage() {
   const [nroResolucion, setNroResolucion] = useState('')
   const [nroDecreto, setNroDecreto] = useState('')
   const [autor, setAutor] = useState('')
-  const opcionesCategorias = useTablaOpciones('categorias')
-  const opcionesDependencias = useTablaOpciones('dependencias')
+  const [descripcion, setDescripcion] = useState('')
+  const opcionesCategorias = useTablaOpciones('categorias', true)
+  const opcionesDependencias = useTablaOpciones('dependencias', true)
 
   // ── URLs ──
   const [urls, setUrls] = useState<UrlOficial[]>([])
@@ -135,7 +138,38 @@ export default function DocumentacionPage() {
   )
 
   const limpiarFormulario = () => {
-    setArchivo(null); setTitulo(''); setCategoria(''); setDependencia(''); setAnio(''); setNroResolucion(''); setNroDecreto(''); setAutor(''); setProgreso(0)
+    setArchivo(null); setTitulo(''); setCategoria(''); setDependencia(''); setAnio(''); setNroResolucion(''); setNroDecreto(''); setAutor(''); setDescripcion(''); setProgreso(0); setAnalizado(false)
+  }
+
+  // Al seleccionar archivo, analizar automáticamente con IA
+  const handleArchivoChange = async (file: File | null) => {
+    setArchivo(file)
+    setAnalizado(false)
+    if (!file) return
+
+    setAnalizando(true)
+    try {
+      const resultado = await ingestaService.analizar(file)
+      if (resultado.titulo) setTitulo(resultado.titulo)
+      if (resultado.categoria) {
+        const match = opcionesCategorias.find((o: any) =>
+          typeof o === 'string' ? o === resultado.categoria : o.value === resultado.categoria || o.label === resultado.categoria
+        )
+        if (match) setCategoria(typeof match === 'string' ? match : match.value)
+      }
+      if (resultado.dependencia) setDependencia(resultado.dependencia)
+      if (resultado.anio) setAnio(String(resultado.anio))
+      if (resultado.nro_resolucion) setNroResolucion(resultado.nro_resolucion)
+      if (resultado.nro_decreto) setNroDecreto(resultado.nro_decreto)
+      if (resultado.autor) setAutor(resultado.autor)
+      if (resultado.descripcion) setDescripcion(resultado.descripcion)
+      setAnalizado(true)
+      notifications.show({ color: 'blue', title: '🤖 Análisis completado', message: 'Revisá los campos autocompletados y corregí lo necesario.' })
+    } catch {
+      notifications.show({ color: 'orange', message: 'No se pudo analizar el PDF. Completá los campos manualmente.' })
+    } finally {
+      setAnalizando(false)
+    }
   }
 
   const handleSubir = async () => {
@@ -146,9 +180,16 @@ export default function DocumentacionPage() {
     setSubiendo(true); setProgreso(10)
     try {
       setProgreso(30)
-      const resultado = await ingestaService.cargar(archivo, { titulo: titulo.trim(), categoria, dependencia, anio: anio ? parseInt(anio) : undefined, nro_resolucion: nroResolucion.trim() || undefined, nro_decreto: nroDecreto.trim() || undefined, autor: autor.trim() || undefined })
+      const resultado = await ingestaService.cargar(archivo, {
+        titulo: titulo.trim(), categoria, dependencia,
+        anio: anio ? parseInt(anio) : undefined,
+        nro_resolucion: nroResolucion.trim() || undefined,
+        nro_decreto: nroDecreto.trim() || undefined,
+        autor: autor.trim() || undefined,
+        descripcion: descripcion.trim() || undefined,
+      })
       setProgreso(100)
-      notifications.show({ color: 'green', title: '✅ Documento procesado', message: `"${resultado.titulo}" — ${resultado.vector_id}` })
+      notifications.show({ color: 'green', title: '✅ Documento procesado', message: `"${resultado.titulo}" indexado correctamente` })
       limpiarFormulario()
       cargarDocumentos()
     } catch (e: unknown) {
@@ -212,29 +253,37 @@ export default function DocumentacionPage() {
           <Grid>
             {/* Cargar PDF */}
             <Grid.Col span={{ base: 12, md: 6 }}>
-              <Paper withBorder radius="md" p="xl" h="100%">
+              <Paper withBorder radius="md" p="xl" h="100%" pos="relative">
+                <LoadingOverlay visible={analizando} loaderProps={{ children: <Stack align="center" gap="xs"><IconSparkles size={24} /><Text size="sm">Analizando documento con IA...</Text></Stack> }} />
                 <Stack gap="md">
                   <Group gap="xs">
                     <ThemeIcon variant="light" color="blue" radius="md"><IconBrain size={16} /></ThemeIcon>
                     <Text fw={600} size="sm">Cargar documento PDF</Text>
                   </Group>
                   <Divider />
-                  <FileInput label="Archivo PDF" placeholder="Selecciona un PDF" accept=".pdf" leftSection={<IconFolderOpen size={16} />} value={archivo} onChange={setArchivo} radius="md" clearable />
+                  <FileInput label="Archivo PDF" placeholder="Selecciona un PDF" accept=".pdf" leftSection={<IconFolderOpen size={16} />} value={archivo} onChange={handleArchivoChange} radius="md" clearable />
                   {archivo && (
-                    <Paper withBorder p="sm" radius="md" bg="blue.0">
-                      <Group gap="sm">
-                        <ThemeIcon variant="light" color="red" radius="md" size="lg"><IconFileTypePdf size={16} /></ThemeIcon>
-                        <Stack gap={0} style={{ flex: 1 }}>
-                          <Text size="sm" fw={500} lineClamp={1}>{archivo.name}</Text>
-                          <Text size="xs" c="dimmed">{(archivo.size / 1024 / 1024).toFixed(2)} MB</Text>
-                        </Stack>
-                      </Group>
-                    </Paper>
+                    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+                      <Paper withBorder p="sm" radius="md" bg={analizado ? 'green.0' : 'blue.0'}>
+                        <Group gap="sm">
+                          <ThemeIcon variant="light" color={analizado ? 'green' : 'red'} radius="md" size="lg">
+                            {analizado ? <IconCheck size={16} /> : <IconFileTypePdf size={16} />}
+                          </ThemeIcon>
+                          <Stack gap={0} style={{ flex: 1 }}>
+                            <Text size="sm" fw={500} lineClamp={1}>{archivo.name}</Text>
+                            <Text size="xs" c="dimmed">
+                              {(archivo.size / 1024 / 1024).toFixed(2)} MB
+                              {analizado && ' — Campos autocompletados por IA'}
+                            </Text>
+                          </Stack>
+                        </Group>
+                      </Paper>
+                    </motion.div>
                   )}
                   <Divider label="Metadatos" labelPosition="left" />
                   <TextInput label="Título *" placeholder="Ej: Resolución 001-2024" value={titulo} onChange={e => setTitulo(e.target.value)} radius="md" required />
-                  <Select label="Categoría *" placeholder="Selecciona" data={opcionesCategorias} value={categoria} onChange={v => setCategoria(v ?? '')} radius="md" required />
-                  <Select label="Dependencia" placeholder="Selecciona" data={opcionesDependencias} value={dependencia} onChange={v => setDependencia(v ?? '')} radius="md" clearable />
+                  <Select label="Categoría *" placeholder="Selecciona" data={opcionesCategorias} value={categoria} onChange={v => setCategoria(v ?? '')} radius="md" required searchable />
+                  <Select label="Dependencia" placeholder="Selecciona" data={opcionesDependencias} value={dependencia} onChange={v => setDependencia(v ?? '')} radius="md" clearable searchable />
                   <TextInput label="Año" placeholder="Ej: 2024" value={anio} onChange={e => setAnio(e.target.value)} radius="md" maxLength={4} />
                   <Grid>
                     <Grid.Col span={6}>
@@ -245,6 +294,16 @@ export default function DocumentacionPage() {
                     </Grid.Col>
                   </Grid>
                   <TextInput label="Autor / Organismo" placeholder="Ej: Ministerio de Educación" value={autor} onChange={e => setAutor(e.target.value)} radius="md" />
+                  <Divider label="Resumen IA" labelPosition="left" />
+                  <Textarea
+                    label="Descripción / Resumen"
+                    placeholder="Se genera automáticamente al analizar el PDF..."
+                    value={descripcion}
+                    onChange={(e) => setDescripcion(e.target.value)}
+                    minRows={3}
+                    autosize
+                    radius="md"
+                  />
                   {subiendo && progreso > 0 && (
                     <Stack gap={4}>
                       <Text size="xs" c="dimmed">Procesando e indexando...</Text>
