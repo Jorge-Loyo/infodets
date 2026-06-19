@@ -76,6 +76,26 @@ services:
       - infodets-network
     restart: unless-stopped
 
+  # ─── n8n Workflows ───────────────────────────────────────────────
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: infodets-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=Infodets2024!
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=https://n8n.agilizesoluciones.uk/
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - infodets-network
+    restart: unless-stopped
+
   # ─── Nginx Reverse Proxy ─────────────────────────────────────────
   nginx:
     image: nginx:alpine
@@ -94,6 +114,7 @@ services:
 volumes:
   pgdata:
   qdrant_data:
+  n8n_data:
 
 networks:
   infodets-network:
