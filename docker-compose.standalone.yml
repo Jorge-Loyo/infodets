@@ -1,0 +1,100 @@
+services:
+
+  # ─── PostgreSQL Local ────────────────────────────────────────────
+  db:
+    image: postgres:17-alpine
+    container_name: infodets-db
+    environment:
+      POSTGRES_DB: infodets
+      POSTGRES_USER: infodets_admin
+      POSTGRES_PASSWORD: Infodets2024!
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - infodets-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U infodets_admin -d infodets"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Qdrant Vector DB ────────────────────────────────────────────
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: infodets-qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - infodets-network
+    restart: unless-stopped
+
+  # ─── Back-End FastAPI ────────────────────────────────────────────
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    container_name: infodets-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./Backend/.env.standalone
+    depends_on:
+      db:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    networks:
+      - infodets-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─── Front-End Next.js ───────────────────────────────────────────
+  frontend:
+    build:
+      context: ./Frontend/infodets-web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://192.168.56.101:8000/v1
+        NEXT_PUBLIC_DOCS_URL: http://192.168.56.101:8000
+    container_name: infodets-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - INTERNAL_BACKEND_URL=http://backend:8000
+    depends_on:
+      - backend
+    networks:
+      - infodets-network
+    restart: unless-stopped
+
+  # ─── Nginx Reverse Proxy ─────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: infodets-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - infodets-network
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  qdrant_data:
+
+networks:
+  infodets-network:
+    driver: bridge
