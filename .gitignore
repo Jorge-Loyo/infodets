@@ -15,3 +15,7 @@ Popurri/Key/*.pem
 **/start-local.bat
 
 .env.deploy
+
+# Archivos temporales de migración
+dump.sql
+*.snapshot

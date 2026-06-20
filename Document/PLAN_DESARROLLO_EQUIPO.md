@@ -313,7 +313,7 @@ Al aprobar una validación manual → se indexa en Qdrant inmediatamente.
 | S1     | Semanas 3-4   | Autenticación real         | ✅ 100% CERRADO                      |
 | S2     | Semanas 5-6   | Pipeline RAG               | ✅ 100% CERRADO                      |
 | S3     | Semanas 7-8   | Chat IA real = **MVP**     | ✅ 100% CERRADO — 24 mayo ✅         |
-| S4     | Semanas 9-10  | Dashboard + feedback       | ✅ 90% CERRADO                       |
+| S4     | Semanas 9-10  | Dashboard + feedback       | ✅ 100% CERRADO                      |
 | Testeo | Transversal   | Correcciones + refactoring | ✅ 100% CERRADO                      |
 | S5     | Semanas 11-12 | Producción                 | ✅ 100% CERRADO                      |
 
@@ -419,20 +419,18 @@ Al aprobar una validación manual → se indexa en Qdrant inmediatamente.
 
 ---
 
-### Sprint 4 ✅ 90% CERRADO — Dashboard + feedback + administración
+### Sprint 4 ✅ 100% CERRADO — Dashboard + feedback + administración
 
-| Tarea                                               | Estado                                     | Responsable |
-| --------------------------------------------------- | ------------------------------------------ | ----------- |
-| Endpoint de feedback en FastAPI                     | ⚠️ Scaffold (endpoint 501 — falta lógica) | P2          |
-| Botón de feedback en el chat                        | ⚠️ Pendiente UI                           | P1          |
-| Endpoints dashboard (hot topics, consultas por día) | ✅ Completo (estructura lista)             | P2          |
-| Gráficos dashboard con datos reales                 | ⚠️ Parcial (retorna datos mock)           | P1          |
-| CRUD real de usuarios desde panel admin             | ✅ Completo                                | P1 + P2     |
-| CRUD real de documentos desde panel admin           | ✅ Completo                                | P1 + P2     |
-| Control de acceso por rol en Frontend               | ✅ Completo                                | P1          |
-| Workflow n8n notificación al admin                  | ✅ Completo                                | P3          |
-
-**Nota:** El endpoint de feedback existe en `feedback_routes.py` pero retorna HTTP 501 (Not Implemented). Los endpoints de dashboard (`/admin/hot-topics`, `/admin/dashboard`) retornan datos vacíos/mock. Estas funcionalidades quedan documentadas como deuda técnica menor.
+| Tarea                                               | Estado      | Responsable |
+| --------------------------------------------------- | ----------- | ----------- |
+| Endpoint de feedback en FastAPI                     | ✅ Completo | P2          |
+| Botón de feedback en el chat                        | ✅ Completo | P1          |
+| Endpoints dashboard (hot topics, consultas por día) | ✅ Completo | P2          |
+| Gráficos dashboard con datos reales                 | ✅ Completo | P1          |
+| CRUD real de usuarios desde panel admin             | ✅ Completo | P1 + P2     |
+| CRUD real de documentos desde panel admin           | ✅ Completo | P1 + P2     |
+| Control de acceso por rol en Frontend               | ✅ Completo | P1          |
+| Workflow n8n notificación al admin                  | ✅ Completo | P3          |
 
 ---
 
