@@ -1,4 +1,4 @@
-name: Deploy to EC2 + VM
+name: Deploy to VM
 
 on:
   push:
@@ -6,57 +6,6 @@ on:
       - main
 
 jobs:
-  # ─── Deploy al EC2 (AWS) ─────────────────────────────────────
-  deploy-ec2:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          timeout: 1200s
-          command_timeout: 20m
-          script: |
-            cd ~/infodets
-            git pull origin main
-
-            # ── Backend ──────────────────────────────────────────
-            cd ~/infodets/Backend
-            source venv/bin/activate
-            pip install -r requirements.txt -q
-            alembic upgrade head || true
-            deactivate
-            fuser -k 8000/tcp 2>/dev/null || true
-            sleep 2
-            cd ~/infodets/Backend
-            source venv/bin/activate
-            nohup uvicorn main:app --host 0.0.0.0 --port 8000 >> /tmp/uvicorn.log 2>&1 &
-            disown
-            sleep 2
-            deactivate
-            echo "Backend desplegado ✅"
-
-            # ── Frontend ─────────────────────────────────────────
-            cd ~/infodets
-            docker stop infodets-web 2>/dev/null || true
-            docker stop infodets-frontend 2>/dev/null || true
-            docker rm infodets-web 2>/dev/null || true
-            docker rm infodets-frontend 2>/dev/null || true
-            docker build --no-cache -t infodets-frontend ./Frontend/infodets-web
-            docker run -d \
-              --name infodets-web \
-              --restart unless-stopped \
-              -p 3000:3000 \
-              infodets-frontend
-            docker image prune -f
-            echo "Frontend desplegado ✅"
-
-            echo "Deploy EC2 completado ✅"
-
-  # ─── Deploy a la VM (VirtualBox) ─────────────────────────────
   deploy-vm:
     runs-on: ubuntu-latest
 
