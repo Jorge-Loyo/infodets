@@ -42,6 +42,7 @@ interface UiStore {
   colorFondo: string
   colorTarjeta: string
   fotoPerfil: string
+  logoBackground: string
   setHeaderColor: (c: string) => void
   setPaletaColor: (c: string) => void
   setTipografia: (t: string) => void
@@ -50,6 +51,7 @@ interface UiStore {
   setColorScheme: (s: 'light' | 'dark') => void
   setColoresPersonalizados: (c: { colorSidebar?: string, colorTexto?: string, colorBoton?: string, colorFondo?: string, colorTarjeta?: string }) => void
   setFotoPerfil: (url: string) => void
+  setLogoBackground: (bg: string) => void
   temaActivo: string
   setTemaActivo: (t: string) => void
 }
@@ -85,6 +87,7 @@ export const useUiStore = create<UiStore>()(
       colorFondo: '',
       colorTarjeta: '',
       fotoPerfil: '',
+      logoBackground: 'transparent',
       setHeaderColor: (c) => set({ headerColor: c }),
       setPaletaColor: (c) => set({ paletaColor: c }),
       setTipografia: (t) => set({ tipografia: t }),
@@ -93,6 +96,7 @@ export const useUiStore = create<UiStore>()(
       setColorScheme: (s) => set({ colorScheme: s }),
       setColoresPersonalizados: (c) => set(c),
       setFotoPerfil: (url) => set({ fotoPerfil: url }),
+      setLogoBackground: (bg) => set({ logoBackground: bg }),
       temaActivo: 'Estándar',
       setTemaActivo: (t) => set({ temaActivo: t }),
     }),
@@ -110,6 +114,7 @@ export const useUiStore = create<UiStore>()(
         colorBoton: state.colorBoton,
         colorFondo: state.colorFondo,
         colorTarjeta: state.colorTarjeta,
+        logoBackground: state.logoBackground,
         temaActivo: state.temaActivo,
         // logoUrl y fotoPerfil NO se persisten — son base64 y superan el límite de localStorage
       }),

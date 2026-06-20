@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Container, Title, Text, Button, Paper, Stack, TextInput, PasswordInput, Alert, Image } from '@mantine/core'
+import { Container, Button, Paper, Stack, TextInput, PasswordInput, Alert, Image, Box } from '@mantine/core'
 import { IconLogin, IconUserOff, IconAlertCircle } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { ROUTES } from '@/lib/constants'
@@ -29,7 +29,6 @@ export default function Home() {
     setLoading(true)
     try {
       const { data } = await axiosInstance.post('/auth/login', { email: email.trim().toLowerCase(), password })
-      // Cargar permisos del usuario antes de redirigir
       let permisos: Record<string, boolean> = {}
       try {
         const resPermisos = await axiosInstance.get(`/permisos/${data.usuario.id}`, {
@@ -38,7 +37,6 @@ export default function Home() {
         permisos = resPermisos.data
       } catch {}
       setSession(data.usuario, data.access_token, permisos)
-      // Cargar nombre del perfil
       try {
         if (data.usuario.perfil_id) {
           const resPerfiles = await axiosInstance.get('/perfiles', {
@@ -65,10 +63,39 @@ export default function Home() {
   }
 
   return (
-    <Container size="xs" py={80}>
-      <div>
-        <Paper withBorder shadow="sm" p="xl" radius="md">
-          <Image src="/infodets-logo.png" alt="INFODETS" h={60} w="auto" fit="contain" mx="auto" mb="xl" />
+    <Box
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+        background: 'linear-gradient(-45deg, #1a73e8, #00c9ff, #0052d4, #4facfe)',
+        backgroundSize: '400% 400%',
+        animation: 'gradientMove 12s ease infinite',
+      }}
+    >
+      {/* Burbujas animadas */}
+      {[...Array(6)].map((_, i) => (
+        <Box
+          key={i}
+          style={{
+            position: 'absolute',
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.08)',
+            animation: `float ${8 + i * 2}s ease-in-out infinite`,
+            width: `${60 + i * 40}px`,
+            height: `${60 + i * 40}px`,
+            left: `${10 + i * 15}%`,
+            bottom: `-${60 + i * 40}px`,
+          }}
+        />
+      ))}
+
+      <Container size="xs" style={{ position: 'relative', zIndex: 1 }}>
+        <Paper withBorder shadow="xl" p="xl" radius="lg" style={{ backdropFilter: 'blur(10px)', backgroundColor: 'rgba(255,255,255,0.95)' }}>
+          <Image src="/infodets-logo.png" alt="INFODETS" h={120} w="auto" fit="contain" mx="auto" mb="xl" />
           <Stack>
             {error && (
               <Alert icon={<IconAlertCircle size={16} />} color="red" variant="light">
@@ -103,7 +130,19 @@ export default function Home() {
             </Button>
           </Stack>
         </Paper>
-      </div>
-    </Container>
+      </Container>
+
+      <style jsx global>{`
+        @keyframes gradientMove {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        @keyframes float {
+          0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.6; }
+          50% { transform: translateY(-100vh) rotate(180deg); opacity: 0.2; }
+        }
+      `}</style>
+    </Box>
   )
 }

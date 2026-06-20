@@ -65,10 +65,10 @@ const PREGUNTAS_COLORES = [
 
 export default function TemasPage() {
   const {
-    headerColor, paletaColor, tipografia, logoUrl, logoSize, colorScheme,
+    headerColor, paletaColor, tipografia, logoUrl, logoSize, colorScheme, logoBackground,
     colorSidebar, colorTexto, colorBoton, colorFondo, colorTarjeta,
     setHeaderColor, setPaletaColor, setTipografia, setLogoUrl, setLogoSize,
-    setColorScheme, setColoresPersonalizados, setTemaActivo,
+    setColorScheme, setColoresPersonalizados, setTemaActivo, setLogoBackground,
   } = useUiStore()
 
   const [localHeader, setLocalHeader]         = useState(headerColor)
@@ -80,6 +80,7 @@ export default function TemasPage() {
   const [archivoLogo, setArchivoLogo]         = useState<File | null>(null)
   const [temaActivoLocal, setTemaActivoLocal] = useState<string | null>(null)
   const [localColores, setLocalColores]       = useState({ colorFondo, colorSidebar, colorTarjeta, colorTexto, colorBoton })
+  const [localLogoBg, setLocalLogoBg] = useState<'transparent' | 'white' | 'black'>(logoBackground as 'transparent' | 'white' | 'black')
 
   const esPersonalizado = temaActivoLocal === 'Personalizado'
   const haycambios = localHeader !== headerColor || localPaleta !== paletaColor || localTipo !== tipografia || localLogo !== logoUrl || localLogoSize !== logoSize || localColorScheme !== colorScheme
@@ -94,6 +95,7 @@ export default function TemasPage() {
       setLogoSize(localLogoSize)
       setColorScheme(localColorScheme)
       if (esPersonalizado || temaActivoLocal === 'Ciudad') setColoresPersonalizados(localColores)
+      setLogoBackground(localLogoBg)
       setTemaActivo(temaActivoLocal ?? 'Estándar')
       // Guardar tema en el servidor (global)
       await axiosInstance.put('/sistema/tema', {
@@ -238,8 +240,16 @@ export default function TemasPage() {
                   <Stack align="center" gap="xs">
                     {localLogo ? (
                       <>
-                        <Image src={localLogo} alt="Logo preview" h={localLogoSize} fit="contain" />
+                        <Box style={{ backgroundColor: localLogoBg === 'transparent' ? 'transparent' : localLogoBg, borderRadius: 6, padding: 6 }}>
+                          <Image src={localLogo} alt="Logo preview" h={localLogoSize} fit="contain" />
+                        </Box>
                         <Badge size="xs" color="teal">Vista previa — {localLogoSize}px</Badge>
+                        <Group gap="xs" mt={4}>
+                          <Text size="xs" c="dimmed">Fondo:</Text>
+                          <Tooltip label="Transparente"><Box onClick={() => setLocalLogoBg('transparent')} style={{ width: 22, height: 22, borderRadius: '50%', cursor: 'pointer', background: 'repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50%/12px 12px', outline: localLogoBg === 'transparent' ? '2px solid var(--mantine-color-blue-6)' : '1px solid #ccc', outlineOffset: 2 }} /></Tooltip>
+                          <Tooltip label="Blanco"><Box onClick={() => setLocalLogoBg('white')} style={{ width: 22, height: 22, borderRadius: '50%', cursor: 'pointer', backgroundColor: 'white', outline: localLogoBg === 'white' ? '2px solid var(--mantine-color-blue-6)' : '1px solid #ccc', outlineOffset: 2 }} /></Tooltip>
+                          <Tooltip label="Negro"><Box onClick={() => setLocalLogoBg('black')} style={{ width: 22, height: 22, borderRadius: '50%', cursor: 'pointer', backgroundColor: 'black', outline: localLogoBg === 'black' ? '2px solid var(--mantine-color-blue-6)' : '1px solid #ccc', outlineOffset: 2 }} /></Tooltip>
+                        </Group>
                       </>
                     ) : (
                       <>

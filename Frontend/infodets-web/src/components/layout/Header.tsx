@@ -16,7 +16,7 @@ export function Header() {
   const { toggleSidebar } = useSidebar()
   const { isAuthenticated, perfilNombre } = useSessionStore()
   const [mounted, setMounted] = useState(false)
-  const { noLeidos, setNoLeidos, noticiasNoLeidas, setNoticiasNoLeidas, ultimaVisitaNoticias, headerColor, paletaColor, tipografia, logoUrl, logoSize, colorScheme, temaActivo, setColorScheme, fotoPerfil, setLogoUrl, setHeaderColor, setPaletaColor, setTipografia, setLogoSize, setColoresPersonalizados, setTemaActivo } = useUiStore()
+  const { noLeidos, setNoLeidos, noticiasNoLeidas, setNoticiasNoLeidas, ultimaVisitaNoticias, headerColor, paletaColor, tipografia, logoUrl, logoSize, logoBackground, colorScheme, temaActivo, setColorScheme, fotoPerfil, setLogoUrl, setHeaderColor, setPaletaColor, setTipografia, setLogoSize, setColoresPersonalizados, setTemaActivo } = useUiStore()
   const router = useRouter()
 
   useEffect(() => { setMounted(true) }, [])
@@ -106,7 +106,7 @@ export function Header() {
       <Group gap="sm">
         {mounted && <Burger size="sm" onClick={toggleSidebar} aria-label="Toggle sidebar" />}
         {mounted && logoUrl ? (
-          <img src={logoUrl} alt="Logo" style={{ height: logoSize, objectFit: 'contain' }} />
+          <img src={logoUrl} alt="Logo" style={{ height: logoSize, objectFit: 'contain', backgroundColor: logoBackground === 'transparent' ? 'transparent' : logoBackground, borderRadius: 4, padding: logoBackground !== 'transparent' ? 2 : 0 }} />
         ) : (
           <Text fw={700} size="lg" c={paletaColor}>{APP_NAME}</Text>
         )}
