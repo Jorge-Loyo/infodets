@@ -10,7 +10,8 @@ echo "$(date) - Deploy iniciado..." >> "$LOG_FILE"
 
 cd "$REPO_DIR" || exit 1
 
-# Pull cambios
+# Descartar cambios locales y pull
+git reset --hard HEAD
 git pull origin main >> "$LOG_FILE" 2>&1
 
 # Rebuild y restart containers
