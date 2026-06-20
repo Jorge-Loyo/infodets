@@ -23,7 +23,7 @@ export function Footer() {
 
         {/* Izquierda — marca */}
         <Group gap="xs">
-          <Image src="/infodets-logo.png" alt={APP_NAME} h={30} w="auto" fit="contain" style={{ backgroundColor: 'white', borderRadius: 4, padding: 2 }} />
+          <Image src="/infodets-logo.png" alt={APP_NAME} h={50} w="auto" fit="contain" style={{ backgroundColor: 'white', borderRadius: 4, padding: 2 }} />
           <Text size="xs" c={isDark ? 'white' : 'dimmed'}>©</Text>
           <Text size="xs" c={isDark ? 'white' : 'dimmed'}>{AÑO}</Text>
           <Divider orientation="vertical" visibleFrom="sm" />
