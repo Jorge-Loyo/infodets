@@ -1,0 +1,13 @@
+[Unit]
+Description=GitHub Webhook Deploy Server
+After=network.target docker.service
+
+[Service]
+Type=simple
+User=infodets
+ExecStart=/usr/bin/python3 /home/infodets/infodets/scripts/webhook_server.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

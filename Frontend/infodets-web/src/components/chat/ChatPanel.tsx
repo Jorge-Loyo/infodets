@@ -25,43 +25,22 @@ interface Mensaje {
   feedback?: 'correcto' | 'incorrecto' | null
 }
 
-const SUGERENCIAS = [
-  '¿Cuál es el proceso de licitación?',
-  '¿Qué normativas aplican para permisos?',
-]
 
-function RobotAnimado() {
+
+function BotWelcome({ nombre, imagen_url }: { nombre: string; imagen_url: string }) {
   return (
     <motion.div
-      animate={{ y: [0, -8, 0] }}
-      transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+      animate={{ y: [0, -6, 0] }}
+      transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
       style={{ display: 'flex', justifyContent: 'center' }}
     >
-      <Box style={{ position: 'relative', display: 'inline-block' }}>
-        {/* Cabeza */}
-        <ThemeIcon size={72} radius={20} variant="filled" color="blue" style={{ boxShadow: '0 8px 32px rgba(34,139,230,0.35)' }}>
-          <IconRobot size={40} />
+      {imagen_url ? (
+        <Avatar src={imagen_url} size={100} radius="xl" style={{ boxShadow: '0 12px 40px rgba(34,139,230,0.25)' }} />
+      ) : (
+        <ThemeIcon size={100} radius="xl" variant="gradient" gradient={{ from: 'blue', to: 'cyan' }} style={{ boxShadow: '0 12px 40px rgba(34,139,230,0.25)' }}>
+          <IconRobot size={50} />
         </ThemeIcon>
-        {/* Ojos parpadeando */}
-        <motion.div
-          animate={{ opacity: [1, 0, 1] }}
-          transition={{ duration: 3.5, repeat: Infinity, times: [0, 0.05, 0.1] }}
-          style={{ position: 'absolute', top: 22, left: 18, width: 8, height: 8, borderRadius: '50%', backgroundColor: 'white' }}
-        />
-        <motion.div
-          animate={{ opacity: [1, 0, 1] }}
-          transition={{ duration: 3.5, repeat: Infinity, times: [0, 0.05, 0.1] }}
-          style={{ position: 'absolute', top: 22, right: 18, width: 8, height: 8, borderRadius: '50%', backgroundColor: 'white' }}
-        />
-        {/* Antena */}
-        <motion.div
-          animate={{ rotate: [-8, 8, -8] }}
-          transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-          style={{ position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', width: 3, height: 14, backgroundColor: 'var(--mantine-color-blue-4)', borderRadius: 4 }}
-        >
-          <div style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: 'var(--mantine-color-blue-3)', marginTop: -4, marginLeft: -2 }} />
-        </motion.div>
-      </Box>
+      )}
     </motion.div>
   )
 }
@@ -218,37 +197,26 @@ export function ChatPanel() {
       <ScrollArea style={{ flex: 1 }} viewportRef={scrollRef}>
         <Box p={24}>
           {mensajes.length === 0 && (
-            <Stack align="center" gap="lg" mt={48}>
-              <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}>
-                <RobotAnimado />
+            <Stack align="center" gap="xl" mt={60}>
+              <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6 }}>
+                <BotWelcome nombre={botConfig.nombre} imagen_url={botConfig.imagen_url} />
               </motion.div>
 
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-                <Stack align="center" gap={6}>
-                  <Text fw={700} size="xl" ta="center">
-                    Hola, soy{' '}
-                    <Text component="span" fw={700} size="xl" variant="gradient" gradient={{ from: 'blue', to: 'cyan' }}>
-                      {botConfig.nombre}
-                    </Text>
-                    {' '}🤖
+                <Stack align="center" gap={8}>
+                  <Text fw={700} size="xl" ta="center" variant="gradient" gradient={{ from: 'blue', to: 'cyan' }}>
+                    ¡Hola! Soy {botConfig.nombre}
                   </Text>
-                  <Text c="dimmed" size="sm" ta="center" maw={380}>
-                    Estoy listo para responder tus consultas sobre normativas, resoluciones y documentos institucionales.
+                  <Text c="dimmed" size="md" ta="center" maw={400} lh={1.6}>
+                    Tu asistente virtual. Escribí tu pregunta abajo y te ayudo al instante 💬
                   </Text>
                 </Stack>
               </motion.div>
 
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.55 }} style={{ width: '100%', maxWidth: 460 }}>
-                <Text size="xs" c="dimmed" ta="center" mb="xs" tt="uppercase" fw={600}>Sugerencias</Text>
-                <Stack gap="xs">
-                  {SUGERENCIAS.map((s, i) => (
-                    <motion.div key={i} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                      <Paper p="sm" radius="md" withBorder style={{ cursor: 'pointer', textAlign: 'center' }} onClick={() => enviar(s)}>
-                        <Text size="sm" c="dimmed">{s}</Text>
-                      </Paper>
-                    </motion.div>
-                  ))}
-                </Stack>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}>
+                <Text size="xs" c="dimmed" ta="center">
+                  ⬇️ Escribí lo que necesitás saber
+                </Text>
               </motion.div>
             </Stack>
           )}

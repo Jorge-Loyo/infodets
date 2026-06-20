@@ -1,0 +1,23 @@
+#!/bin/bash
+# /home/infodets/deploy.sh
+# Auto-deploy script triggered by GitHub webhook
+
+REPO_DIR="/home/infodets/infodets"
+COMPOSE_FILE="docker-compose.standalone.yml"
+LOG_FILE="/home/infodets/deploy.log"
+
+echo "$(date) - Deploy iniciado..." >> "$LOG_FILE"
+
+cd "$REPO_DIR" || exit 1
+
+# Pull cambios
+git pull origin main >> "$LOG_FILE" 2>&1
+
+# Rebuild y restart containers
+docker compose -f "$COMPOSE_FILE" up -d --build backend >> "$LOG_FILE" 2>&1
+docker compose -f "$COMPOSE_FILE" up -d --build frontend >> "$LOG_FILE" 2>&1
+
+# Limpiar imágenes viejas
+docker image prune -f >> "$LOG_FILE" 2>&1
+
+echo "$(date) - Deploy completado ✅" >> "$LOG_FILE"
