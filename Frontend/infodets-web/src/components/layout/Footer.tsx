@@ -23,26 +23,23 @@ export function Footer() {
 
         {/* Izquierda — marca */}
         <Group gap="xs">
-          <Image src="/infodets-logo.png" alt={APP_NAME} h={50} w="auto" fit="contain" style={{ backgroundColor: 'white', borderRadius: 4, padding: 2 }} />
+          <Image src="/infodets-logo.png" alt={APP_NAME} h={60} w="auto" fit="contain" style={{ backgroundColor: 'white', borderRadius: 4, padding: 2 }} />
           <Text size="xs" c={isDark ? 'white' : 'dimmed'}>©</Text>
           <Text size="xs" c={isDark ? 'white' : 'dimmed'}>{AÑO}</Text>
           <Divider orientation="vertical" visibleFrom="sm" />
           <Text size="xs" c={isDark ? 'rgba(255,255,255,0.7)' : 'dimmed'} visibleFrom="sm">Sistema de Gestión de Conocimiento Dinámico</Text>
         </Group>
 
-        {/* Centro — links */}
-        <Group gap="md" visibleFrom="sm">
-          <Anchor href="/noticias" size="xs" c={isDark ? 'rgba(255,255,255,0.8)' : 'dimmed'} underline="hover">Noticias</Anchor>
-          <Anchor href="/configuracion/soporte" size="xs" c={isDark ? 'rgba(255,255,255,0.8)' : 'dimmed'} underline="hover">Soporte</Anchor>
-          <Anchor href="/invitado" size="xs" c={isDark ? 'rgba(255,255,255,0.8)' : 'dimmed'} underline="hover">Consulta pública</Anchor>
-        </Group>
-
-        {/* Derecha — versión */}
+        {/* Centro — versión */}
         <Group gap="xs" visibleFrom="sm">
           <Text size="xs" c={isDark ? 'rgba(255,255,255,0.7)' : 'dimmed'}>v{APP_VERSION}</Text>
-          <Divider orientation="vertical" />
+        </Group>
+
+        {/* Derecha — desarrollado por */}
+        <Group gap="xs" visibleFrom="sm">
           <Text size="xs" c={isDark ? 'white' : 'dimmed'}>Desarrollado por</Text>
-          <Image src="/umbrella-logo.png" alt="Umbrella" h={50} w="auto" fit="contain" />
+          <Image src="/umbrella-logo.png" alt="Umbrella" h={70} w="auto" fit="contain" />
+          <Image src="/ifts11-logo.jpg" alt="IFTS11" h={70} w="auto" fit="contain" style={{ borderRadius: 4 }} />
         </Group>
 
       </Group>

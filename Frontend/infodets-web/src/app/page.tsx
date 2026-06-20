@@ -6,6 +6,7 @@ import { IconLogin, IconUserOff, IconAlertCircle } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { ROUTES } from '@/lib/constants'
 import { useSessionStore } from '@/store/sessionStore'
+import { useUiStore } from '@/store/uiStore'
 import axiosInstance from '@/lib/axiosInstance'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -14,6 +15,7 @@ const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]
 export default function Home() {
   const router = useRouter()
   const { setSession, setPerfilNombre } = useSessionStore()
+  const { setFotoPerfil } = useUiStore()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -37,6 +39,7 @@ export default function Home() {
         permisos = resPermisos.data
       } catch {}
       setSession(data.usuario, data.access_token, permisos)
+      if (data.usuario.foto_url) setFotoPerfil(data.usuario.foto_url)
       try {
         if (data.usuario.perfil_id) {
           const resPerfiles = await axiosInstance.get('/perfiles', {

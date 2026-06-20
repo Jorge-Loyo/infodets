@@ -18,6 +18,7 @@ class UsuarioSchema(BaseModel):
     dependencia: Optional[str] = None
     rol: str = "operador"
     perfil_id: Optional[str] = None
+    foto_url: Optional[str] = None
 
     @field_validator('id', 'perfil_id', mode='before')
     @classmethod

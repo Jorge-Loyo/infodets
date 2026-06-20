@@ -175,14 +175,19 @@ export function PerfilPanel() {
                 </motion.div>
                 <FileButton
                   resetRef={resetRef}
-                  onChange={(file) => {
+                  onChange={async (file) => {
                     if (!file) return
-                    const reader = new FileReader()
-                    reader.onload = (e) => {
-                      setFotoPerfil(e.target?.result as string)
+                    try {
+                      const formData = new FormData()
+                      formData.append('archivo', file)
+                      const res = await axiosInstance.post<{ foto_url: string }>('/usuarios/me/foto', formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' },
+                      })
+                      setFotoPerfil(res.data.foto_url)
                       notifications.show({ color: 'green', message: 'Foto actualizada ✅' })
+                    } catch {
+                      notifications.show({ color: 'red', message: 'Error al subir la foto' })
                     }
-                    reader.readAsDataURL(file)
                   }}
                   accept="image/*"
                 >
@@ -203,7 +208,13 @@ export function PerfilPanel() {
                     <ActionIcon
                       size="sm" radius="xl" variant="filled" color="red"
                       style={{ position: 'absolute', top: 0, right: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}
-                      onClick={() => { setFotoPerfil(''); resetRef.current?.() }}
+                      onClick={async () => {
+                        try {
+                          await axiosInstance.delete('/usuarios/me/foto')
+                          setFotoPerfil('')
+                          resetRef.current?.()
+                        } catch {}
+                      }}
                     >
                       <IconTrash size={12} />
                     </ActionIcon>

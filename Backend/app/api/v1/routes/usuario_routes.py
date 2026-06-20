@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 import httpx
 import boto3
@@ -11,6 +11,7 @@ from app.core.settings import settings
 from app.schemas.auth_schema import UsuarioSchema, UsuarioActualizar
 from app.schemas.common import ErrorDetail, MensajeOk, R_400, R_401, R_403, R_404, R_422, R_500, R_503
 from app.services import usuario_service, perfil_service as ps
+from app.services import cloudinary_service
 from app.models.models import RolEnum
 from app.middleware.auth_middleware import require_permiso, get_current_user
 from pydantic import BaseModel, EmailStr
@@ -92,6 +93,49 @@ def actualizar_mi_perfil(
         dependencia=datos.dependencia,
     )
     return actualizado
+
+
+@router.post(
+    "/me/foto",
+    summary="Subir foto de perfil",
+    responses={**R_401},
+)
+async def subir_foto_perfil(
+    archivo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    usuario_id = current_user.get("_usuario_id")
+    usuario = usuario_service.obtener_usuario_por_id(db, usuario_id)
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    contenido = await archivo.read()
+    url = cloudinary_service.upload_image(contenido, folder="infodets/perfiles")
+    if usuario.foto_url:
+        cloudinary_service.delete_image(usuario.foto_url)
+    usuario.foto_url = url
+    db.commit()
+    return {"foto_url": url}
+
+
+@router.delete(
+    "/me/foto",
+    summary="Eliminar foto de perfil",
+    responses={**R_401},
+)
+def eliminar_foto_perfil(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    usuario_id = current_user.get("_usuario_id")
+    usuario = usuario_service.obtener_usuario_por_id(db, usuario_id)
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if usuario.foto_url:
+        cloudinary_service.delete_image(usuario.foto_url)
+    usuario.foto_url = None
+    db.commit()
+    return {"ok": True}
 
 
 # ── Gestión de usuarios (admin) ───────────────────────────────────────────────

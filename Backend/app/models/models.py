@@ -39,6 +39,7 @@ class Usuario(Base):
     cargo: Mapped[str | None] = mapped_column(String, nullable=True)
     institucion: Mapped[str | None] = mapped_column(String, nullable=True)
     dependencia: Mapped[str | None] = mapped_column(String, nullable=True)
+    foto_url: Mapped[str | None] = mapped_column(String, nullable=True)
     rol: Mapped[RolEnum] = mapped_column(Enum(RolEnum), default=RolEnum.operador)
     perfil_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("perfiles.id"), nullable=True)
     creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
