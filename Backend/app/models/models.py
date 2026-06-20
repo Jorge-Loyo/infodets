@@ -98,7 +98,7 @@ class HistorialChat(Base):
     usuario: Mapped["Usuario"] = relationship(back_populates="historial_chat")
     conversacion: Mapped["Conversacion | None"] = relationship(back_populates="mensajes")
     documento: Mapped["Documento | None"] = relationship()
-    feedback: Mapped[list["ReporteFeedback"]] = relationship(back_populates="historial")
+    feedback: Mapped[list["ReporteFeedback"]] = relationship(back_populates="historial", cascade="all, delete-orphan")
 
 
 class TicketVacio(Base):

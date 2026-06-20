@@ -1,4 +1,5 @@
 export const APP_NAME = 'INFODETS'
+export const APP_VERSION = '1.0.0'
 export const APP_DESCRIPTION = 'Sistema de Gestión de Conocimiento Dinámico'
 
 export const ROUTES = {

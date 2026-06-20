@@ -1,17 +1,21 @@
 'use client'
 
 import { Box, Text, Group, Divider, Anchor, Image } from '@mantine/core'
-import { APP_NAME } from '@/lib/constants'
+import { APP_NAME, APP_VERSION } from '@/lib/constants'
+import { useUiStore } from '@/store/uiStore'
 
 const AÑO = new Date().getFullYear()
 
 export function Footer() {
+  const { headerColor } = useUiStore()
+  const isDark = headerColor !== '#ffffff' && headerColor !== ''
+
   return (
     <Box
       style={{
-        borderTop: '1px solid var(--mantine-color-default-border)',
-        backgroundColor: 'var(--mantine-color-body)',
-        padding: '12px 24px',
+        borderTop: isDark ? 'none' : '1px solid var(--mantine-color-default-border)',
+        backgroundColor: headerColor === '#ffffff' ? 'var(--mantine-color-body)' : headerColor,
+        padding: '20px 24px',
         flexShrink: 0,
       }}
     >
@@ -19,26 +23,26 @@ export function Footer() {
 
         {/* Izquierda — marca */}
         <Group gap="xs">
-          <Text size="xs" fw={600} c="dimmed">{APP_NAME}</Text>
-          <Text size="xs" c="dimmed">©</Text>
-          <Text size="xs" c="dimmed">{AÑO}</Text>
+          <Image src="/infodets-logo.png" alt={APP_NAME} h={30} w="auto" fit="contain" style={{ backgroundColor: 'white', borderRadius: 4, padding: 2 }} />
+          <Text size="xs" c={isDark ? 'white' : 'dimmed'}>©</Text>
+          <Text size="xs" c={isDark ? 'white' : 'dimmed'}>{AÑO}</Text>
           <Divider orientation="vertical" visibleFrom="sm" />
-          <Text size="xs" c="dimmed" visibleFrom="sm">Sistema de Gestión de Conocimiento Dinámico</Text>
+          <Text size="xs" c={isDark ? 'rgba(255,255,255,0.7)' : 'dimmed'} visibleFrom="sm">Sistema de Gestión de Conocimiento Dinámico</Text>
         </Group>
 
         {/* Centro — links */}
         <Group gap="md" visibleFrom="sm">
-          <Anchor href="/noticias" size="xs" c="dimmed" underline="hover">Noticias</Anchor>
-          <Anchor href="/configuracion/soporte" size="xs" c="dimmed" underline="hover">Soporte</Anchor>
-          <Anchor href="/invitado" size="xs" c="dimmed" underline="hover">Consulta pública</Anchor>
+          <Anchor href="/noticias" size="xs" c={isDark ? 'rgba(255,255,255,0.8)' : 'dimmed'} underline="hover">Noticias</Anchor>
+          <Anchor href="/configuracion/soporte" size="xs" c={isDark ? 'rgba(255,255,255,0.8)' : 'dimmed'} underline="hover">Soporte</Anchor>
+          <Anchor href="/invitado" size="xs" c={isDark ? 'rgba(255,255,255,0.8)' : 'dimmed'} underline="hover">Consulta pública</Anchor>
         </Group>
 
         {/* Derecha — versión */}
         <Group gap="xs" visibleFrom="sm">
-          <Text size="xs" c="dimmed">v1.0.0</Text>
+          <Text size="xs" c={isDark ? 'rgba(255,255,255,0.7)' : 'dimmed'}>v{APP_VERSION}</Text>
           <Divider orientation="vertical" />
-          <Text size="xs" c="dimmed">Desarrollado por</Text>
-          <Image src="/umbrella-logo.png" alt="Umbrella" h={20} w="auto" />
+          <Text size="xs" c={isDark ? 'white' : 'dimmed'}>Desarrollado por</Text>
+          <Image src="/umbrella-logo.png" alt="Umbrella" h={50} w="auto" fit="contain" />
         </Group>
 
       </Group>
