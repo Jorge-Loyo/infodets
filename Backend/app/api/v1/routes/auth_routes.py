@@ -1,18 +1,17 @@
-from fastapi import APIRouter, Request, HTTPException, Depends
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, HTTPException, Depends
 from app.core.settings import settings
 from app.core.database import get_db
 from app.services import usuario_service
 from app.schemas.auth_schema import TokenSchema
-from app.schemas.common import ErrorDetail, R_400, R_401, R_403, R_422, R_500, R_503
+from app.schemas.common import R_400, R_401, R_403, R_422, R_500
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-import boto3
-import hmac
-import hashlib
-import base64
 from jose import jwt
 from datetime import datetime, timedelta
+import bcrypt
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
@@ -20,12 +19,6 @@ router = APIRouter(prefix="/auth", tags=["Autenticación"])
 class LoginRequest(BaseModel):
     email: str
     password: str
-
-
-def _secret_hash(username: str) -> str:
-    msg = username + settings.cognito_client_id
-    dig = hmac.new(settings.cognito_client_secret.encode(), msg.encode(), hashlib.sha256).digest()
-    return base64.b64encode(dig).decode()
 
 
 def _make_jwt(usuario) -> str:
@@ -38,7 +31,57 @@ def _make_jwt(usuario) -> str:
     return jwt.encode(payload, settings.secret_key, algorithm="HS256")
 
 
-logger = __import__('logging').getLogger(__name__)
+def _hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+
+def _verify_password(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(password.encode(), hashed.encode())
+
+
+def _login_cognito(email: str, password: str):
+    """Intenta autenticar contra Cognito. Retorna cognito_sub o None."""
+    import hmac as hmac_mod
+    import hashlib
+    import base64
+
+    try:
+        import boto3
+    except ImportError:
+        return None
+
+    if not settings.cognito_client_id or not settings.aws_access_key_id:
+        return None
+
+    def secret_hash(username: str) -> str:
+        msg = username + settings.cognito_client_id
+        dig = hmac_mod.new(settings.cognito_client_secret.encode(), msg.encode(), hashlib.sha256).digest()
+        return base64.b64encode(dig).decode()
+
+    kwargs = {"region_name": settings.cognito_region}
+    if settings.aws_access_key_id:
+        kwargs["aws_access_key_id"] = settings.aws_access_key_id
+        kwargs["aws_secret_access_key"] = settings.aws_secret_access_key
+        if settings.aws_session_token:
+            kwargs["aws_session_token"] = settings.aws_session_token
+
+    try:
+        cognito = boto3.client("cognito-idp", **kwargs)
+        resp = cognito.initiate_auth(
+            AuthFlow="USER_PASSWORD_AUTH",
+            AuthParameters={
+                "USERNAME": email,
+                "PASSWORD": password,
+                "SECRET_HASH": secret_hash(email),
+            },
+            ClientId=settings.cognito_client_id,
+        )
+        id_token = resp["AuthenticationResult"]["IdToken"]
+        unverified = jwt.get_unverified_claims(id_token)
+        return unverified.get("sub", "")
+    except Exception as e:
+        logger.debug(f"[LOGIN] Cognito fallback failed: {type(e).__name__}: {e}")
+        return None
 
 
 @router.post(
@@ -46,66 +89,48 @@ logger = __import__('logging').getLogger(__name__)
     response_model=TokenSchema,
     status_code=200,
     summary="Iniciar sesión",
-    description="Autentica al usuario contra AWS Cognito y retorna un JWT propio.",
+    description="Autentica al usuario con credenciales locales (o Cognito como fallback).",
     responses={
-        200: {"description": "Login exitoso — retorna access_token y datos del usuario"},
-        **R_400,
-        **R_401,
-        **R_403,
-        **R_422,
-        429: {"model": ErrorDetail, "description": "Demasiados intentos — esperá unos minutos"},
-        **R_500,
-        **R_503,
+        200: {"description": "Login exitoso"},
+        **R_400, **R_401, **R_403, **R_422, **R_500,
     },
 )
 async def login(body: LoginRequest, db: Session = Depends(get_db)):
     email = body.email.strip().lower()
-    kwargs = {"region_name": settings.cognito_region}
-    if settings.aws_access_key_id and settings.aws_secret_access_key:
-        kwargs["aws_access_key_id"] = settings.aws_access_key_id
-        kwargs["aws_secret_access_key"] = settings.aws_secret_access_key
-        if settings.aws_session_token:
-            kwargs["aws_session_token"] = settings.aws_session_token
-    cognito = boto3.client("cognito-idp", **kwargs)
-    try:
-        resp = cognito.initiate_auth(
-            AuthFlow="USER_PASSWORD_AUTH",
-            AuthParameters={
-                "USERNAME": email,
-                "PASSWORD": body.password,
-                "SECRET_HASH": _secret_hash(email),
-            },
-            ClientId=settings.cognito_client_id,
-        )
-    except cognito.exceptions.NotAuthorizedException:
-        raise HTTPException(status_code=401, detail="Email o contraseña incorrectos")
-    except cognito.exceptions.UserNotFoundException:
-        raise HTTPException(status_code=401, detail="Email o contraseña incorrectos")
-    except cognito.exceptions.UserNotConfirmedException:
-        raise HTTPException(status_code=403, detail="Tu cuenta no está confirmada. Revisá tu email")
-    except cognito.exceptions.PasswordResetRequiredException:
-        raise HTTPException(status_code=403, detail="Debés resetear tu contraseña. Revisá tu email")
-    except cognito.exceptions.TooManyRequestsException:
-        raise HTTPException(status_code=429, detail="Demasiados intentos. Esperá unos minutos e intentá de nuevo")
-    except Exception as e:
-        logger.error(f"[LOGIN] Error Cognito: {type(e).__name__}: {e}")
-        raise HTTPException(status_code=500, detail="Error interno al iniciar sesión")
 
-    id_token = resp["AuthenticationResult"]["IdToken"]
-    unverified = jwt.get_unverified_claims(id_token)
-    cognito_sub = unverified.get("sub", "")
-    groups = unverified.get("cognito:groups", [])
-    rol = "admin" if "admin" in groups else "operador"
+    # 1. Buscar usuario en DB
+    usuario = usuario_service.obtener_usuario_por_email(db, email)
 
-    usuario = usuario_service.obtener_usuario_por_cognito_sub(db, cognito_sub)
-    if not usuario:
-        usuario = usuario_service.obtener_usuario_por_email(db, email)
-        if usuario and str(usuario.cognito_sub).startswith("pending_"):
+    # 2. Si tiene password_hash, autenticar localmente
+    if usuario and usuario.password_hash:
+        if not _verify_password(body.password, usuario.password_hash):
+            raise HTTPException(status_code=401, detail="Email o contraseña incorrectos")
+        token = _make_jwt(usuario)
+        return {"access_token": token, "token_type": "bearer", "usuario": usuario}
+
+    # 3. Fallback: intentar con Cognito
+    cognito_sub = _login_cognito(email, body.password)
+    if cognito_sub:
+        if not usuario:
+            usuario = usuario_service.obtener_usuario_por_cognito_sub(db, cognito_sub)
+        if not usuario:
+            usuario = usuario_service.crear_usuario(db, cognito_sub=cognito_sub, email=email)
+        elif str(usuario.cognito_sub).startswith("pending_"):
             usuario.cognito_sub = cognito_sub
             db.commit()
             db.refresh(usuario)
-    if not usuario:
-        usuario = usuario_service.crear_usuario(db, cognito_sub=cognito_sub, email=email)
+        # Migrar: guardar password_hash para futuros logins locales
+        usuario.password_hash = _hash_password(body.password)
+        db.commit()
+        token = _make_jwt(usuario)
+        return {"access_token": token, "token_type": "bearer", "usuario": usuario}
 
-    token = _make_jwt(usuario)
-    return {"access_token": token, "token_type": "bearer", "usuario": usuario}
+    # 4. Si el usuario existe pero no tiene hash, probar con default password
+    if usuario and not usuario.password_hash:
+        if body.password == settings.default_password:
+            usuario.password_hash = _hash_password(body.password)
+            db.commit()
+            token = _make_jwt(usuario)
+            return {"access_token": token, "token_type": "bearer", "usuario": usuario}
+
+    raise HTTPException(status_code=401, detail="Email o contraseña incorrectos")

@@ -16,6 +16,10 @@ git pull origin main >> "$LOG_FILE" 2>&1
 
 # Rebuild y restart containers
 docker compose -f "$COMPOSE_FILE" up -d --build backend >> "$LOG_FILE" 2>&1
+
+# Correr migraciones
+docker exec infodets-backend alembic upgrade head >> "$LOG_FILE" 2>&1 || true
+
 docker compose -f "$COMPOSE_FILE" up -d --build frontend >> "$LOG_FILE" 2>&1
 
 # Limpiar imágenes viejas

@@ -2,10 +2,10 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    cognito_region: str
-    cognito_user_pool_id: str
-    cognito_client_id: str
-    cognito_client_secret: str
+    cognito_region: str = ""
+    cognito_user_pool_id: str = ""
+    cognito_client_id: str = ""
+    cognito_client_secret: str = ""
     aws_access_key_id: str = ""
     aws_secret_access_key: str = ""
     aws_session_token: str = ""
