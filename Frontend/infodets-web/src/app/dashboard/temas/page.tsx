@@ -110,6 +110,7 @@ export default function TemasPage() {
         color_fondo: localColores.colorFondo,
         color_tarjeta: localColores.colorTarjeta,
         tema_activo: temaActivoLocal ?? 'Estándar',
+        logo_background: localLogoBg,
       })
       notifications.show({ color: 'green', message: 'Tema aplicado y guardado globalmente ✅' })
     } catch {

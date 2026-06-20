@@ -16,7 +16,7 @@ export function Header() {
   const { toggleSidebar } = useSidebar()
   const { isAuthenticated, perfilNombre } = useSessionStore()
   const [mounted, setMounted] = useState(false)
-  const { noLeidos, setNoLeidos, noticiasNoLeidas, setNoticiasNoLeidas, ultimaVisitaNoticias, headerColor, paletaColor, tipografia, logoUrl, logoSize, logoBackground, colorScheme, temaActivo, setColorScheme, fotoPerfil, setLogoUrl, setHeaderColor, setPaletaColor, setTipografia, setLogoSize, setColoresPersonalizados, setTemaActivo } = useUiStore()
+  const { noLeidos, setNoLeidos, noticiasNoLeidas, setNoticiasNoLeidas, ultimaVisitaNoticias, headerColor, paletaColor, tipografia, logoUrl, logoSize, logoBackground, colorScheme, temaActivo, setColorScheme, fotoPerfil, setLogoUrl, setHeaderColor, setPaletaColor, setTipografia, setLogoSize, setLogoBackground, setColoresPersonalizados, setTemaActivo } = useUiStore()
   const router = useRouter()
 
   useEffect(() => { setMounted(true) }, [])
@@ -37,6 +37,7 @@ export function Header() {
       color_fondo: string
       color_tarjeta: string
       tema_activo: string
+      logo_background: string
     }>('/sistema')
       .then(res => {
         const d = res.data
@@ -60,6 +61,7 @@ export function Header() {
           colorTarjeta: d.color_tarjeta,
         })
         setTemaActivo(d.tema_activo)
+        setLogoBackground(d.logo_background || 'transparent')
       })
       .catch((e) => console.error('[SISTEMA] Error:', e))
   }, [isAuthenticated])

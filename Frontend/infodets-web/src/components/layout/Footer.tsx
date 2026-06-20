@@ -23,7 +23,7 @@ export function Footer() {
 
         {/* Izquierda — marca */}
         <Group gap="xs">
-          <Image src="/infodets-logo.png" alt={APP_NAME} h={60} w="auto" fit="contain" style={{ backgroundColor: 'white', borderRadius: 4, padding: 2 }} />
+          <Image src="/ifts11-logo.jpg" alt="IFTS11" h={70} w="auto" fit="contain" style={{ borderRadius: 4 }} />
           <Text size="xs" c={isDark ? 'white' : 'dimmed'}>©</Text>
           <Text size="xs" c={isDark ? 'white' : 'dimmed'}>{AÑO}</Text>
           <Divider orientation="vertical" visibleFrom="sm" />
@@ -39,7 +39,6 @@ export function Footer() {
         <Group gap="xs" visibleFrom="sm">
           <Text size="xs" c={isDark ? 'white' : 'dimmed'}>Desarrollado por</Text>
           <Image src="/umbrella-logo.png" alt="Umbrella" h={70} w="auto" fit="contain" />
-          <Image src="/ifts11-logo.jpg" alt="IFTS11" h={70} w="auto" fit="contain" style={{ borderRadius: 4 }} />
         </Group>
 
       </Group>

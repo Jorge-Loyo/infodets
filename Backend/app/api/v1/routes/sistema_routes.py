@@ -29,6 +29,7 @@ class TemaSchema(BaseModel):
     color_fondo: str = ""
     color_tarjeta: str = ""
     tema_activo: str = "Estándar"
+    logo_background: str = "transparent"
 
 
 def _get_or_create(db: Session) -> ConfiguracionSistema:
@@ -64,6 +65,7 @@ def obtener_config(
         "color_fondo": config.color_fondo,
         "color_tarjeta": config.color_tarjeta,
         "tema_activo": config.tema_activo,
+        "logo_background": config.logo_background,
     }
 
 
@@ -89,6 +91,7 @@ def actualizar_tema(
     config.color_fondo = tema.color_fondo
     config.color_tarjeta = tema.color_tarjeta
     config.tema_activo = tema.tema_activo
+    config.logo_background = tema.logo_background
     config.actualizado_en = datetime.utcnow()
     db.commit()
     return {"ok": True}

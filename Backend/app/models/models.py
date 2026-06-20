@@ -303,6 +303,7 @@ class ConfiguracionSistema(Base):
     color_fondo: Mapped[str] = mapped_column(String, default="")
     color_tarjeta: Mapped[str] = mapped_column(String, default="")
     tema_activo: Mapped[str] = mapped_column(String, default="Estándar")
+    logo_background: Mapped[str] = mapped_column(String, default="transparent")
     actualizado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
