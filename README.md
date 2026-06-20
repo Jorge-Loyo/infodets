@@ -329,11 +329,12 @@ AWS_SESSION_TOKEN=<temporal>
 
 ## 📖 Documentación
 
-| Documento                                                   | Descripción                  |
-| :---------------------------------------------------------- | :--------------------------- |
-| [📋 Guía de Instalación](Document/GUIA_INSTALACION.md)      | Setup completo paso a paso   |
-| [📐 Plan de Desarrollo](Document/PLAN_DESARROLLO_EQUIPO.md) | Roadmap y sprints            |
-| [🧠 Mejoras RAG](Document/RAG_Mejoras_Por_Fases.md)         | Fases de mejora del motor IA |
+| Documento                                                            | Descripción                  |
+| :------------------------------------------------------------------- | :--------------------------- |
+| [📋 Guía de Instalación](Document/guias/GUIA_INSTALACION.md)          | Setup completo paso a paso   |
+| [📐 Plan de Desarrollo](Document/planificacion/PLAN_DESARROLLO_EQUIPO.md) | Roadmap y sprints            |
+| [🧠 Mejoras RAG](Document/planificacion/RAG_Mejoras_Por_Fases.md)     | Fases de mejora del motor IA |
+| [🖥️ Comandos VM](Document/guias/COMANDOS_VM.md)                      | Conexión y operación de la VM |
 
 ---
 
