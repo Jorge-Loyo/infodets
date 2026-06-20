@@ -1,6 +1,6 @@
 'use client'
 
-import { Box, Text, Group, Divider, Anchor } from '@mantine/core'
+import { Box, Text, Group, Divider, Anchor, Image } from '@mantine/core'
 import { APP_NAME } from '@/lib/constants'
 
 const AÑO = new Date().getFullYear()
@@ -38,7 +38,7 @@ export function Footer() {
           <Text size="xs" c="dimmed">v1.0.0</Text>
           <Divider orientation="vertical" />
           <Text size="xs" c="dimmed">Desarrollado por</Text>
-          <Text size="xs" fw={500} c="dimmed">Umbrella</Text>
+          <Image src="/umbrella-logo.png" alt="Umbrella" h={20} w="auto" />
         </Group>
 
       </Group>
