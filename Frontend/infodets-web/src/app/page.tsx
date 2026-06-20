@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Container, Title, Text, Button, Paper, Stack, TextInput, PasswordInput, Alert } from '@mantine/core'
+import { Container, Title, Text, Button, Paper, Stack, TextInput, PasswordInput, Alert, Image } from '@mantine/core'
 import { IconLogin, IconUserOff, IconAlertCircle } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { ROUTES } from '@/lib/constants'
@@ -68,10 +68,7 @@ export default function Home() {
     <Container size="xs" py={80}>
       <div>
         <Paper withBorder shadow="sm" p="xl" radius="md">
-          <Title order={3} mb="xs" ta="center">INFODETS</Title>
-          <Text c="dimmed" mb="xl" size="sm" ta="center">
-            Sistema de Gestión de Conocimiento Dinámico
-          </Text>
+          <Image src="/infodets-logo.png" alt="INFODETS" h={60} w="auto" fit="contain" mx="auto" mb="xl" />
           <Stack>
             {error && (
               <Alert icon={<IconAlertCircle size={16} />} color="red" variant="light">
