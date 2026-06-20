@@ -32,6 +32,14 @@ FRASES_SIN_INFO = [
     "no se encontró información",
     "no existe información",
     "no poseo información",
+    "no contiene información",
+    "no cuenta con información",
+    "no incluye información",
+    "no menciona",
+    "no aborda",
+    "no hace referencia",
+    "no se dispone de",
+    "no figura",
 ]
 
 
