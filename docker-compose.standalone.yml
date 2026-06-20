@@ -63,8 +63,8 @@ services:
       context: ./Frontend/infodets-web
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://192.168.56.101:8000/v1
-        NEXT_PUBLIC_DOCS_URL: http://192.168.56.101:8000
+        NEXT_PUBLIC_API_URL: https://api.agilizesoluciones.uk/v1
+        NEXT_PUBLIC_DOCS_URL: https://api.agilizesoluciones.uk
     container_name: infodets-frontend
     ports:
       - "3000:3000"
