@@ -19,6 +19,27 @@ API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 CONFIDENCE_THRESHOLD = 0.40
 UMBRAL_NIVEL2 = 0.0
 
+# Frases que indican que el LLM no encontró info en el contexto
+FRASES_SIN_INFO = [
+    "no hay información disponible",
+    "no hemos encontrado información",
+    "no se encuentra información",
+    "no tengo documentación oficial",
+    "no dispongo de documentación",
+    "no tengo información",
+    "no cuento con información",
+    "no encontré información",
+    "no se encontró información",
+    "no existe información",
+    "no poseo información",
+]
+
+
+def _respuesta_indica_sin_info(texto: str) -> bool:
+    """Detecta si la respuesta del LLM indica que no encontró información."""
+    texto_lower = texto.lower()
+    return any(frase in texto_lower for frase in FRASES_SIN_INFO)
+
 # Feature flags
 HYDE_ENABLED = True
 QUERY_EXPANSION_ENABLED = True

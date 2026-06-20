@@ -15,6 +15,10 @@ from app.services.rag_service import (
     AVISO_FUENTE_EXTERNA,
     MENSAJE_ESCALAMIENTO,
     CONFIDENCE_THRESHOLD,
+    _respuesta_indica_sin_info,
+    buscar_en_urls_oficiales,
+    buscar_en_web,
+    _es_relevante,
 )
 from app.services.chat_service import (
     guardar_historial, crear_conversacion,
@@ -163,9 +167,61 @@ async def chat_stream(
             respuesta_completa = []
             for texto in generar_respuesta_stream(request.mensaje, resultado.contexto, tipo=resultado.tipo_respuesta, memoria=memoria, historial=historial):
                 respuesta_completa.append(texto)
-                yield f"data: {json.dumps({'tipo': 'chunk', 'texto': texto})}\n\n"
 
             respuesta_texto = "".join(respuesta_completa)
+
+            # Si el LLM respondió que no tiene info y estamos en nivel 0, escalar
+            if resultado.nivel == 0 and _respuesta_indica_sin_info(respuesta_texto):
+                logger.info("[CHAT] Respuesta indica sin info — escalando a niveles superiores")
+                # Nivel 1: URLs oficiales
+                contexto_n1 = buscar_en_urls_oficiales(request.mensaje)
+                if contexto_n1:
+                    respuesta_completa = []
+                    for texto in generar_respuesta_stream(request.mensaje, contexto_n1, tipo="externo", memoria=memoria, historial=historial):
+                        respuesta_completa.append(texto)
+                    respuesta_texto = "".join(respuesta_completa)
+                    if not _respuesta_indica_sin_info(respuesta_texto):
+                        resultado.nivel = 1
+                        resultado.tipo_respuesta = "externo"
+                        resultado.contexto = contexto_n1
+                        for chunk in respuesta_completa:
+                            yield f"data: {json.dumps({'tipo': 'chunk', 'texto': chunk})}\n\n"
+                    else:
+                        contexto_n1 = ""
+
+                # Nivel 2: Búsqueda web
+                if not contexto_n1:
+                    contexto_n2 = buscar_en_web(request.mensaje)
+                    if contexto_n2 and _es_relevante(request.mensaje, contexto_n2):
+                        respuesta_completa = []
+                        for texto in generar_respuesta_stream(request.mensaje, contexto_n2, tipo="externo", memoria=memoria, historial=historial):
+                            respuesta_completa.append(texto)
+                        respuesta_texto = "".join(respuesta_completa)
+                        if not _respuesta_indica_sin_info(respuesta_texto):
+                            resultado.nivel = 2
+                            resultado.tipo_respuesta = "externo"
+                            resultado.contexto = contexto_n2
+                            for chunk in respuesta_completa:
+                                yield f"data: {json.dumps({'tipo': 'chunk', 'texto': chunk})}\n\n"
+                        else:
+                            contexto_n2 = ""
+                    else:
+                        contexto_n2 = ""
+
+                    # Nivel 3: Escalamiento
+                    if not contexto_n2:
+                        yield f"data: {json.dumps({'tipo': 'chunk', 'texto': MENSAJE_ESCALAMIENTO})}\n\n"
+                        db_t = SessionLocal()
+                        try:
+                            crear_ticket(db_t, pregunta=request.mensaje, usuario_id=usuario_id, puntaje=max_score, nivel=3)
+                        finally:
+                            db_t.close()
+                        yield f"data: {json.dumps({'tipo': 'final', 'consulta_id': consulta_id, 'fuentes': [], 'confianza': 0.0, 'tipo_respuesta': 'escalamiento', 'nivel': 3})}\n\n"
+                        return
+            else:
+                # Respuesta normal — enviar chunks
+                for chunk in respuesta_completa:
+                    yield f"data: {json.dumps({'tipo': 'chunk', 'texto': chunk})}\n\n"
             historial_id = guardar_historial(
                 usuario_id=usuario_id,
                 query=request.mensaje,
