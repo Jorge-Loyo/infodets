@@ -13,7 +13,7 @@ import {
   IconCloudUpload, IconHistory, IconSparkles, IconCheck,
 } from '@tabler/icons-react'
 
-const DOCS_URL = 'http://32.192.124.14:8000'
+const DOCS_URL = process.env.NEXT_PUBLIC_DOCS_URL ?? 'http://localhost:8000'
 
 import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
@@ -383,7 +383,7 @@ export default function DocumentacionPage() {
                         {filtrados.map((doc, i) => (
                           <motion.tr key={doc.id} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} style={{ display: 'table-row' }}>
                             <Table.Td>
-                              <ActionIcon variant="subtle" color="blue" size="sm" component="a" href={`${DOCS_URL}/v1/admin/ingesta/ver/${doc.id}`} target="_blank">
+                              <ActionIcon variant="subtle" color="blue" size="sm" component="a" href={`${DOCS_URL}/v1/admin/ingesta/ver/${doc.id}`} download>
                                 <IconEye size={14} />
                               </ActionIcon>
                             </Table.Td>
