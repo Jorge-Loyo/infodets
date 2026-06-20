@@ -9,7 +9,7 @@ import subprocess
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 SECRET = "infodets-deploy-secret-2024"
-DEPLOY_SCRIPT = "/home/infodets/deploy.sh"
+DEPLOY_SCRIPT = "/home/infodets/infodets/scripts/deploy.sh"
 
 
 class WebhookHandler(BaseHTTPRequestHandler):
