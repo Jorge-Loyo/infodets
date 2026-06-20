@@ -10,9 +10,11 @@ echo "$(date) - Deploy iniciado..." >> "$LOG_FILE"
 
 cd "$REPO_DIR" || exit 1
 
-# Descartar cambios locales y pull
+# Descartar cambios locales y pull (preservar .env.standalone)
+cp Backend/.env.standalone /tmp/.env.standalone.bak 2>/dev/null
 git reset --hard HEAD
 git pull origin main >> "$LOG_FILE" 2>&1
+cp /tmp/.env.standalone.bak Backend/.env.standalone 2>/dev/null
 
 # Rebuild y restart containers
 docker compose -f "$COMPOSE_FILE" up -d --build backend >> "$LOG_FILE" 2>&1
